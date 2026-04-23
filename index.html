@@ -260,6 +260,8 @@
     .mob-cash-row { display:flex; align-items:center; gap:6px; width:100%; margin-top:6px; border-top:1px solid var(--border-subtle); padding-top:6px; }
     .mob-cash-row input { flex:1; padding:6px 10px; font-size:0.85rem; max-width:120px; }
     .mob-cash-row .mob-change { font-family:var(--font-display); font-weight:700; font-size:0.85rem; min-width:80px; text-align:right; }
+    .checklist-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 
     @media(max-width:768px) {
         .tab-nav { position:fixed; bottom:0; left:0; right:0; top:auto; z-index:200; border-bottom:none; border-top:1px solid var(--border-subtle); padding:4px 6px calc(env(safe-area-inset-bottom,4px) + 4px); gap:0; justify-content:space-around; flex-wrap:nowrap; background:rgba(22,18,30,0.95); backdrop-filter:blur(20px); }
@@ -274,6 +276,10 @@
         .menu-item-btn { padding:12px 6px; min-height:65px; position:relative; }
         .order-panel { margin-bottom:80px; }
         .mobile-order-bar { display:flex; flex-wrap:wrap; }
+        .checklist-grid { grid-template-columns:1fr; }
+        .chart-grid { grid-template-columns:1fr; }
+        .staff-grid { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
+        .settings-grid { grid-template-columns:1fr; }
     }
 </style>
 </head>
@@ -352,7 +358,7 @@
         <input type="date" id="dashDatePick" style="width:160px;" onchange="setDashFilter('custom')">
     </div>
     <div class="stat-row" id="dashStats"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="chart-grid">
         <div class="chart-container"><div class="chart-title">📊 Doanh thu 7 ngày</div><div class="bar-chart" id="revenueChart"></div></div>
         <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ (hôm nay)</div><div class="hourly-chart" id="hourlyChart"></div></div>
     </div>
@@ -378,7 +384,7 @@
 
 <!-- TAB CHECKLIST -->
 <div class="tab-content" id="tab-checklist">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="checklist-grid">
         <div class="checklist-section"><div class="card-title">🌅 MỞ QUÁN</div><div class="checklist-progress"><div class="fill" id="openProgress" style="width:0%"></div></div><div id="openChecklist"></div></div>
         <div class="checklist-section"><div class="card-title">🌙 ĐÓNG QUÁN</div><div class="checklist-progress"><div class="fill" id="closeProgress" style="width:0%"></div></div><div id="closeChecklist"></div></div>
     </div>
@@ -732,7 +738,7 @@ function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderD
 // ═══════════════════════════════════════
 function attemptLogin(){const p=document.getElementById('loginPwd').value;const role=APP_PASSWORDS[p];
 if(!role){document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';return;}
-currentRole=role;document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
+currentRole=role;sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
 applyRole();initFirebase();}
 
 function applyRole(){
@@ -742,7 +748,7 @@ if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Ch�
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
 badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}}
 
-function logout(){currentRole=null;firebaseDb=null;firebaseReady=false;try{firebase.app().delete();}catch(e){}
+function logout(){currentRole=null;firebaseDb=null;firebaseReady=false;sessionStorage.removeItem('monsteaPwd');try{firebase.app().delete();}catch(e){}
 document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
 document.getElementById('roleBar').style.display='none';
 document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
@@ -856,7 +862,9 @@ if(change>=0){const t='Thối: '+fmtP(change);el.textContent=t;el.style.color='v
 else{const t='Thiếu: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
 
 function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
-const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0),note=document.getElementById('orderNote').value.trim();
+const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
+if(window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?`))return;
+const note=document.getElementById('orderNote').value.trim();
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
 if(inv){const os=state._editingOldSummary,ns=state.currentOrder.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(total)}`;
 if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
@@ -1229,8 +1237,10 @@ function closeModal(){document.getElementById('modal').classList.remove('active'
 
 document.addEventListener('keydown',e=>{if(!document.getElementById('tab-pos').classList.contains('active'))return;if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.key==='Enter'&&state.currentOrder.length>0){e.preventDefault();payOrder('cash');}if(e.key==='Escape')clearOrder();});
 
-// Show login screen on load (init called after login)
-document.getElementById('loginPwd').focus();
+// Auto-login from session
+const _sp=sessionStorage.getItem('monsteaPwd');
+if(_sp&&APP_PASSWORDS[_sp]){currentRole=APP_PASSWORDS[_sp];document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
+else{document.getElementById('loginPwd').focus();}
 </script>
 </body>
 </html>

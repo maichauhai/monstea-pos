@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monstea — Quản Lý Quán</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    :root {
+        --bg-body: #1a1520;
+        --bg-card: #221e2a;
+        --bg-card-hover: #2a2533;
+        --bg-input: #2a2533;
+        --bg-surface: #16121e;
+        --border-subtle: rgba(255,255,255,0.06);
+        --border-glow: rgba(212,165,116,0.3);
+        --accent: #e8a635;
+        --accent-hover: #f0b84a;
+        --accent-dim: rgba(232,166,53,0.1);
+        --accent-warm: #d4a574;
+        --accent-green: #4ade80;
+        --accent-red: #ff6b6b;
+        --accent-blue: #60a5fa;
+        --accent-purple: #c084fc;
+        --text-primary: #f0ece4;
+        --text-secondary: #a89e92;
+        --text-muted: #6b6060;
+        --font-display: 'Outfit', sans-serif;
+        --font-body: 'Inter', sans-serif;
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --transition: all 0.2s ease;
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family: var(--font-body); background: var(--bg-body); color: var(--text-primary); min-height:100vh; line-height:1.5; }
+
+    /* HEADER */
+    .app-header { text-align:center; padding:20px 24px 8px; background:linear-gradient(180deg,rgba(232,166,53,0.08) 0%,transparent 100%); }
+    .app-header .logo-row { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:4px; }
+    .app-header .logo-icon { font-size:2rem; }
+    .app-header h1 { font-family:var(--font-display); font-size:1.8rem; font-weight:800; background:linear-gradient(135deg,var(--accent) 0%,#f0b84a 50%,var(--accent-warm) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; letter-spacing:1px; }
+    .app-header .subtitle { font-size:0.75rem; color:var(--text-muted); letter-spacing:2px; text-transform:uppercase; }
+
+    /* TABS */
+    .tab-nav { display:flex; justify-content:center; gap:4px; padding:10px 16px; position:sticky; top:0; z-index:100; background:var(--bg-body); border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+    .tab-btn { padding:10px 18px; font-family:var(--font-display); font-size:0.82rem; font-weight:600; color:var(--text-muted); background:transparent; border:1px solid transparent; border-radius:30px; cursor:pointer; transition:var(--transition); white-space:nowrap; }
+    .tab-btn:hover { color:var(--text-secondary); background:rgba(255,255,255,0.03); }
+    .tab-btn.active { color:var(--bg-body); background:var(--accent); border-color:var(--accent); }
+    .tab-btn .lock-icon { font-size:0.7rem; margin-left:2px; }
+    .tab-content { display:none; padding:20px 24px 40px; max-width:1200px; margin:0 auto; }
+    .tab-content.active { display:block; }
+
+    /* COMMON */
+    .card { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); padding:20px; margin-bottom:16px; }
+    .card-title { font-family:var(--font-display); font-size:0.95rem; font-weight:700; color:var(--accent); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .btn { padding:10px 20px; font-family:var(--font-display); font-size:0.85rem; font-weight:600; border:none; border-radius:var(--radius-sm); cursor:pointer; transition:var(--transition); }
+    .btn-primary { background:var(--accent); color:#1a1520; }
+    .btn-primary:hover { background:var(--accent-hover); transform:translateY(-1px); }
+    .btn-secondary { background:rgba(255,255,255,0.06); color:var(--text-secondary); border:1px solid var(--border-subtle); }
+    .btn-secondary:hover { background:rgba(255,255,255,0.1); }
+    .btn-danger { background:rgba(255,107,107,0.15); color:var(--accent-red); border:1px solid rgba(255,107,107,0.2); }
+    .btn-danger:hover { background:rgba(255,107,107,0.25); }
+    .btn-success { background:rgba(74,222,128,0.15); color:var(--accent-green); border:1px solid rgba(74,222,128,0.2); }
+    .btn-success:hover { background:rgba(74,222,128,0.25); }
+    .btn-sm { padding:6px 14px; font-size:0.78rem; }
+    input,select,textarea { padding:10px 14px; background:var(--bg-input); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); color:var(--text-primary); font-family:var(--font-body); font-size:0.88rem; outline:none; transition:var(--transition); width:100%; }
+    input:focus,select:focus,textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(232,166,53,0.08); }
+    .toast-container { position:fixed; top:20px; right:20px; z-index:9999; }
+    .toast { padding:12px 20px; background:var(--bg-card); border:1px solid var(--accent); border-radius:var(--radius-sm); color:var(--text-primary); font-size:0.85rem; margin-bottom:8px; animation:slideIn .3s ease,fadeOut .3s ease 2.7s; box-shadow:0 4px 20px rgba(0,0,0,0.4); }
+    @keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @keyframes fadeOut { to{opacity:0;transform:translateY(-10px)} }
+
+    /* STAT CARDS */
+    .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px; }
+    .stat-card { padding:16px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); text-align:center; }
+    .stat-card .stat-label { font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
+    .stat-card .stat-value { font-family:var(--font-display); font-size:1.6rem; font-weight:800; }
+
+    /* POS */
+    .pos-layout { display:grid; grid-template-columns:1fr 380px; gap:16px; min-height:70vh; }
+    .pos-categories { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+    .cat-btn { padding:6px 14px; font-size:0.78rem; font-family:var(--font-body); font-weight:600; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); border-radius:20px; color:var(--text-muted); cursor:pointer; transition:var(--transition); }
+    .cat-btn:hover { color:var(--text-primary); }
+    .cat-btn.active { color:var(--bg-body); background:var(--accent); border-color:var(--accent); }
+    .menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+    .menu-item-btn { padding:16px 10px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:var(--transition); text-align:center; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px; }
+    .menu-item-btn:hover { border-color:var(--accent); background:var(--bg-card-hover); transform:translateY(-2px); }
+    .menu-item-btn:active { transform:scale(0.97); }
+    .menu-item-btn .mi-name { font-size:0.82rem; font-weight:600; color:var(--text-primary); line-height:1.2; }
+    .menu-item-btn .mi-price { font-family:var(--font-display); font-size:0.9rem; font-weight:700; color:var(--accent); }
+    .order-panel { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; max-height:80vh; position:sticky; top:70px; }
+    .order-header { padding:16px 20px; border-bottom:1px solid var(--border-subtle); font-family:var(--font-display); font-weight:700; font-size:0.95rem; color:var(--accent); display:flex; justify-content:space-between; align-items:center; }
+    .order-items { flex:1; overflow-y:auto; padding:8px 0; }
+    .order-item { display:flex; align-items:center; padding:8px 16px; gap:10px; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .order-item .oi-name { flex:1; font-size:0.82rem; }
+    .order-item .oi-qty { display:flex; align-items:center; gap:6px; }
+    .order-item .oi-qty button { width:26px; height:26px; border-radius:50%; border:1px solid var(--border-subtle); background:transparent; color:var(--text-secondary); cursor:pointer; font-size:0.9rem; display:flex; align-items:center; justify-content:center; transition:var(--transition); }
+    .order-item .oi-qty button:hover { background:rgba(255,255,255,0.1); color:var(--text-primary); }
+    .order-item .oi-qty span { font-weight:600; min-width:20px; text-align:center; font-size:0.88rem; }
+    .order-item .oi-price { font-family:var(--font-display); font-weight:600; font-size:0.85rem; color:var(--accent-warm); min-width:70px; text-align:right; }
+    .order-item .oi-del { cursor:pointer; color:var(--accent-red); opacity:0.5; font-size:0.8rem; }
+    .order-item .oi-del:hover { opacity:1; }
+    .order-footer { padding:16px 20px; border-top:1px solid var(--border-subtle); }
+    .order-total { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .order-total .label { font-size:0.85rem; color:var(--text-secondary); }
+    .order-total .amount { font-family:var(--font-display); font-size:1.5rem; font-weight:800; color:var(--accent); }
+    .order-actions { display:flex; gap:8px; }
+    .order-actions .btn { flex:1; }
+    .order-note { margin-bottom:10px; }
+    .order-note input { font-size:0.8rem; padding:8px 12px; }
+
+    /* INVOICES */
+    .inv-row { display:flex; align-items:center; padding:10px 16px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); margin-bottom:6px; cursor:pointer; transition:var(--transition); gap:12px; }
+    .inv-row:hover { border-color:var(--border-glow); }
+    .inv-row .inv-id { font-family:var(--font-display); font-weight:700; font-size:0.85rem; color:var(--accent); min-width:60px; }
+    .inv-row .inv-time { font-size:0.78rem; color:var(--text-muted); min-width:60px; }
+    .inv-row .inv-items { font-size:0.78rem; color:var(--text-secondary); flex:1; }
+    .inv-row .inv-total { font-family:var(--font-display); font-weight:700; color:var(--accent-warm); }
+    .inv-row .inv-method { font-size:0.7rem; padding:2px 8px; border-radius:10px; }
+    .inv-row .inv-method.cash { background:rgba(74,222,128,0.1); color:var(--accent-green); }
+    .inv-row .inv-method.transfer { background:rgba(96,165,250,0.1); color:var(--accent-blue); }
+    .inv-row.cancelled { opacity:0.4; }
+    .inv-row.cancelled .inv-items { text-decoration:line-through; }
+    .inv-row.cancelled .inv-total { text-decoration:line-through; color:var(--accent-red); }
+    .inv-row .inv-badge { font-size:0.65rem; padding:2px 6px; border-radius:8px; margin-left:4px; }
+    .inv-row .inv-badge.edited { background:rgba(232,166,53,0.15); color:var(--accent); }
+    .inv-row .inv-badge.cancelled-badge { background:rgba(255,107,107,0.15); color:var(--accent-red); }
+
+    /* DASHBOARD */
+    .chart-container { padding:20px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); margin-bottom:16px; }
+    .chart-title { font-family:var(--font-display); font-size:0.9rem; font-weight:600; color:var(--accent); margin-bottom:16px; }
+    .bar-chart { display:flex; align-items:flex-end; gap:8px; height:180px; padding:0 8px; }
+    .bar-col { flex:1; display:flex; flex-direction:column; align-items:center; gap:6px; }
+    .bar-fill { width:100%; max-width:50px; background:linear-gradient(180deg,var(--accent) 0%,rgba(232,166,53,0.3) 100%); border-radius:6px 6px 0 0; transition:height .5s ease; min-height:4px; }
+    .bar-label { font-size:0.65rem; color:var(--text-muted); }
+    .bar-value { font-size:0.68rem; color:var(--text-secondary); font-weight:600; }
+    .top-items-table { width:100%; border-collapse:collapse; }
+    .top-items-table th { text-align:left; font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; padding:8px 12px; border-bottom:1px solid var(--border-subtle); }
+    .top-items-table td { padding:10px 12px; font-size:0.82rem; border-bottom:1px solid rgba(255,255,255,0.03); }
+    .top-items-table tr:hover td { background:rgba(255,255,255,0.02); }
+    .date-filter-bar { display:flex; gap:8px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
+    .filter-btn { padding:6px 14px; font-size:0.78rem; font-family:var(--font-body); font-weight:600; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); border-radius:20px; color:var(--text-muted); cursor:pointer; transition:var(--transition); }
+    .filter-btn:hover { color:var(--text-primary); }
+    .filter-btn.active { color:var(--bg-body); background:var(--accent); border-color:var(--accent); }
+    .hourly-chart { display:flex; align-items:flex-end; gap:3px; height:100px; padding:0 4px; }
+    .hourly-bar { flex:1; background:rgba(232,166,53,0.3); border-radius:3px 3px 0 0; transition:height .3s ease; min-height:2px; }
+    .hourly-bar.peak { background:var(--accent); }
+
+    /* ATTENDANCE */
+    .staff-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+    .staff-card { padding:20px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); text-align:center; cursor:pointer; transition:var(--transition); }
+    .staff-card:hover { border-color:var(--border-glow); transform:translateY(-2px); }
+    .staff-card .sc-name { font-family:var(--font-display); font-size:1.1rem; font-weight:700; margin-bottom:6px; }
+    .staff-card .sc-status { font-size:0.78rem; padding:4px 12px; border-radius:20px; display:inline-block; }
+    .staff-card .sc-time { font-size:0.75rem; color:var(--text-muted); margin-top:8px; }
+    .staff-card.status-out .sc-status { background:rgba(255,255,255,0.05); color:var(--text-muted); }
+    .staff-card.status-in { border-color:rgba(74,222,128,0.3); }
+    .staff-card.status-in .sc-status { background:rgba(74,222,128,0.15); color:var(--accent-green); }
+    .staff-card.status-done { border-color:rgba(96,165,250,0.2); }
+    .staff-card.status-done .sc-status { background:rgba(96,165,250,0.1); color:var(--accent-blue); }
+    .att-table { width:100%; border-collapse:collapse; margin-top:16px; }
+    .att-table th { text-align:left; font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; padding:8px 12px; border-bottom:1px solid var(--border-subtle); }
+    .att-table td { padding:10px 12px; font-size:0.82rem; border-bottom:1px solid rgba(255,255,255,0.03); }
+
+    /* CHECKLIST */
+    .checklist-section { margin-bottom:24px; }
+    .checklist-progress { height:6px; background:rgba(255,255,255,0.06); border-radius:3px; margin-bottom:16px; overflow:hidden; }
+    .checklist-progress .fill { height:100%; background:linear-gradient(90deg,var(--accent-green),#34d399); border-radius:3px; transition:width .3s ease; }
+    .cl-item { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); margin-bottom:6px; cursor:pointer; transition:var(--transition); }
+    .cl-item:hover { border-color:var(--border-glow); }
+    .cl-item.checked { opacity:0.6; }
+    .cl-item.checked .cl-text { text-decoration:line-through; }
+    .cl-item input[type="checkbox"] { width:20px; height:20px; accent-color:var(--accent-green); cursor:pointer; flex-shrink:0; }
+    .cl-item .cl-text { flex:1; font-size:0.88rem; }
+
+    /* SETTINGS */
+    .settings-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(350px,1fr)); gap:16px; }
+    .setting-item { display:flex; align-items:center; gap:10px; padding:10px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:var(--radius-sm); margin-bottom:6px; }
+    .setting-item .si-name { flex:1; font-size:0.85rem; }
+    .setting-item .si-price { font-family:var(--font-display); font-weight:600; color:var(--accent-warm); min-width:70px; text-align:right; }
+    .setting-item .si-cat { font-size:0.72rem; color:var(--text-muted); min-width:80px; }
+    .setting-item .si-actions { display:flex; gap:6px; }
+    .setting-item .si-actions button { background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:0.8rem; padding:4px; transition:var(--transition); }
+    .setting-item .si-actions button:hover { color:var(--text-primary); }
+    .add-form { display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap; }
+    .add-form input,.add-form select { width:auto; flex:1; min-width:100px; }
+
+    /* EDIT LOG */
+    .edit-log-item { padding:10px 14px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:var(--radius-sm); margin-bottom:6px; font-size:0.78rem; }
+    .edit-log-item .log-time { color:var(--accent); font-weight:600; }
+    .edit-log-item .log-detail { color:var(--text-secondary); margin-top:4px; }
+    .edit-log-item .log-before { color:var(--accent-red); }
+    .edit-log-item .log-after { color:var(--accent-green); }
+
+    /* PASSWORD LOCK */
+    .lock-screen { text-align:center; padding:60px 20px; }
+    .lock-screen .lock-emoji { font-size:3rem; margin-bottom:16px; }
+    .lock-screen .lock-msg { font-size:0.9rem; color:var(--text-muted); margin-bottom:20px; }
+    .lock-screen input { max-width:250px; margin:0 auto 12px; text-align:center; }
+    .lock-screen .btn { margin:0; }
+
+    /* COGS */
+    .cogs-badge { font-size:0.72rem; padding:3px 8px; border-radius:10px; font-weight:600; }
+    .cogs-badge.good { background:rgba(74,222,128,0.15); color:var(--accent-green); }
+    .cogs-badge.warn { background:rgba(232,166,53,0.15); color:var(--accent); }
+    .cogs-badge.bad { background:rgba(255,107,107,0.15); color:var(--accent-red); }
+    .recipe-item { padding:12px 16px; background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.04); border-radius:var(--radius-sm); margin-bottom:6px; }
+    .recipe-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+    .recipe-header .rh-name { font-weight:600; font-size:0.9rem; }
+    .recipe-ing { font-size:0.78rem; color:var(--text-secondary); display:flex; gap:12px; flex-wrap:wrap; }
+    .recipe-ing span { background:rgba(255,255,255,0.04); padding:2px 8px; border-radius:6px; }
+
+    /* MODAL */
+    .modal-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; align-items:center; justify-content:center; z-index:1000; backdrop-filter:blur(4px); }
+    .modal-overlay.active { display:flex; }
+    .modal { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:28px; max-width:600px; width:90%; max-height:80vh; overflow-y:auto; }
+    .modal h3 { font-family:var(--font-display); font-size:1.1rem; font-weight:700; color:var(--accent); margin-bottom:16px; }
+
+    /* CLOCK */
+    .live-clock { font-family:var(--font-display); font-size:2.4rem; font-weight:800; color:var(--accent); text-align:center; margin-bottom:20px; letter-spacing:2px; }
+    .live-clock .clock-date { font-size:0.85rem; color:var(--text-muted); font-weight:400; }
+
+    @media(max-width:900px) { .pos-layout{grid-template-columns:1fr} .order-panel{position:static;max-height:none} }
+</style>
+</head>
+<body>
+<div class="app-header">
+    <div class="logo-row"><span class="logo-icon">☕</span><h1>MONSTEA</h1></div>
+    <div class="subtitle">Hệ thống quản lý quán</div>
+</div>
+
+<div class="tab-nav">
+    <button class="tab-btn active" data-tab="pos" onclick="switchTab('pos')">☕ Bán Hàng</button>
+    <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
+    <button class="tab-btn" data-tab="attendance" onclick="switchTab('attendance')">⏰ Chấm Công</button>
+    <button class="tab-btn" data-tab="checklist" onclick="switchTab('checklist')">✅ Checklist</button>
+    <button class="tab-btn" data-tab="ingredients" onclick="switchTab('ingredients')">📦 Nguyên Liệu<span class="lock-icon">🔒</span></button>
+    <button class="tab-btn" data-tab="recipes" onclick="switchTab('recipes')">📋 Công Thức<span class="lock-icon">🔒</span></button>
+    <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Cài Đặt<span class="lock-icon">🔒</span></button>
+</div>
+
+<!-- TAB POS -->
+<div class="tab-content active" id="tab-pos">
+    <div class="pos-layout">
+        <div>
+            <div class="pos-categories" id="posCatTabs"></div>
+            <div class="menu-grid" id="posMenuGrid"></div>
+        </div>
+        <div class="order-panel">
+            <div class="order-header">
+                <span id="orderTitle">HÓA ĐƠN MỚI</span>
+                <span id="orderCount" style="font-size:0.75rem;color:var(--text-muted)">0 món</span>
+            </div>
+            <div class="order-items" id="orderItems"><div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div></div>
+            <div class="order-footer">
+                <div class="order-note"><input type="text" id="orderNote" placeholder="Ghi chú (ít đường, nhiều đá...)"></div>
+                <div class="order-total"><span class="label">TỔNG CỘNG</span><span class="amount" id="orderTotal">0đ</span></div>
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+                    <span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">💵 Khách đưa:</span>
+                    <input type="number" id="cashGiven" placeholder="Nhập số tiền..." style="flex:1;padding:8px 12px;font-size:0.88rem;" oninput="calcChange()">
+                    <span id="changeResult" style="font-family:var(--font-display);font-weight:700;font-size:0.95rem;min-width:90px;text-align:right;"></span>
+                </div>
+                <div class="order-actions">
+                    <button class="btn btn-secondary btn-sm" onclick="clearOrder()">🗑️ Hủy</button>
+                    <button class="btn btn-success btn-sm" onclick="payOrder('cash')">💵 Tiền mặt</button>
+                    <button class="btn btn-primary btn-sm" onclick="payOrder('transfer')">📱 CK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="today-invoices">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
+            <div class="card-title" style="margin-bottom:0;">📄 Hóa đơn hôm nay <span id="todayInvCount" style="color:var(--text-muted);font-weight:400;font-size:0.8rem;margin-left:6px;"></span></div>
+            <button class="btn btn-secondary btn-sm" onclick="showEditLog()" style="font-size:0.72rem;">📝 Nhật ký sửa đổi</button>
+        </div>
+        <div id="todayInvoiceList" style="margin-top:10px;"></div>
+    </div>
+</div>
+
+<!-- TAB DASHBOARD -->
+<div class="tab-content" id="tab-dashboard">
+    <div class="date-filter-bar">
+        <button class="filter-btn active" onclick="setDashFilter('today')">Hôm nay</button>
+        <button class="filter-btn" onclick="setDashFilter('week')">7 ngày</button>
+        <button class="filter-btn" onclick="setDashFilter('month')">Tháng này</button>
+        <input type="date" id="dashDatePick" style="width:160px;" onchange="setDashFilter('custom')">
+    </div>
+    <div class="stat-row" id="dashStats"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="chart-container"><div class="chart-title">📊 Doanh thu 7 ngày</div><div class="bar-chart" id="revenueChart"></div></div>
+        <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ (hôm nay)</div><div class="hourly-chart" id="hourlyChart"></div></div>
+    </div>
+    <div class="card"><div class="card-title">🏆 Top Món Bán Chạy</div>
+        <table class="top-items-table"><thead><tr><th>#</th><th>Tên món</th><th>SL</th><th>Doanh thu</th><th>%</th></tr></thead><tbody id="topItemsBody"></tbody></table>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary btn-sm" onclick="exportCSV()">📋 Copy CSV doanh thu</button>
+        <button class="btn btn-success btn-sm" onclick="exportIngredientsUsed()">📦 Copy NL đã dùng</button>
+        <button class="btn btn-secondary btn-sm" onclick="exportDashJSON()">💾 Tải JSON</button>
+    </div>
+</div>
+
+<!-- TAB ATTENDANCE -->
+<div class="tab-content" id="tab-attendance">
+    <div class="live-clock"><div id="liveClock">--:--:--</div><div class="clock-date" id="liveDate"></div></div>
+    <div class="staff-grid" id="staffGrid"></div>
+    <div class="card" style="margin-top:24px;"><div class="card-title">📋 Bảng chấm công hôm nay</div>
+        <table class="att-table"><thead><tr><th>Tên</th><th>Vào ca</th><th>Ra ca</th><th>Số giờ</th></tr></thead><tbody id="attBody"></tbody></table>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="exportAttCSV()" style="margin-top:12px;">📋 Export CSV chấm công</button>
+</div>
+
+<!-- TAB CHECKLIST -->
+<div class="tab-content" id="tab-checklist">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="checklist-section"><div class="card-title">🌅 MỞ QUÁN</div><div class="checklist-progress"><div class="fill" id="openProgress" style="width:0%"></div></div><div id="openChecklist"></div></div>
+        <div class="checklist-section"><div class="card-title">🌙 ĐÓNG QUÁN</div><div class="checklist-progress"><div class="fill" id="closeProgress" style="width:0%"></div></div><div id="closeChecklist"></div></div>
+    </div>
+</div>
+
+<!-- TAB INGREDIENTS (🔒) -->
+<div class="tab-content" id="tab-ingredients">
+    <div id="ingredientsLock" class="lock-screen">
+        <div class="lock-emoji">🔒</div>
+        <div class="lock-msg">Tab này cần mật khẩu quản lý</div>
+        <input type="password" id="ingPwd" placeholder="Nhập mật khẩu" onkeydown="if(event.key==='Enter')unlockTab('ingredients')">
+        <br><button class="btn btn-primary btn-sm" onclick="unlockTab('ingredients')">Mở khóa</button>
+    </div>
+    <div id="ingredientsContent" style="display:none;">
+        <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+                <div class="card-title" style="margin-bottom:0;">📦 Danh sách Nguyên Liệu <span style="font-size:0.75rem;color:var(--text-muted);font-weight:400;" id="ingCount"></span></div>
+                <div style="display:flex;gap:6px;">
+                    <button class="btn btn-primary btn-sm" onclick="exportIngredientsJSON()" style="font-size:0.72rem;">📥 Xuất JSON</button>
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ingImportInput').click()" style="font-size:0.72rem;">📂 Nhập JSON</button>
+                    <input type="file" id="ingImportInput" accept=".json" style="display:none" onchange="importIngredientsJSON(event)">
+                </div>
+            </div>
+            <input type="text" id="ingSearch" placeholder="🔍 Tìm nguyên liệu..." style="margin-bottom:12px;" oninput="renderIngredients()">
+            <div id="ingredientsList" style="max-height:500px;overflow-y:auto;"></div>
+            <div class="add-form">
+                <input type="text" id="newIngName" placeholder="Tên NL" style="flex:2;">
+                <input type="text" id="newIngUnit" placeholder="Đơn vị" style="flex:1;">
+                <input type="number" id="newIngPrice" placeholder="Đơn giá" style="flex:1;">
+                <button class="btn btn-primary btn-sm" onclick="addIngredient()">➕</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB RECIPES (🔒) -->
+<div class="tab-content" id="tab-recipes">
+    <div id="recipesLock" class="lock-screen">
+        <div class="lock-emoji">🔒</div>
+        <div class="lock-msg">Tab này cần mật khẩu quản lý</div>
+        <input type="password" id="recPwd" placeholder="Nhập mật khẩu" onkeydown="if(event.key==='Enter')unlockTab('recipes')">
+        <br><button class="btn btn-primary btn-sm" onclick="unlockTab('recipes')">Mở khóa</button>
+    </div>
+    <div id="recipesContent" style="display:none;">
+        <div class="card">
+            <div class="card-title">📋 Bộ Công Thức Mẫu</div>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;">Tạo mẫu dùng chung cho nhiều món. VD: "Trà sữa cơ bản" — áp vào tất cả trà sữa, chỉ thay NL khác biệt.</p>
+            <div id="templatesList"></div>
+            <button class="btn btn-primary btn-sm" onclick="createTemplate()" style="margin-top:8px;">➕ Tạo mẫu mới</button>
+        </div>
+        <div class="card" style="margin-top:16px;"><div class="card-title">📋 Công thức món — COGS</div>
+            <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:14px;">💡 Gợi ý COGS: Món nước 25-30% giá bán | Món ăn 35-40% giá bán</p>
+            <div id="recipesList"></div>
+        </div>
+    </div>
+</div>
+
+<!-- TAB SETTINGS (🔒) -->
+<div class="tab-content" id="tab-settings">
+    <div id="settingsLock" class="lock-screen">
+        <div class="lock-emoji">🔒</div>
+        <div class="lock-msg">Tab này cần mật khẩu quản lý</div>
+        <input type="password" id="setPwd" placeholder="Nhập mật khẩu" onkeydown="if(event.key==='Enter')unlockTab('settings')">
+        <br><button class="btn btn-primary btn-sm" onclick="unlockTab('settings')">Mở khóa</button>
+    </div>
+    <div id="settingsContent" style="display:none;">
+        <div class="settings-grid">
+            <div class="card"><div class="card-title">🧋 Quản lý Menu</div>
+                <div id="menuList"></div>
+                <div class="add-form">
+                    <input type="text" id="newMenuName" placeholder="Tên món" style="flex:2;">
+                    <input type="number" id="newMenuPrice" placeholder="Giá" style="flex:1;">
+                    <select id="newMenuCat" style="flex:1;"></select>
+                    <button class="btn btn-primary btn-sm" onclick="addMenuItem()">➕</button>
+                </div>
+                <div style="margin-top:10px;"><label style="font-size:0.78rem;color:var(--text-muted);">Thêm danh mục:</label>
+                    <div class="add-form" style="margin-top:4px;"><input type="text" id="newCatName" placeholder="Tên danh mục mới"><button class="btn btn-secondary btn-sm" onclick="addCategory()">➕</button></div>
+                </div>
+            </div>
+            <div class="card"><div class="card-title">👥 Quản lý Nhân viên</div><div id="staffList"></div>
+                <div class="add-form"><input type="text" id="newStaffName" placeholder="Tên nhân viên"><button class="btn btn-primary btn-sm" onclick="addStaff()">➕</button></div>
+            </div>
+            <div class="card"><div class="card-title">🌅 Checklist Mở quán</div><div id="openClSettings"></div>
+                <div class="add-form"><input type="text" id="newOpenCl" placeholder="Thêm mục mở quán"><button class="btn btn-primary btn-sm" onclick="addChecklistItem('open')">➕</button></div>
+            </div>
+            <div class="card"><div class="card-title">🌙 Checklist Đóng quán</div><div id="closeClSettings"></div>
+                <div class="add-form"><input type="text" id="newCloseCl" placeholder="Thêm mục đóng quán"><button class="btn btn-primary btn-sm" onclick="addChecklistItem('close')">➕</button></div>
+            </div>
+            <div class="card"><div class="card-title">🔑 Đổi mật khẩu</div>
+                <div class="add-form"><input type="password" id="newPwd" placeholder="Mật khẩu mới"><button class="btn btn-primary btn-sm" onclick="changePassword()">Đổi</button></div>
+                <p style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;">Mặc định: 1234</p>
+            </div>
+            <div class="card"><div class="card-title">💾 Backup & Khôi phục</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm" onclick="downloadBackup()">📥 Tải backup</button>
+                    <button class="btn btn-secondary btn-sm" onclick="document.getElementById('restoreInput').click()">📂 Khôi phục</button>
+                    <input type="file" id="restoreInput" accept=".json" style="display:none" onchange="restoreBackup(event)">
+                    <button class="btn btn-danger btn-sm" onclick="clearOldData()">🗑️ Xóa data cũ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><h3 id="modalTitle">Chi tiết</h3><div id="modalBody"></div><div style="text-align:right;margin-top:16px;"><button class="btn btn-secondary btn-sm" onclick="closeModal()">Đóng</button></div></div></div>
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ═══════════════════════════════════════
+// DEFAULT DATA
+// ═══════════════════════════════════════
+const DEFAULT_INGREDIENTS = [
+    {id:1,name:'Banh bao cam 28c',unit:'cái',unitPrice:3214},
+    {id:2,name:'Banh phong tom',unit:'g',unitPrice:65},
+    {id:3,name:'Banh trang bo kho',unit:'bịch',unitPrice:6000},
+    {id:4,name:'Banh trang pho mai',unit:'bịch',unitPrice:6000},
+    {id:5,name:'Banh trang tron',unit:'g',unitPrice:26},
+    {id:6,name:'Bo la lot 30c',unit:'cái',unitPrice:2900},
+    {id:7,name:'Bo vien 160c',unit:'cái',unitPrice:413},
+    {id:8,name:'Bot pho mai 100g',unit:'g',unitPrice:300},
+    {id:9,name:'BT me',unit:'bịch',unitPrice:5500},
+    {id:10,name:'BT muoi nhuyen',unit:'bịch',unitPrice:5000},
+    {id:11,name:'Ca com xanh 35c',unit:'kg',unitPrice:1171},
+    {id:12,name:'Ca rot',unit:'g',unitPrice:18},
+    {id:13,name:'Ca vien 160c',unit:'cái',unitPrice:363},
+    {id:14,name:'Cai thia',unit:'g',unitPrice:17},
+    {id:15,name:'Cha heo',unit:'cái',unitPrice:3000},
+    {id:16,name:'Chanh',unit:'g',unitPrice:20},
+    {id:17,name:'Cu khoai mon',unit:'g',unitPrice:45},
+    {id:18,name:'Cua huynh de 30c',unit:'cái',unitPrice:1875},
+    {id:19,name:'Dau an',unit:'ml',unitPrice:38},
+    {id:20,name:'Dau bap',unit:'g',unitPrice:17},
+    {id:21,name:'Dau hu pho mai 30c',unit:'cái',unitPrice:1483},
+    {id:22,name:'Dau phong',unit:'g',unitPrice:50},
+    {id:23,name:'Ha cao 48c',unit:'cái',unitPrice:771},
+    {id:24,name:'Hai san 35c',unit:'cái',unitPrice:1000},
+    {id:25,name:'Hanh kho',unit:'g',unitPrice:15},
+    {id:26,name:'Hanh phi',unit:'g',unitPrice:100},
+    {id:27,name:'Hanh tuoi',unit:'g',unitPrice:19},
+    {id:28,name:'Hoanh thanh',unit:'bịch',unitPrice:15000},
+    {id:29,name:'Holo 44c',unit:'cái',unitPrice:1205},
+    {id:30,name:'Khoai tay Bi',unit:'g',unitPrice:53},
+    {id:31,name:'Mi gau do 30c',unit:'cái',unitPrice:3000},
+    {id:32,name:'Mi Indo 40c',unit:'cái',unitPrice:4375},
+    {id:33,name:'Muc vien 70c',unit:'cái',unitPrice:943},
+    {id:34,name:'Muc xoan 32c',unit:'cái',unitPrice:2531},
+    {id:35,name:'Muoi nhuyen',unit:'g',unitPrice:140},
+    {id:36,name:'Nem chua ran 20c',unit:'cái',unitPrice:2100},
+    {id:37,name:'Nem tre',unit:'cái',unitPrice:22000},
+    {id:38,name:'Pho mai que 13c',unit:'cái',unitPrice:4400},
+    {id:39,name:'Rau ram',unit:'g',unitPrice:18},
+    {id:40,name:'So diep 48c',unit:'cái',unitPrice:2750},
+    {id:41,name:'Tac',unit:'g',unitPrice:20},
+    {id:42,name:'Tep 500g',unit:'g',unitPrice:170},
+    {id:43,name:'Thanh cua 28c',unit:'cái',unitPrice:2143},
+    {id:44,name:'Tom hum vien 25c',unit:'cái',unitPrice:800},
+    {id:45,name:'Tom surimi 30c',unit:'cái',unitPrice:2833},
+    {id:46,name:'Tom Vien 80c',unit:'cái',unitPrice:713},
+    {id:47,name:'Top mo',unit:'g',unitPrice:240},
+    {id:48,name:'Tre',unit:'cái',unitPrice:6500},
+    {id:49,name:'Trung cut',unit:'cái',unitPrice:400},
+    {id:50,name:'Trung ga',unit:'cái',unitPrice:2500},
+    {id:51,name:'Tuong ca 5000ml',unit:'ml',unitPrice:16},
+    {id:52,name:'Tuong den 5000ml',unit:'ml',unitPrice:17},
+    {id:53,name:'Tuong ot 5000ml',unit:'ml',unitPrice:15},
+    {id:54,name:'Xi dau 2000ml',unit:'cái',unitPrice:65000},
+    {id:55,name:'Xoai',unit:'g',unitPrice:10},
+    {id:56,name:'Xuc xich CP 10c',unit:'cái',unitPrice:3400},
+    {id:57,name:'Bao 2 ly',unit:'g',unitPrice:38},
+    {id:58,name:'Bao 20',unit:'g',unitPrice:35},
+    {id:59,name:'Bao 24',unit:'g',unitPrice:35},
+    {id:60,name:'Coc lon in 1000c',unit:'cái',unitPrice:750},
+    {id:61,name:'Coc nho in 1000c',unit:'cái',unitPrice:650},
+    {id:62,name:'Dua 4000c',unit:'cái',unitPrice:94},
+    {id:63,name:'Giay',unit:'bịch',unitPrice:9000},
+    {id:64,name:'Hop Com lon 150c',unit:'cái',unitPrice:360},
+    {id:65,name:'Hop dung mi 100c',unit:'cái',unitPrice:1020},
+    {id:66,name:'Ly 80 200',unit:'cái',unitPrice:420},
+    {id:67,name:'Ly CF nap cau',unit:'cái',unitPrice:600},
+    {id:68,name:'Muong den 100c',unit:'cái',unitPrice:135},
+    {id:69,name:'Ong hut TC',unit:'cái',unitPrice:103},
+    {id:70,name:'Tui giay',unit:'cái',unitPrice:363},
+    {id:71,name:'Tui TS don',unit:'g',unitPrice:38},
+    {id:72,name:'Xien ngan',unit:'cái',unitPrice:15000},
+    {id:73,name:'Bot beo Vana 25kg',unit:'g',unitPrice:70},
+    {id:74,name:'Bot kem trung 500g',unit:'g',unitPrice:310},
+    {id:75,name:'Bot matcha 500g',unit:'g',unitPrice:760},
+    {id:76,name:'CF chon 500g',unit:'g',unitPrice:107},
+    {id:77,name:'Đá',unit:'bịch',unitPrice:15000},
+    {id:78,name:'Dao mieng 20c',unit:'cái',unitPrice:1500},
+    {id:79,name:'Dua nuong 500g',unit:'g',unitPrice:150},
+    {id:80,name:'Duong den',unit:'g',unitPrice:48},
+    {id:81,name:'Duong trang',unit:'g',unitPrice:19},
+    {id:82,name:'Gelatine 1000g',unit:'g',unitPrice:290},
+    {id:83,name:'Hong tra 1000g',unit:'g',unitPrice:105},
+    {id:84,name:'Milo 10c',unit:'g',unitPrice:4000},
+    {id:85,name:'O Long 1000g',unit:'g',unitPrice:160},
+    {id:86,name:'Pd dao 1000g',unit:'g',unitPrice:160},
+    {id:87,name:'Pd khoai mon 1000g',unit:'g',unitPrice:160},
+    {id:88,name:'Pd socola 1000g',unit:'g',unitPrice:180},
+    {id:89,name:'Pd tra xanh 1000g',unit:'g',unitPrice:180},
+    {id:90,name:'Pd Trung 1000g',unit:'g',unitPrice:200},
+    {id:91,name:'Pho mai tuoi 12c',unit:'cái',unitPrice:4500},
+    {id:92,name:'Phuc Long 500g',unit:'g',unitPrice:230},
+    {id:93,name:'Rau cau ca 12g',unit:'g',unitPrice:542},
+    {id:94,name:'Rich 454g',unit:'g',unitPrice:88},
+    {id:95,name:'Siro bac ha 2000ml',unit:'ml',unitPrice:75},
+    {id:96,name:'Siro dao 2000ml',unit:'ml',unitPrice:79},
+    {id:97,name:'Siro tao 2000ml',unit:'ml',unitPrice:75},
+    {id:98,name:'Siro vai 2000ml',unit:'ml',unitPrice:75},
+    {id:99,name:'Socola hershey 680g',unit:'g',unitPrice:221},
+    {id:100,name:'ST Chanh day 1000ml',unit:'ml',unitPrice:86},
+    {id:101,name:'ST Dau 1000ml',unit:'ml',unitPrice:85},
+    {id:102,name:'ST Dua luoi 1000ml',unit:'ml',unitPrice:110},
+    {id:103,name:'ST Kiwi 1000ml',unit:'ml',unitPrice:110},
+    {id:104,name:'ST Mang cau 1000ml',unit:'ml',unitPrice:110},
+    {id:105,name:'ST Oi hong 1000ml',unit:'ml',unitPrice:106},
+    {id:106,name:'ST Viet quat 1000ml',unit:'ml',unitPrice:115},
+    {id:107,name:'ST Xoai 1000ml',unit:'ml',unitPrice:87},
+    {id:108,name:'Sua dac 1000ml',unit:'ml',unitPrice:38},
+    {id:109,name:'Sua TH 1000ml',unit:'ml',unitPrice:45},
+    {id:110,name:'Suong sao 50g',unit:'g',unitPrice:300},
+    {id:111,name:'Tac xi muoi 900g',unit:'g',unitPrice:67},
+    {id:112,name:'TC 3Q 2000g',unit:'g',unitPrice:27},
+    {id:113,name:'TC den 3000g',unit:'g',unitPrice:28},
+    {id:114,name:'TC hoang kim 1000g',unit:'g',unitPrice:42},
+    {id:115,name:'Thach ca 2500g',unit:'g',unitPrice:27},
+    {id:116,name:'Thai xanh 200g',unit:'g',unitPrice:320},
+    {id:117,name:'Tra bi dao 330ml',unit:'ml',unitPrice:26},
+    {id:118,name:'Tra lai 1000g',unit:'g',unitPrice:155},
+    {id:119,name:'Vai ngam 15c',unit:'cái',unitPrice:2133},
+    {id:120,name:'Cafe Trung Nguyen I',unit:'g',unitPrice:166},
+    {id:121,name:'Sua TH tiet',unit:'ml',unitPrice:28},
+    {id:122,name:'Bo Tuong An',unit:'g',unitPrice:225},
+    {id:123,name:'BT xi ke',unit:'cái',unitPrice:6000},
+    {id:124,name:'Dau tay say',unit:'g',unitPrice:576},
+];
+
+const DEFAULT_MENU = [
+    {id:1,name:'Trà sữa trân châu',price:25000,category:'Trà sữa',active:true},
+    {id:2,name:'Trà sữa matcha',price:30000,category:'Trà sữa',active:true},
+    {id:3,name:'Trà sữa socola',price:28000,category:'Trà sữa',active:true},
+    {id:4,name:'Trà sữa oolong',price:25000,category:'Trà sữa',active:true},
+    {id:5,name:'Trà đào cam sả',price:22000,category:'Trà trái cây',active:true},
+    {id:6,name:'Trà vải',price:22000,category:'Trà trái cây',active:true},
+    {id:7,name:'Trà chanh dây',price:20000,category:'Trà trái cây',active:true},
+    {id:8,name:'Khoai tây chiên',price:20000,category:'Đồ chiên',active:true},
+    {id:9,name:'Gà viên chiên',price:25000,category:'Đồ chiên',active:true},
+    {id:10,name:'Xúc xích chiên',price:15000,category:'Đồ chiên',active:true},
+    {id:11,name:'Bánh tráng trộn',price:15000,category:'Ăn vặt',active:true},
+    {id:12,name:'Tré trộn',price:20000,category:'Ăn vặt',active:true},
+];
+
+const DEFAULT_STAFF = [{id:1,name:'Nhân viên 1'},{id:2,name:'Nhân viên 2'},{id:3,name:'Nhân viên 3'},{id:4,name:'Nhân viên 4'}];
+
+const DEFAULT_OPEN_CL = ['Mở cửa, bật đèn, bật quạt/máy lạnh','Kiểm tra nguyên liệu (trà, sữa, đường, topping)','Nấu trân châu / topping mới','Pha sẵn trà nền (trà đen, trà xanh, oolong)','Kiểm tra máy xay, máy pha, tủ lạnh','Lau bàn ghế, sắp xếp gọn gàng','Kiểm tra WiFi, loa nhạc','Đếm tiền quỹ đầu ca'];
+const DEFAULT_CLOSE_CL = ['Đếm tiền và kiểm kê cuối ngày','Rửa bình pha trà, máy xay, dụng cụ','Dọn dẹp bàn ghế, quầy pha chế','Đổ rác, lau sàn','Kiểm tra tồn kho, ghi chú thiếu gì','Tắt thiết bị điện (máy pha, đèn bảng hiệu)','Khóa tủ lạnh, khóa cửa'];
+
+let state = {
+    menu:[...DEFAULT_MENU], categories:['Trà sữa','Trà trái cây','Đồ chiên','Ăn vặt','Khác'],
+    staff:[...DEFAULT_STAFF], ingredients:[...DEFAULT_INGREDIENTS],
+    recipes:{}, // { menuId: [{ ingId, qty }] }
+    recipeTemplates:[], // [{ id, name, items: [{ ingId, qty }] }]
+    currentOrder:[], todayInvoices:[], history:{}, attendance:{}, editLog:[],
+    openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
+    closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
+    checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
+    shopName:'Monstea', password:'1234'
+};
+
+let posCategory='Tất cả', dashFilter='today';
+const lockedTabs = ['settings','ingredients','recipes'];
+let unlockedTabs = {};
+
+// ═══════════════════════════════════════
+// PERSISTENCE
+// ═══════════════════════════════════════
+function today(){return new Date().toISOString().slice(0,10)}
+function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
+function nowHour(){return new Date().getHours()}
+function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state))}catch(e){}}
+function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;
+// Fix: recalculate nextIds from actual max IDs to prevent duplicates
+if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
+if(state.staff.length>0)state.nextStaffId=Math.max(state.nextStaffId||0,...state.staff.map(s=>s.id))+1;
+if(state.ingredients.length>0)state.nextIngId=Math.max(state.nextIngId||0,...state.ingredients.map(i=>i.id))+1;
+// Fix: auto-deduplicate menu items with same ID
+const seenIds={};let hadDups=false;
+for(let i=state.menu.length-1;i>=0;i--){
+  const m=state.menu[i];
+  if(seenIds[m.id]!==undefined){
+    hadDups=true;
+    const orig=state.menu[seenIds[m.id]];
+    if(m.name===orig.name){
+      // Same name = true duplicate: update price on original if different, remove this one
+      if(m.price!==orig.price)orig.price=m.price;
+      state.menu.splice(i,1);
+      // Adjust seenIds indices after splice
+      for(const k in seenIds){if(seenIds[k]>i)seenIds[k]--;}
+    }else{
+      // Different name = assign new unique ID to this item (the later one)
+      const newId=state.nextMenuId++;
+      const oldId=m.id;
+      m.id=newId;
+      // If old recipe belongs to original item, don't move it
+      // The duplicate item gets no recipe (user can set it via UI)
+    }
+  }else{
+    seenIds[m.id]=i;
+  }
+}
+if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
+}}catch(e){}}
+function init(){loadState();checkNewDay();renderAll();startClock();}
+function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderIngredients();renderRecipes();}
+function checkNewDay(){const td=today();if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;if(state.todayInvoices.length>0){const yk=state.todayInvoices[0]?.date||td;if(yk!==td&&!state.history[yk])archiveDay(yk,state.todayInvoices);}state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);state.nextInvoiceId=state.todayInvoices.length+1;saveState();}}
+
+function archiveDay(dk,invoices){if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0;const hr={};let ac=0;
+invoices.forEach(inv=>{if(inv.cancelled)return;ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
+const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;
+inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;is[i.name].revenue+=i.price*i.qty;});});
+state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,itemsSold:is,hourlyRevenue:hr};}
+
+// ═══════════════════════════════════════
+// PASSWORD & TAB SWITCHING
+// ═══════════════════════════════════════
+function switchTab(tab){
+    if(lockedTabs.includes(tab)&&!unlockedTabs[tab]){
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        document.getElementById('tab-'+tab).classList.add('active');
+        return;
+    }
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById('tab-'+tab).classList.add('active');
+    if(tab==='dashboard')renderDashboard();
+    if(tab==='attendance')renderAttendance();
+    if(tab==='checklist')renderChecklist();
+    if(tab==='ingredients')renderIngredients();
+    if(tab==='recipes')renderRecipes();
+}
+
+function unlockTab(tab){
+    const pwdInputs={settings:'setPwd',ingredients:'ingPwd',recipes:'recPwd'};
+    const pwd=document.getElementById(pwdInputs[tab]).value;
+    if(pwd===state.password){
+        unlockedTabs[tab]=true;
+        document.getElementById(tab+'Lock').style.display='none';
+        document.getElementById(tab+'Content').style.display='block';
+        if(tab==='settings')renderSettings();
+        if(tab==='ingredients')renderIngredients();
+        if(tab==='recipes')renderRecipes();
+        toast('🔓 Đã mở khóa!');
+    } else { toast('❌ Sai mật khẩu'); }
+}
+
+function changePassword(){
+    const np=document.getElementById('newPwd').value.trim();
+    if(!np||np.length<4){toast('⚠️ Mật khẩu tối thiểu 4 ký tự');return;}
+    state.password=np;saveState();document.getElementById('newPwd').value='';toast('✅ Đã đổi mật khẩu');
+}
+
+// ═══════════════════════════════════════
+// POS
+// ═══════════════════════════════════════
+function renderPOSMenu(){
+    const ct=document.getElementById('posCatTabs');
+    ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
+    const g=document.getElementById('posMenuGrid');
+    const items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
+    g.innerHTML=items.map(m=>`<div class="menu-item-btn" onclick="addToOrder(${m.id})"><div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+}
+function setPosCategory(c){posCategory=c;renderPOSMenu();}
+function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});renderOrder();}
+function changeQty(id,d){const i=state.currentOrder.find(o=>o.menuId===id);if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
+function removeFromOrder(id){state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
+function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();}
+function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
+if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';return;}
+const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
+c.innerHTML=state.currentOrder.map(o=>`<div class="order-item"><div class="oi-name">${esc(o.name)}</div><div class="oi-qty"><button onclick="changeQty(${o.menuId},-1)">−</button><span>${o.qty}</span><button onclick="changeQty(${o.menuId},1)">+</button></div><div class="oi-price">${fmtP(o.price*o.qty)}</div><span class="oi-del" onclick="removeFromOrder(${o.menuId})">✕</span></div>`).join('');
+t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();}
+
+function calcChange(){const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
+const given=parseInt(document.getElementById('cashGiven').value)||0;
+const el=document.getElementById('changeResult');
+if(!given||!total){el.textContent='';return;}
+const change=given-total;
+if(change>=0){el.textContent='Thối: '+fmtP(change);el.style.color='var(--accent-green)';}
+else{el.textContent='Thiếu: '+fmtP(Math.abs(change));el.style.color='var(--accent-red)';}}
+
+function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
+const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0),note=document.getElementById('orderNote').value.trim();
+if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
+if(inv){const os=state._editingOldSummary,ns=state.currentOrder.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(total)}`;
+if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
+inv.items=[...state.currentOrder];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;
+toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
+delete state._editingInvoiceId;delete state._editingOldSummary;
+document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
+}else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...state.currentOrder],total,method,note};
+state.todayInvoices.push(inv);toast(`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
+state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderTodayInvoices();saveState();}
+
+function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
+const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled).reduce((s,i)=>s+i.total,0);
+ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn — ${fmtP(tt)})`;
+if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có hóa đơn</div>';return;}
+c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ');
+return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
+
+function showInvoiceDetail(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv)return;
+const logs=(state.editLog||[]).filter(l=>l.invoiceId===id);
+const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">📝 Lịch sử (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} — ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Trước: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
+const body=`${inv.cancelled?'<div style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:8px;padding:10px;margin-bottom:12px;color:var(--accent-red);font-weight:600;">🚫 Đã hủy</div>':''}
+<div style="margin-bottom:12px;font-size:0.82rem;color:var(--text-muted);">${inv.date} — ${inv.time}</div>
+<table style="width:100%;border-collapse:collapse;"><tr style="border-bottom:1px solid var(--border-subtle);"><th style="text-align:left;padding:6px;font-size:0.78rem;color:var(--text-muted);">Món</th><th style="text-align:center;padding:6px;font-size:0.78rem;color:var(--text-muted);">SL</th><th style="text-align:right;padding:6px;font-size:0.78rem;color:var(--text-muted);">Thành tiền</th></tr>
+${inv.items.map(i=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${inv.cancelled?'text-decoration:line-through;opacity:0.5;':''}"><td style="padding:8px 6px;">${esc(i.name)}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;color:var(--accent-warm);">${fmtP(i.price*i.qty)}</td></tr>`).join('')}</table>
+<div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><span style="font-weight:600;">Tổng</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0đ':fmtP(inv.total)}</span></div>
+${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">📝 ${esc(inv.note)}</div>`:''}
+<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':'CK'}</div>
+${logS}
+${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
+openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}
+
+function editInvoice(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv||inv.cancelled)return;closeModal();
+state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=id;state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
+document.getElementById('orderTitle').textContent=`✏️ SỬA #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
+document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${String(id).padStart(3,'0')}`);}
+
+function cancelInvoice(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv||inv.cancelled)return;if(!confirm(`Hủy đơn #${String(id).padStart(3,'0')}?`))return;
+inv.cancelled=true;if(!state.editLog)state.editLog=[];
+state.editLog.push({invoiceId:id,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
+archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${String(id).padStart(3,'0')}`);}
+
+function showEditLog(){const logs=state.editLog||[];if(!logs.length){openModal('📝 Nhật ký','<div style="text-align:center;padding:20px;color:var(--text-muted);">Chưa có</div>');return;}
+openModal(`📝 Nhật ký (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">🕒 ${l.time} — #${String(l.invoiceId).padStart(3,'0')} — <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">❌ ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">✅ ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
+
+// ═══════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════
+function setDashFilter(f){dashFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));if(f!=='custom')document.querySelector(`.filter-btn[onclick*="${f}"]`)?.classList.add('active');renderDashboard();}
+
+function getDashData(){const td=today();let dates=[];
+if(dashFilter==='today')dates=[td];
+else if(dashFilter==='week'){for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dates.push(d.toISOString().slice(0,10));}}
+else if(dashFilter==='month'){const now=new Date(),y=now.getFullYear(),m=now.getMonth();for(let d=1;d<=now.getDate();d++)dates.push(new Date(y,m,d).toISOString().slice(0,10));}
+else{const p=document.getElementById('dashDatePick').value;dates=p?[p]:[td];}
+if(dates.includes(td))archiveDay(td,state.todayInvoices);
+let tr=0,ti=0,ct=0,tt=0;const is={},hr={};
+dates.forEach(d=>{const dd=state.history[d];if(!dd)return;tr+=dd.totalRevenue;ti+=dd.invoices;ct+=dd.cashTotal||0;tt+=dd.transferTotal||0;
+if(dd.itemsSold)Object.entries(dd.itemsSold).forEach(([n,x])=>{if(!is[n])is[n]={qty:0,revenue:0};is[n].qty+=x.qty;is[n].revenue+=x.revenue;});
+if(dd.hourlyRevenue)Object.entries(dd.hourlyRevenue).forEach(([h,r])=>{hr[h]=(hr[h]||0)+r;});});
+return{dates,totalRevenue:tr,totalInvoices:ti,cashTotal:ct,transferTotal:tt,itemsSold:is,hourlyRevenue:hr};}
+
+function renderDashboard(){const d=getDashData(),avg=d.totalInvoices?Math.round(d.totalRevenue/d.totalInvoices):0;
+document.getElementById('dashStats').innerHTML=`<div class="stat-card"><div class="stat-label">Doanh thu</div><div class="stat-value" style="color:var(--accent)">${fmtP(d.totalRevenue)}</div></div><div class="stat-card"><div class="stat-label">Hóa đơn</div><div class="stat-value" style="color:var(--accent-blue)">${d.totalInvoices}</div></div><div class="stat-card"><div class="stat-label">TB/đơn</div><div class="stat-value" style="color:var(--accent-warm)">${fmtP(avg)}</div></div><div class="stat-card"><div class="stat-label">Tiền mặt</div><div class="stat-value" style="color:var(--accent-green)">${fmtP(d.cashTotal)}</div></div><div class="stat-card"><div class="stat-label">CK</div><div class="stat-value" style="color:var(--accent-purple)">${fmtP(d.transferTotal)}</div></div>`;
+renderRevenueChart();renderHourlyChart(d.hourlyRevenue);
+const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty),tq=ti.reduce((s,i)=>s+i.qty,0);
+document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';}
+
+function renderRevenueChart(){const c=document.getElementById('revenueChart'),days=[];
+for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toISOString().slice(0,10),dn=['CN','T2','T3','T4','T5','T6','T7'];
+days.push({k,label:i===0?'Nay':dn[d.getDay()],rev:state.history[k]?.totalRevenue||0});}
+const mx=Math.max(...days.map(d=>d.rev),1);
+c.innerHTML=days.map(d=>`<div class="bar-col"><div class="bar-value">${d.rev?fmtS(d.rev):''}</div><div class="bar-fill" style="height:${Math.max(4,d.rev/mx*160)}px;${d.label==='Nay'?'background:var(--accent)':''}"></div><div class="bar-label">${d.label}</div></div>`).join('');}
+
+function renderHourlyChart(hr){const c=document.getElementById('hourlyChart'),hours=[];
+for(let h=6;h<=23;h++)hours.push({h,rev:hr?.[h]||0});
+const mx=Math.max(...hours.map(h=>h.rev),1),pk=hours.reduce((m,h)=>h.rev>m.rev?h:m,hours[0]);
+c.innerHTML=hours.map(h=>`<div class="hourly-bar ${h.h===pk.h&&h.rev>0?'peak':''}" style="height:${Math.max(2,h.rev/mx*90)}px" title="${h.h}h: ${fmtP(h.rev)}"></div>`).join('');}
+
+// ═══════════════════════════════════════
+// INGREDIENTS
+// ═══════════════════════════════════════
+function renderIngredients(){
+    const search=(document.getElementById('ingSearch')?.value||'').toLowerCase();
+    const list=state.ingredients.filter(i=>!search||i.name.toLowerCase().includes(search));
+    document.getElementById('ingCount').textContent=`(${state.ingredients.length} nguyên liệu)`;
+    document.getElementById('ingredientsList').innerHTML=list.map(i=>`<div class="setting-item"><span class="si-name">${esc(i.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);min-width:40px">${i.unit}</span><span class="si-price">${fmtP(i.unitPrice)}/${i.unit}</span><div class="si-actions"><button onclick="editIngredient(${i.id})" title="Sửa">✏️</button><button onclick="deleteIngredient(${i.id})" title="Xóa">🗑️</button></div></div>`).join('');}
+
+function addIngredient(){const n=document.getElementById('newIngName').value.trim(),u=document.getElementById('newIngUnit').value.trim(),p=parseInt(document.getElementById('newIngPrice').value);
+if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
+state.ingredients.push({id:state.nextIngId++,name:n,unit:u,unitPrice:p});
+document.getElementById('newIngName').value='';document.getElementById('newIngUnit').value='';document.getElementById('newIngPrice').value='';
+saveState();renderIngredients();toast(`✅ Đã thêm "${n}"`);}
+
+function editIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;
+const body=`<div style="display:flex;flex-direction:column;gap:12px;">
+<label style="font-size:0.78rem;color:var(--text-muted)">Tên nguyên liệu</label>
+<input type="text" id="editIngName" value="${esc(i.name)}">
+<label style="font-size:0.78rem;color:var(--text-muted)">Đơn vị</label>
+<input type="text" id="editIngUnit" value="${i.unit}">
+<label style="font-size:0.78rem;color:var(--text-muted)">Đơn giá (đ/${i.unit})</label>
+<input type="number" id="editIngPrice" value="${i.unitPrice}">
+<button class="btn btn-primary" onclick="saveEditIngredient(${i.id})">💾 Lưu thay đổi</button>
+</div>`;
+openModal(`✏️ Sửa: ${i.name}`,body);}
+
+function saveEditIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;
+const n=document.getElementById('editIngName').value.trim(),u=document.getElementById('editIngUnit').value.trim(),p=parseInt(document.getElementById('editIngPrice').value);
+if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
+i.name=n;i.unit=u;i.unitPrice=p;saveState();renderIngredients();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
+
+function deleteIngredient(id){if(!confirm('Xóa nguyên liệu này?'))return;state.ingredients=state.ingredients.filter(i=>i.id!==id);saveState();renderIngredients();toast('🗑️ Đã xóa');}
+
+function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice}));
+const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
+a.href=URL.createObjectURL(b);a.download=`monstea-nguyenlieu-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã xuất JSON nguyên liệu!');}
+
+function importIngredientsJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
+r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);
+if(!Array.isArray(data)){toast('❌ File không hợp lệ');return;}
+let updated=0,added=0;
+data.forEach(d=>{if(!d.name)return;
+const existing=state.ingredients.find(i=>i.name===d.name);
+if(existing){if(d.unitPrice)existing.unitPrice=d.unitPrice;if(d.unit)existing.unit=d.unit;updated++;}
+else{state.ingredients.push({id:state.nextIngId++,name:d.name,unit:d.unit||'g',unitPrice:d.unitPrice||0});added++;}
+});
+saveState();renderIngredients();renderRecipes();toast(`✅ Cập nhật ${updated}, thêm mới ${added} nguyên liệu`);
+}catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}
+
+// ═══════════════════════════════════════
+// RECIPES
+// ═══════════════════════════════════════
+function renderRecipes(){
+    const c=document.getElementById('recipesList');if(!c)return;
+    // Render templates
+    renderTemplates();
+
+    c.innerHTML=state.menu.filter(m=>m.active).map(m=>{
+        const recipe=state.recipes[m.id]||[];
+        const cogs=recipe.reduce((s,r)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
+        const pct=m.price>0?Math.round(cogs/m.price*100):0;
+        const isFood=['Đồ chiên','Ăn vặt'].includes(m.category);
+        const ideal=isFood?'35-40%':'25-30%';
+        const badge=pct===0?'':pct<=(isFood?40:30)?'good':pct<=(isFood?50:40)?'warn':'bad';
+        const ings=recipe.map(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
+
+        return `<div class="recipe-item"><div class="recipe-header"><span class="rh-name">${esc(m.name)}</span>
+        <span>${cogs>0?`<span style="font-size:0.8rem;color:var(--accent-warm)">COGS: ${fmtP(cogs)}</span> <span class="cogs-badge ${badge}">${pct}%</span> <span style="font-size:0.68rem;color:var(--text-muted)">Gợi ý: ${ideal}</span>`:'<span style="font-size:0.78rem;color:var(--text-muted)">Chưa có công thức</span>'}</span></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:rgba(232,166,53,0.05);border:1px solid rgba(232,166,53,0.12);border-radius:8px;">
+          <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">💰 Giá bán:</span>
+          <input type="number" id="price-${m.id}" value="${m.price}" style="flex:1;max-width:140px;padding:5px 10px;font-family:var(--font-display);font-weight:700;font-size:0.9rem;color:var(--accent);" oninput="previewPrice(${m.id})">
+          <span id="price-preview-${m.id}" style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;color:var(--accent-warm);min-width:70px;"></span>
+          <button class="btn btn-primary btn-sm" onclick="saveMenuPrice(${m.id})" style="font-size:0.72rem;padding:5px 12px;">💾 Lưu giá</button>
+        </div>
+        ${ings.length?`<div class="recipe-ing">${ings.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
+        <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editRecipe(${m.id})" style="font-size:0.72rem;">✏️ Sửa công thức</button></div></div>`;
+    }).join('');}
+
+function renderTemplates(){
+    const c=document.getElementById('templatesList');if(!c)return;
+    const tpls=state.recipeTemplates||[];
+    if(!tpls.length){c.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.82rem;">Chưa có mẫu — Bấm "Tạo mẫu mới" để bắt đầu</div>';return;}
+    c.innerHTML=tpls.map(t=>{
+        const ings=t.items.map(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
+        const cost=t.items.reduce((s,r)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
+        return `<div class="recipe-item" style="border-left:3px solid var(--accent);"><div class="recipe-header"><span class="rh-name" style="color:var(--accent)">📋 ${esc(t.name)}</span><span style="font-size:0.8rem;color:var(--accent-warm)">Chi phí: ${fmtP(cost)}</span></div>
+        ${ings.length?`<div class="recipe-ing">${ings.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
+        <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})" style="font-size:0.72rem;">✏️ Sửa</button><button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})" style="font-size:0.72rem;">🗑️ Xóa</button></div></div>`;
+    }).join('');}
+
+function createTemplate(){
+    const name=prompt('Tên bộ công thức mẫu (VD: Trà sữa cơ bản, Trà trái cây cơ bản):');
+    if(!name)return;
+    const tpl={id:state.nextTplId++,name,items:[]};
+    state.recipeTemplates.push(tpl);saveState();
+    editTemplate(tpl.id);}
+
+function editTemplate(tplId){
+    const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
+    let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Mẫu: <strong>${esc(t.name)}</strong></p>`;
+    body+=`<div id="tplEditList">${t.items.map((r,idx)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+    return `<div class="setting-item" id="te-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="teQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
+    body+=`<div class="add-form" style="margin-top:12px;"><select id="tplIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="tplIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addTplRow()">➕</button></div>`;
+    body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveTemplate(${tplId})">💾 Lưu mẫu</button></div>`;
+    openModal(`📋 Mẫu: ${t.name}`,body);}
+
+function addTplRow(){const sel=document.getElementById('tplIngSelect'),qty=document.getElementById('tplIngQty').value;
+if(!qty||qty<=0){toast('⚠️ Nhập số lượng');return;}
+const ing=state.ingredients.find(i=>i.id===parseInt(sel.value));if(!ing)return;
+const list=document.getElementById('tplEditList'),idx=list.children.length;
+list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="te-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="teQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`);
+document.getElementById('tplIngQty').value='';}
+
+function saveTemplate(tplId){const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
+const list=document.getElementById('tplEditList');t.items=[];
+list.querySelectorAll('.setting-item').forEach(el=>{const qI=el.querySelector('input[type="number"]');const iA=qI.getAttribute('data-ing');
+if(iA)t.items.push({ingId:parseInt(iA),qty:parseFloat(qI.value)});
+else{const nm=el.querySelector('.si-name').textContent;const ig=state.ingredients.find(i=>i.name===nm);if(ig)t.items.push({ingId:ig.id,qty:parseFloat(qI.value)});}});
+saveState();renderRecipes();closeModal();toast('✅ Đã lưu mẫu');}
+
+function deleteTemplate(tplId){if(!confirm('Xóa mẫu này?'))return;state.recipeTemplates=state.recipeTemplates.filter(t=>t.id!==tplId);saveState();renderRecipes();toast('🗑️ Đã xóa mẫu');}
+
+function applyTemplate(menuId){
+    const sel=document.getElementById('tplApplySelect');if(!sel)return;
+    const tpl=(state.recipeTemplates||[]).find(t=>t.id===parseInt(sel.value));if(!tpl){toast('⚠️ Chọn mẫu');return;}
+    const list=document.getElementById('recipeEditList');
+    tpl.items.forEach(r=>{
+        const ing=state.ingredients.find(i=>i.id===r.ingId);if(!ing)return;
+        const idx=list.children.length;
+        list.innerHTML+=`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;
+    });
+    toast(`✅ Đã áp dụng mẫu "${tpl.name}" — chỉnh thêm bớt rồi Lưu`);}
+
+function editRecipe(menuId){
+    const m=state.menu.find(x=>x.id===menuId);if(!m)return;
+    const recipe=state.recipes[menuId]||[];
+    const tpls=state.recipeTemplates||[];
+
+    let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Công thức cho: <strong>${esc(m.name)}</strong></p>`;
+
+    // Template apply section
+    if(tpls.length>0){
+        body+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(232,166,53,0.06);border:1px solid rgba(232,166,53,0.15);border-radius:var(--radius-sm);"><span style="font-size:0.78rem;color:var(--accent);white-space:nowrap;">📋 Áp dụng mẫu:</span><select id="tplApplySelect" style="flex:1;">${tpls.map(t=>`<option value="${t.id}">${t.name} (${t.items.length} NL)</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="applyTemplate(${menuId})" style="white-space:nowrap;">Áp dụng</button></div>`;
+    }
+
+    body+=`<div id="recipeEditList">${recipe.map((r,idx)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+    return `<div class="setting-item" id="re-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
+    body+=`<div class="add-form" style="margin-top:12px;"><select id="recipeIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="recipeIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addRecipeRow()">➕</button></div>`;
+    body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveRecipe(${menuId})">💾 Lưu công thức</button></div>`;
+    openModal(`📋 Công thức: ${m.name}`,body);
+}
+
+function addRecipeRow(){const sel=document.getElementById('recipeIngSelect'),qty=document.getElementById('recipeIngQty').value;
+if(!qty||qty<=0){toast('⚠️ Nhập số lượng');return;}
+const ing=state.ingredients.find(i=>i.id===parseInt(sel.value));if(!ing)return;
+const list=document.getElementById('recipeEditList'),idx=list.children.length;
+list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`);
+document.getElementById('recipeIngQty').value='';}
+
+function saveRecipe(menuId){const list=document.getElementById('recipeEditList');
+const recipe=[];
+list.querySelectorAll('.setting-item').forEach(el=>{const qtyInput=el.querySelector('input[type="number"]');
+const ingIdAttr=qtyInput.getAttribute('data-ing');
+if(ingIdAttr){recipe.push({ingId:parseInt(ingIdAttr),qty:parseFloat(qtyInput.value)});}
+else{const name=el.querySelector('.si-name').textContent;const ing=state.ingredients.find(i=>i.name===name);
+if(ing)recipe.push({ingId:ing.id,qty:parseFloat(qtyInput.value)});}});
+state.recipes[menuId]=recipe;saveState();renderRecipes();closeModal();toast('✅ Đã lưu công thức');}
+
+function saveMenuPrice(menuId){
+    const m=state.menu.find(x=>x.id===menuId);if(!m)return;
+    const val=parseInt(document.getElementById('price-'+menuId).value);
+    if(!val||val<=0){toast('⚠️ Giá không hợp lệ');return;}
+    m.price=val;saveState();renderPOSMenu();renderRecipes();
+    toast(`✅ ${m.name} — Giá: ${fmtP(val)}`);}
+
+function previewPrice(menuId){
+    const val=parseInt(document.getElementById('price-'+menuId)?.value)||0;
+    const el=document.getElementById('price-preview-'+menuId);
+    if(el)el.textContent=val>0?fmtP(val):'';}
+
+
+// ═══════════════════════════════════════
+// EXPORT INGREDIENTS USED
+// ═══════════════════════════════════════
+function exportIngredientsUsed(){
+    const d=getDashData();const usage={};
+    Object.entries(d.itemsSold).forEach(([name,data])=>{
+        const menuItem=state.menu.find(m=>m.name===name);
+        if(!menuItem)return;
+        const recipe=state.recipes[menuItem.id]||[];
+        recipe.forEach(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+        if(!ing)return;if(!usage[ing.name])usage[ing.name]={unit:ing.unit,qty:0,cost:0};
+        usage[ing.name].qty+=r.qty*data.qty;usage[ing.name].cost+=r.qty*data.qty*ing.unitPrice;});
+    });
+    if(!Object.keys(usage).length){toast('⚠️ Chưa có công thức hoặc chưa có doanh số');return;}
+    let csv='Nguyên liệu,Đơn vị,Số lượng dùng,Chi phí\n';
+    let totalCost=0;
+    Object.entries(usage).sort((a,b)=>b[1].cost-a[1].cost).forEach(([n,u])=>{csv+=`"${n}","${u.unit}",${Math.round(u.qty*100)/100},${Math.round(u.cost)}\n`;totalCost+=u.cost;});
+    csv+=`\nTổng chi phí NL,,,"${Math.round(totalCost)}"\n`;
+    navigator.clipboard.writeText(csv).then(()=>toast('📦 Đã copy NL đã dùng — Paste vào Google Sheet!'));
+}
+
+// ═══════════════════════════════════════
+// ATTENDANCE
+// ═══════════════════════════════════════
+function startClock(){function u(){const n=new Date(),e=document.getElementById('liveClock'),d=document.getElementById('liveDate');if(e)e.textContent=n.toLocaleTimeString('vi-VN');if(d)d.textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}u();setInterval(u,1000);}
+function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>x.staffId===id);if(!r)return 'out';return r.checkOut?'done':'in';}
+function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>x.staffId===id)||null;}
+function toggleAttendance(id){const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=state.staff.find(x=>x.id===id);
+if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null});toast(`✅ ${s.name} — Vào ca`);}
+else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
+else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
+function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
+return `<div class="staff-card status-${st}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
+const td=today(),recs=state.attendance[td]||[];
+document.getElementById('attBody').innerHTML=recs.length?recs.map(r=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'—'}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';}
+
+// ═══════════════════════════════════════
+// CHECKLIST
+// ═══════════════════════════════════════
+function toggleChecklist(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const i=l.find(c=>c.id===id);if(i)i.checked=!i.checked;saveState();renderChecklist();}
+function renderChecklist(){['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist,c=document.getElementById(t+'Checklist'),p=document.getElementById(t+'Progress');
+const tot=l.length,done=l.filter(c=>c.checked).length;p.style.width=tot?(done/tot*100)+'%':'0%';
+c.innerHTML=l.map(c=>`<div class="cl-item ${c.checked?'checked':''}" onclick="toggleChecklist('${t}',${c.id})"><input type="checkbox" ${c.checked?'checked':''} onclick="event.stopPropagation();toggleChecklist('${t}',${c.id})"><span class="cl-text">${esc(c.text)}</span></div>`).join('')||'<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có</div>';});}
+
+// ═══════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════
+function renderSettings(){
+    document.getElementById('menuList').innerHTML=state.menu.map(m=>`<div class="setting-item" style="${m.active?'':'opacity:0.4'}">
+<select onchange="changeMenuCat(${m.id},this.value)" style="width:auto;min-width:80px;padding:4px 8px;font-size:0.72rem;flex:0;">${state.categories.map(c=>`<option value="${c}" ${c===m.category?'selected':''}>${c}</option>`).join('')}</select>
+<span class="si-name">${esc(m.name)}</span><span class="si-price">${fmtP(m.price)}</span>
+<div class="si-actions"><button onclick="editMenuItem(${m.id})" title="Sửa món">✏️</button><button onclick="toggleMenuItem(${m.id})" title="${m.active?'Ẩn':'Hiện'}">${m.active?'👁️':'🚫'}</button><button onclick="deleteMenuItem(${m.id})" title="Xóa">🗑️</button></div></div>`).join('');
+    document.getElementById('newMenuCat').innerHTML=state.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
+    document.getElementById('staffList').innerHTML=state.staff.map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><div class="si-actions"><button onclick="deleteStaff(${s.id})">🗑️</button></div></div>`).join('');
+    ['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist;
+    document.getElementById(t+'ClSettings').innerHTML=l.map(c=>`<div class="setting-item"><span class="si-name">${esc(c.text)}</span><div class="si-actions"><button onclick="deleteChecklistItem('${t}',${c.id})">🗑️</button></div></div>`).join('');});
+}
+
+function changeMenuCat(id,cat){const m=state.menu.find(x=>x.id===id);if(!m)return;m.category=cat;saveState();renderPOSMenu();toast(`✅ ${m.name} → ${cat}`);}
+
+function editMenuItem(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
+const body=`<div style="display:flex;flex-direction:column;gap:12px;">
+<label style="font-size:0.78rem;color:var(--text-muted)">Tên món</label>
+<input type="text" id="editMiName" value="${esc(m.name)}">
+<label style="font-size:0.78rem;color:var(--text-muted)">Giá bán (đ)</label>
+<input type="number" id="editMiPrice" value="${m.price}">
+<label style="font-size:0.78rem;color:var(--text-muted)">Danh mục</label>
+<select id="editMiCat">${state.categories.map(c=>`<option value="${c}" ${c===m.category?'selected':''}>${c}</option>`).join('')}</select>
+<button class="btn btn-primary" onclick="saveEditMenuItem(${m.id})">💾 Lưu</button>
+</div>`;
+openModal(`✏️ Sửa: ${m.name}`,body);}
+
+function saveEditMenuItem(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
+const n=document.getElementById('editMiName').value.trim(),p=parseInt(document.getElementById('editMiPrice').value),c=document.getElementById('editMiCat').value;
+if(!n||!p){toast('⚠️ Nhập đủ thông tin');return;}
+m.name=n;m.price=p;m.category=c;saveState();renderSettings();renderPOSMenu();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
+
+function addMenuItem(){const n=document.getElementById('newMenuName').value.trim(),p=parseInt(document.getElementById('newMenuPrice').value),c=document.getElementById('newMenuCat').value;if(!n||!p){toast('⚠️ Nhập tên và giá');return;}state.menu.push({id:state.nextMenuId++,name:n,price:p,category:c,active:true});document.getElementById('newMenuName').value='';document.getElementById('newMenuPrice').value='';saveState();renderSettings();renderPOSMenu();toast(`✅ Đã thêm "${n}"`);}
+function addCategory(){const n=document.getElementById('newCatName').value.trim();if(!n)return;if(state.categories.includes(n)){toast('⚠️ Đã tồn tại');return;}state.categories.push(n);document.getElementById('newCatName').value='';saveState();renderSettings();renderPOSMenu();toast(`✅ Đã thêm "${n}"`);}
+function toggleMenuItem(id){const m=state.menu.find(x=>x.id===id);if(m)m.active=!m.active;saveState();renderSettings();renderPOSMenu();}
+function deleteMenuItem(id){if(!confirm('Xóa món này khỏi menu?'))return;state.menu=state.menu.filter(m=>m.id!==id);saveState();renderSettings();renderPOSMenu();toast('🗑️ Đã xóa');}
+function addStaff(){const n=document.getElementById('newStaffName').value.trim();if(!n)return;state.staff.push({id:state.nextStaffId++,name:n});document.getElementById('newStaffName').value='';saveState();renderSettings();renderAttendance();toast(`✅ Đã thêm "${n}"`);}
+function deleteStaff(id){state.staff=state.staff.filter(s=>s.id!==id);saveState();renderSettings();renderAttendance();toast('🗑️ Đã xóa');}
+function addChecklistItem(t){const iid=t==='open'?'newOpenCl':'newCloseCl';const txt=document.getElementById(iid).value.trim();if(!txt)return;(t==='open'?state.openChecklist:state.closeChecklist).push({id:state.nextClId++,text:txt,checked:false});document.getElementById(iid).value='';saveState();renderSettings();renderChecklist();toast('✅ Đã thêm');}
+function deleteChecklistItem(t,id){if(t==='open')state.openChecklist=state.openChecklist.filter(c=>c.id!==id);else state.closeChecklist=state.closeChecklist.filter(c=>c.id!==id);saveState();renderSettings();renderChecklist();}
+
+// ═══════════════════════════════════════
+// EXPORT & BACKUP
+// ═══════════════════════════════════════
+function exportCSV(){const d=getDashData();let csv='Tên món,Số lượng,Doanh thu\n';Object.entries(d.itemsSold).sort((a,b)=>b[1].qty-a[1].qty).forEach(([n,x])=>{csv+=`"${n}",${x.qty},${x.revenue}\n`;});csv+=`\nTổng doanh thu,,${d.totalRevenue}\nTổng hóa đơn,,${d.totalInvoices}\nTiền mặt,,${d.cashTotal}\nChuyển khoản,,${d.transferTotal}\n`;navigator.clipboard.writeText(csv).then(()=>toast('📋 Đã copy CSV!'));}
+function exportDashJSON(){const b=new Blob([JSON.stringify(state.history,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-data-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('💾 Đã tải JSON!');}
+function exportAttCSV(){const td=today(),recs=state.attendance[td]||[];let csv='Tên,Vào ca,Ra ca,Số giờ\n';recs.forEach(r=>{csv+=`"${r.name}","${r.checkIn}","${r.checkOut||''}",${r.hours||''}\n`;});navigator.clipboard.writeText(csv).then(()=>toast('📋 Đã copy CSV chấm công!'));}
+function downloadBackup(){const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-backup-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã tải backup!');}
+function restoreBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>{try{const p=JSON.parse(ev.target.result);if(!p.menu){toast('❌ File không hợp lệ');return;}state={...state,...p};saveState();renderAll();toast('✅ Đã khôi phục!');}catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}
+function clearOldData(){const c=new Date();c.setDate(c.getDate()-30);const cs=c.toISOString().slice(0,10);let rm=0;Object.keys(state.history).forEach(d=>{if(d<cs){delete state.history[d];rm++;}});Object.keys(state.attendance).forEach(d=>{if(d<cs){delete state.attendance[d];rm++;}});saveState();toast(`🗑️ Đã xóa ${rm} bản ghi cũ`);}
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function fmtP(n){return Math.round(n).toLocaleString('vi-VN')+'đ';}
+function fmtS(n){return n>=1000000?(n/1000000).toFixed(1)+'tr':n>=1000?Math.round(n/1000)+'k':n+'';}
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.getElementById('toastContainer').appendChild(e);setTimeout(()=>e.remove(),3000);}
+function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('active');}
+function closeModal(){document.getElementById('modal').classList.remove('active');}
+
+document.addEventListener('keydown',e=>{if(!document.getElementById('tab-pos').classList.contains('active'))return;if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.key==='Enter'&&state.currentOrder.length>0){e.preventDefault();payOrder('cash');}if(e.key==='Escape')clearOrder();});
+
+init();
+</script>
+</body>
+</html>

@@ -836,9 +836,9 @@ function renderPOSMenu(){
 }
 function setPosCategory(c){posCategory=c;renderPOSMenu();}
 function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});vibrate(30);renderOrder();renderPOSMenu();}
-function changeQty(id,d){const i=state.currentOrder.find(o=>o.menuId===id);if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
-function removeFromOrder(id){state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
-function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();}
+function changeQty(id,d){const i=state.currentOrder.find(o=>o.menuId===id);if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();renderPOSMenu();}
+function removeFromOrder(id){state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();renderPOSMenu();}
+function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
 function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
 if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';updateMobileBar();return;}
 const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
@@ -866,7 +866,7 @@ delete state._editingInvoiceId;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
 }else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...state.currentOrder],total,method,note};
 state.todayInvoices.push(inv);toast(`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
-playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderTodayInvoices();saveState();}
+playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
 const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled).reduce((s,i)=>s+i.total,0);

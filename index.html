@@ -472,6 +472,7 @@ let currentRole = null;
 let firebaseDb = null;
 let syncTimeout = null;
 let isRemoteUpdate = false;
+let firebaseReady = false;
 
 // ═══════════════════════════════════════
 // DEFAULT DATA
@@ -645,7 +646,7 @@ let unlockedTabs = {};
 function today(){return new Date().toISOString().slice(0,10)}
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function nowHour(){return new Date().getHours()}
-function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate)saveStateToFirebase();}catch(e){}}
+function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
 if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
@@ -687,7 +688,7 @@ function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderD
 function attemptLogin(){const p=document.getElementById('loginPwd').value;const role=APP_PASSWORDS[p];
 if(!role){document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';return;}
 currentRole=role;document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
-applyRole();initFirebase();init();}
+applyRole();initFirebase();}
 
 function applyRole(){
 document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance'].includes(t))?'none':'';});
@@ -696,7 +697,7 @@ if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Ch�
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
 badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}}
 
-function logout(){currentRole=null;firebaseDb=null;try{firebase.app().delete();}catch(e){}
+function logout(){currentRole=null;firebaseDb=null;firebaseReady=false;try{firebase.app().delete();}catch(e){}
 document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
 document.getElementById('roleBar').style.display='none';
 document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
@@ -707,8 +708,14 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('
 function initFirebase(){
 firebase.initializeApp(FIREBASE_CONFIG);firebaseDb=firebase.database();
 firebaseDb.ref('.info/connected').on('value',s=>updateSyncStatus(s.val()?'connected':'offline'));
+let firstLoad=true;
 firebaseDb.ref('state').on('value',snap=>{
-const r=snap.val();if(!r){firebaseDb.ref('state').set(state);updateSyncStatus('connected');return;}
+const r=snap.val();
+if(firstLoad){
+  firstLoad=false;
+  if(r){isRemoteUpdate=true;state={...state,...r};localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
+  firebaseReady=true;init();updateSyncStatus('connected');return;}
+if(!r)return;
 isRemoteUpdate=true;
 state={...state,...r};
 localStorage.setItem('monsteaPOS',JSON.stringify(state));

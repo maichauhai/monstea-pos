@@ -243,6 +243,29 @@
     .role-badge { font-size:0.72rem; padding:3px 10px; border-radius:10px; font-weight:600; }
     .logout-btn { font-size:0.68rem; background:none; border:none; color:var(--text-muted); cursor:pointer; text-decoration:underline; }
     .logout-btn:hover { color:var(--text-primary); }
+
+    /* MOBILE ORDER BAR */
+    .mobile-order-bar { display:none; position:fixed; bottom:56px; left:0; right:0; z-index:199; background:var(--bg-card); border-top:2px solid var(--accent); padding:10px 16px; align-items:center; justify-content:space-between; gap:12px; transform:translateY(100%); transition:transform 0.3s ease; box-shadow:0 -4px 20px rgba(0,0,0,0.3); }
+    .mobile-order-bar.has-items { transform:translateY(0); }
+    .mob-info { display:flex; align-items:center; gap:12px; }
+    .mob-count { font-size:0.78rem; color:var(--text-muted); background:rgba(232,166,53,0.15); padding:2px 8px; border-radius:10px; font-weight:600; color:var(--accent); }
+    .mob-total { font-family:var(--font-display); font-size:1.3rem; font-weight:800; color:var(--accent); }
+    .mob-actions { display:flex; gap:8px; }
+    .mob-actions .btn { padding:10px 16px; font-size:0.85rem; }
+
+    @media(max-width:768px) {
+        .tab-nav { position:fixed; bottom:0; left:0; right:0; top:auto; z-index:200; border-bottom:none; border-top:1px solid var(--border-subtle); padding:4px 6px calc(env(safe-area-inset-bottom,4px) + 4px); gap:0; justify-content:space-around; flex-wrap:nowrap; background:rgba(22,18,30,0.95); backdrop-filter:blur(20px); }
+        .tab-btn { padding:6px 2px; font-size:0.65rem; border-radius:8px; flex:1; text-align:center; white-space:nowrap; }
+        .tab-btn .lock-icon { display:none; }
+        body { padding-bottom:60px; }
+        .mobile-order-bar { display:flex; }
+        .app-header { padding:12px 16px 4px; }
+        .app-header h1 { font-size:1.4rem; }
+        .tab-content { padding:12px 12px 80px; }
+        .menu-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px; }
+        .menu-item-btn { padding:12px 6px; min-height:65px; }
+        .order-panel { margin-bottom:80px; }
+    }
 </style>
 </head>
 <body>
@@ -453,6 +476,14 @@
 
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><h3 id="modalTitle">Chi tiết</h3><div id="modalBody"></div><div style="text-align:right;margin-top:16px;"><button class="btn btn-secondary btn-sm" onclick="closeModal()">Đóng</button></div></div></div>
 <div class="toast-container" id="toastContainer"></div>
+<div class="mobile-order-bar" id="mobileOrderBar">
+    <div class="mob-info"><span class="mob-count" id="mobCount">0</span><span class="mob-total" id="mobTotal">0đ</span></div>
+    <div class="mob-actions">
+        <button class="btn btn-secondary btn-sm" onclick="clearOrder()">🗑️</button>
+        <button class="btn btn-success btn-sm" onclick="payOrder('cash')">💵</button>
+        <button class="btn btn-primary btn-sm" onclick="payOrder('transfer')">📱 CK</button>
+    </div>
+</div>
 
 <script>
 // ═══════════════════════════════════════
@@ -790,15 +821,15 @@ function renderPOSMenu(){
     g.innerHTML=items.map(m=>`<div class="menu-item-btn" onclick="addToOrder(${m.id})"><div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
 }
 function setPosCategory(c){posCategory=c;renderPOSMenu();}
-function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});renderOrder();}
+function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});vibrate(30);renderOrder();}
 function changeQty(id,d){const i=state.currentOrder.find(o=>o.menuId===id);if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
 function removeFromOrder(id){state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
 function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();}
 function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
-if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';return;}
+if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';updateMobileBar();return;}
 const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
 c.innerHTML=state.currentOrder.map(o=>`<div class="order-item"><div class="oi-name">${esc(o.name)}</div><div class="oi-qty"><button onclick="changeQty(${o.menuId},-1)">−</button><span>${o.qty}</span><button onclick="changeQty(${o.menuId},1)">+</button></div><div class="oi-price">${fmtP(o.price*o.qty)}</div><span class="oi-del" onclick="removeFromOrder(${o.menuId})">✕</span></div>`).join('');
-t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();}
+t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();updateMobileBar();}
 
 function calcChange(){const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
 const given=parseInt(document.getElementById('cashGiven').value)||0;
@@ -819,7 +850,7 @@ delete state._editingInvoiceId;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
 }else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...state.currentOrder],total,method,note};
 state.todayInvoices.push(inv);toast(`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
-state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderTodayInvoices();saveState();}
+playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
 const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled).reduce((s,i)=>s+i.total,0);
@@ -1174,6 +1205,9 @@ function fmtP(n){return Math.round(n).toLocaleString('vi-VN')+'đ';}
 function fmtS(n){return n>=1000000?(n/1000000).toFixed(1)+'tr':n>=1000?Math.round(n/1000)+'k':n+'';}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.getElementById('toastContainer').appendChild(e);setTimeout(()=>e.remove(),3000);}
+function vibrate(ms){try{navigator.vibrate(ms||30);}catch(e){}}
+function playPaySound(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o1=ctx.createOscillator(),g1=ctx.createGain();o1.connect(g1);g1.connect(ctx.destination);o1.type='sine';o1.frequency.value=800;g1.gain.setValueAtTime(0.3,ctx.currentTime);g1.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o1.start(ctx.currentTime);o1.stop(ctx.currentTime+0.3);const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(ctx.destination);o2.type='sine';o2.frequency.value=1200;g2.gain.setValueAtTime(0.3,ctx.currentTime+0.15);g2.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.5);o2.start(ctx.currentTime+0.15);o2.stop(ctx.currentTime+0.5);}catch(e){}}
+function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');if(!bar)return;const ct=document.getElementById('mobCount'),tt=document.getElementById('mobTotal');const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);if(tq>0){bar.classList.add('has-items');ct.textContent=tq+' món';tt.textContent=fmtP(ta);}else{bar.classList.remove('has-items');}}
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('active');}
 function closeModal(){document.getElementById('modal').classList.remove('active');}
 

@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monstea — Quản Lý Quán</title>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
     :root {
         --bg-body: #1a1520;
@@ -222,12 +224,43 @@
     .live-clock .clock-date { font-size:0.85rem; color:var(--text-muted); font-weight:400; }
 
     @media(max-width:900px) { .pos-layout{grid-template-columns:1fr} .order-panel{position:static;max-height:none} }
+
+    /* LOGIN */
+    .login-overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:var(--bg-body); display:flex; align-items:center; justify-content:center; z-index:10000; }
+    .login-box { text-align:center; max-width:340px; width:90%; }
+    .login-box .login-logo { font-size:4rem; margin-bottom:8px; }
+    .login-box h2 { font-family:var(--font-display); font-size:1.6rem; font-weight:800; background:linear-gradient(135deg,var(--accent) 0%,#f0b84a 50%,var(--accent-warm) 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:4px; }
+    .login-box .login-sub { font-size:0.78rem; color:var(--text-muted); margin-bottom:24px; }
+    .login-box input { max-width:260px; margin:0 auto 16px; text-align:center; font-size:1.1rem; letter-spacing:2px; }
+    .login-box .login-error { color:var(--accent-red); font-size:0.8rem; margin-bottom:12px; min-height:20px; }
+    .sync-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+    .sync-dot.connected { background:var(--accent-green); box-shadow:0 0 6px rgba(74,222,128,0.5); }
+    .sync-dot.offline { background:var(--accent-red); }
+    .sync-dot.syncing { background:var(--accent); animation:pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .sync-status { font-size:0.7rem; color:var(--text-muted); display:flex; align-items:center; justify-content:center; gap:2px; margin-top:4px; }
+    .role-bar { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:6px; }
+    .role-badge { font-size:0.72rem; padding:3px 10px; border-radius:10px; font-weight:600; }
+    .logout-btn { font-size:0.68rem; background:none; border:none; color:var(--text-muted); cursor:pointer; text-decoration:underline; }
+    .logout-btn:hover { color:var(--text-primary); }
 </style>
 </head>
 <body>
+<div class="login-overlay" id="loginOverlay">
+    <div class="login-box">
+        <div class="login-logo">☕</div>
+        <h2>MONSTEA</h2>
+        <div class="login-sub">Nhập mật khẩu để sử dụng</div>
+        <div class="login-error" id="loginError"></div>
+        <input type="password" id="loginPwd" placeholder="Mật khẩu" onkeydown="if(event.key==='Enter')attemptLogin()" autofocus>
+        <br><button class="btn btn-primary" onclick="attemptLogin()" style="min-width:160px;">🔓 Đăng nhập</button>
+    </div>
+</div>
 <div class="app-header">
     <div class="logo-row"><span class="logo-icon">☕</span><h1>MONSTEA</h1></div>
     <div class="subtitle">Hệ thống quản lý quán</div>
+    <div class="sync-status" id="syncStatus"><span class="sync-dot offline"></span>Chưa kết nối</div>
+    <div class="role-bar" id="roleBar" style="display:none;"><span class="role-badge" id="roleBadge"></span><button class="logout-btn" onclick="logout()">Đăng xuất</button></div>
 </div>
 
 <div class="tab-nav">
@@ -423,6 +456,24 @@
 
 <script>
 // ═══════════════════════════════════════
+// FIREBASE CONFIG & AUTH
+// ═══════════════════════════════════════
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBpGeAlMcZtGTkt8JfuPSofArtTkx_XlJE",
+    authDomain: "monstea-pos.firebaseapp.com",
+    databaseURL: "https://monstea-pos-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "monstea-pos",
+    storageBucket: "monstea-pos.firebasestorage.app",
+    messagingSenderId: "742890598182",
+    appId: "1:742890598182:web:ce67a7db065fe94b845be7"
+};
+const APP_PASSWORDS = {'T123123t':'owner','257234':'staff'};
+let currentRole = null;
+let firebaseDb = null;
+let syncTimeout = null;
+let isRemoteUpdate = false;
+
+// ═══════════════════════════════════════
 // DEFAULT DATA
 // ═══════════════════════════════════════
 const DEFAULT_INGREDIENTS = [
@@ -594,7 +645,7 @@ let unlockedTabs = {};
 function today(){return new Date().toISOString().slice(0,10)}
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function nowHour(){return new Date().getHours()}
-function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state))}catch(e){}}
+function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
 if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
@@ -627,8 +678,49 @@ for(let i=state.menu.length-1;i>=0;i--){
 }
 if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
 }}catch(e){}}
-function init(){loadState();checkNewDay();renderAll();startClock();}
+function init(){loadState();checkNewDay();renderAll();startClock();if(currentRole)applyRole();}
 function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderIngredients();renderRecipes();}
+
+// ═══════════════════════════════════════
+// LOGIN & ROLE
+// ═══════════════════════════════════════
+function attemptLogin(){const p=document.getElementById('loginPwd').value;const role=APP_PASSWORDS[p];
+if(!role){document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';return;}
+currentRole=role;document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
+applyRole();initFirebase();init();}
+
+function applyRole(){
+document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance'].includes(t))?'none':'';});
+const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
+if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':'👤 Nhân viên';
+badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
+badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}}
+
+function logout(){currentRole=null;firebaseDb=null;try{firebase.app().delete();}catch(e){}
+document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
+document.getElementById('roleBar').style.display='none';
+document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
+
+// ═══════════════════════════════════════
+// FIREBASE SYNC
+// ═══════════════════════════════════════
+function initFirebase(){
+firebase.initializeApp(FIREBASE_CONFIG);firebaseDb=firebase.database();
+firebaseDb.ref('.info/connected').on('value',s=>updateSyncStatus(s.val()?'connected':'offline'));
+firebaseDb.ref('state').on('value',snap=>{
+const r=snap.val();if(!r){firebaseDb.ref('state').set(state);updateSyncStatus('connected');return;}
+isRemoteUpdate=true;
+state={...state,...r};
+localStorage.setItem('monsteaPOS',JSON.stringify(state));
+renderAll();isRemoteUpdate=false;});}
+
+function saveStateToFirebase(){if(!firebaseDb)return;clearTimeout(syncTimeout);
+syncTimeout=setTimeout(()=>{updateSyncStatus('syncing');
+firebaseDb.ref('state').set(state).then(()=>updateSyncStatus('connected')).catch(()=>updateSyncStatus('offline'));},500);}
+
+function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;
+const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};
+el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}`;}
 function checkNewDay(){const td=today();if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;if(state.todayInvoices.length>0){const yk=state.todayInvoices[0]?.date||td;if(yk!==td&&!state.history[yk])archiveDay(yk,state.todayInvoices);}state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);state.nextInvoiceId=state.todayInvoices.length+1;saveState();}}
 
 function archiveDay(dk,invoices){if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0;const hr={};let ac=0;
@@ -641,6 +733,7 @@ state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,ite
 // PASSWORD & TAB SWITCHING
 // ═══════════════════════════════════════
 function switchTab(tab){
+    if(currentRole==='staff'&&!['pos','attendance'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
     if(lockedTabs.includes(tab)&&!unlockedTabs[tab]){
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -1079,7 +1172,8 @@ function closeModal(){document.getElementById('modal').classList.remove('active'
 
 document.addEventListener('keydown',e=>{if(!document.getElementById('tab-pos').classList.contains('active'))return;if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.key==='Enter'&&state.currentOrder.length>0){e.preventDefault();payOrder('cash');}if(e.key==='Escape')clearOrder();});
 
-init();
+// Show login screen on load (init called after login)
+document.getElementById('loginPwd').focus();
 </script>
 </body>
 </html>

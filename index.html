@@ -252,6 +252,11 @@
     .mob-total { font-family:var(--font-display); font-size:1.3rem; font-weight:800; color:var(--accent); }
     .mob-actions { display:flex; gap:8px; }
     .mob-actions .btn { padding:10px 16px; font-size:0.85rem; }
+    .mi-badge { position:absolute; top:-4px; right:-4px; background:var(--accent); color:var(--bg-body); font-family:var(--font-display); font-weight:800; font-size:0.72rem; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(232,166,53,0.4); pointer-events:none; }
+    .mi-badge-active { border-color:var(--accent); box-shadow:0 0 0 2px rgba(232,166,53,0.2); }
+    .mob-cash-row { display:flex; align-items:center; gap:6px; width:100%; margin-top:6px; border-top:1px solid var(--border-subtle); padding-top:6px; }
+    .mob-cash-row input { flex:1; padding:6px 10px; font-size:0.85rem; max-width:120px; }
+    .mob-cash-row .mob-change { font-family:var(--font-display); font-weight:700; font-size:0.85rem; min-width:80px; text-align:right; }
 
     @media(max-width:768px) {
         .tab-nav { position:fixed; bottom:0; left:0; right:0; top:auto; z-index:200; border-bottom:none; border-top:1px solid var(--border-subtle); padding:4px 6px calc(env(safe-area-inset-bottom,4px) + 4px); gap:0; justify-content:space-around; flex-wrap:nowrap; background:rgba(22,18,30,0.95); backdrop-filter:blur(20px); }
@@ -263,8 +268,9 @@
         .app-header h1 { font-size:1.4rem; }
         .tab-content { padding:12px 12px 80px; }
         .menu-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px; }
-        .menu-item-btn { padding:12px 6px; min-height:65px; }
+        .menu-item-btn { padding:12px 6px; min-height:65px; position:relative; }
         .order-panel { margin-bottom:80px; }
+        .mobile-order-bar { display:flex; flex-wrap:wrap; }
     }
 </style>
 </head>
@@ -313,8 +319,8 @@
                 <div class="order-note"><input type="text" id="orderNote" placeholder="Ghi chú (ít đường, nhiều đá...)"></div>
                 <div class="order-total"><span class="label">TỔNG CỘNG</span><span class="amount" id="orderTotal">0đ</span></div>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-                    <span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">💵 Khách đưa:</span>
-                    <input type="number" id="cashGiven" placeholder="Nhập số tiền..." style="flex:1;padding:8px 12px;font-size:0.88rem;" oninput="calcChange()">
+                    <span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">💵 Khách đưa (x1000):</span>
+                    <input type="number" id="cashGiven" placeholder="VD: 50 = 50k" style="flex:1;padding:8px 12px;font-size:0.88rem;" oninput="calcChange()">
                     <span id="changeResult" style="font-family:var(--font-display);font-weight:700;font-size:0.95rem;min-width:90px;text-align:right;"></span>
                 </div>
                 <div class="order-actions">
@@ -482,6 +488,11 @@
         <button class="btn btn-secondary btn-sm" onclick="clearOrder()">🗑️</button>
         <button class="btn btn-success btn-sm" onclick="payOrder('cash')">💵</button>
         <button class="btn btn-primary btn-sm" onclick="payOrder('transfer')">📱 CK</button>
+    </div>
+    <div class="mob-cash-row" id="mobCashRow">
+        <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">💵x1000:</span>
+        <input type="number" id="mobCashGiven" placeholder="50=50k" oninput="document.getElementById('cashGiven').value=this.value;calcChange()">
+        <span class="mob-change" id="mobChangeResult"></span>
     </div>
 </div>
 
@@ -722,7 +733,7 @@ currentRole=role;document.getElementById('loginOverlay').style.display='none';do
 applyRole();initFirebase();}
 
 function applyRole(){
-document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance'].includes(t))?'none':'';});
+document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist'].includes(t))?'none':'';});
 const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
 if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':'👤 Nhân viên';
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
@@ -771,7 +782,7 @@ state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,ite
 // PASSWORD & TAB SWITCHING
 // ═══════════════════════════════════════
 function switchTab(tab){
-    if(currentRole==='staff'&&!['pos','attendance'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
+    if(currentRole==='staff'&&!['pos','attendance','checklist'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
     if(lockedTabs.includes(tab)&&!unlockedTabs[tab]){
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -818,10 +829,10 @@ function renderPOSMenu(){
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
     const items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
-    g.innerHTML=items.map(m=>`<div class="menu-item-btn" onclick="addToOrder(${m.id})"><div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    g.innerHTML=items.map(m=>{const oq=state.currentOrder.find(o=>o.menuId===m.id);const qty=oq?oq.qty:0;return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
 }
 function setPosCategory(c){posCategory=c;renderPOSMenu();}
-function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});vibrate(30);renderOrder();}
+function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});vibrate(30);renderOrder();renderPOSMenu();}
 function changeQty(id,d){const i=state.currentOrder.find(o=>o.menuId===id);if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
 function removeFromOrder(id){state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();}
 function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();}
@@ -832,12 +843,14 @@ c.innerHTML=state.currentOrder.map(o=>`<div class="order-item"><div class="oi-na
 t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();updateMobileBar();}
 
 function calcChange(){const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
-const given=parseInt(document.getElementById('cashGiven').value)||0;
+const raw=parseInt(document.getElementById('cashGiven').value)||0;
+const given=raw*1000;
 const el=document.getElementById('changeResult');
-if(!given||!total){el.textContent='';return;}
+const mobEl=document.getElementById('mobChangeResult');
+if(!raw||!total){el.textContent='';if(mobEl)mobEl.textContent='';return;}
 const change=given-total;
-if(change>=0){el.textContent='Thối: '+fmtP(change);el.style.color='var(--accent-green)';}
-else{el.textContent='Thiếu: '+fmtP(Math.abs(change));el.style.color='var(--accent-red)';}}
+if(change>=0){const t='Thối: '+fmtP(change);el.textContent=t;el.style.color='var(--accent-green)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-green)';}}
+else{const t='Thiếu: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
 
 function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
 const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0),note=document.getElementById('orderNote').value.trim();

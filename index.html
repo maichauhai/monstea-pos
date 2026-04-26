@@ -507,6 +507,15 @@
             <div id="expenseList" style="margin-top:12px;"></div>
             <div id="expenseTotal" style="text-align:right;font-weight:700;color:var(--accent-purple);margin-top:8px;"></div>
         </div>
+        <!-- GHI CHÚ -->
+        <div class="card" style="margin-top:14px;">
+            <div class="card-title" style="font-size:0.85rem;">📌 Ghi chú</div>
+            <div class="add-form">
+                <input type="text" id="noteText" placeholder="Viết ghi chú..." style="flex:3;" onkeydown="if(event.key==='Enter')addNote()">
+                <button class="btn btn-primary btn-sm" onclick="addNote()">Thêm</button>
+            </div>
+            <div id="notesList" style="margin-top:12px;max-height:400px;overflow-y:auto;"></div>
+        </div>
     </div>
 </div>
 
@@ -802,7 +811,7 @@ let state = {
     recipes:{}, // { menuId: [{ ingId, qty }] }
     recipeTemplates:[], // [{ id, name, items: [{ ingId, qty }] }]
     currentOrder:[], todayInvoices:[], grabOrders:[], history:{}, attendance:{}, editLog:[],
-    purchases:{}, expenses:{},
+    purchases:{}, expenses:{}, dailyNotes:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
@@ -1299,6 +1308,7 @@ function renderExpenseTab(){
     const expenses=(state.expenses||{})[dt]||[];
     document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
+    renderNotes();
 }
 function filterPurchaseIng(){
     const q=(document.getElementById('purchaseIngSearch').value||'').toLowerCase();
@@ -1354,6 +1364,50 @@ function addExpense(){
     saveState();renderExpenseTab();toast(`✅ ${name}: ${fmtP(amount)}`);
 }
 function deleteExpense(dt,id){if(!confirm('Xóa?'))return;state.expenses[dt]=(state.expenses[dt]||[]).filter(e=>e.id!==id);saveState();renderExpenseTab();}
+
+// ═══════════════════════════════════════
+// NOTES (Ghi chú)
+// ═══════════════════════════════════════
+function cleanOldNotes(){
+    if(!state.dailyNotes)state.dailyNotes=[];
+    const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
+    const cutStr=cutoff.toISOString().slice(0,10);
+    state.dailyNotes=state.dailyNotes.filter(n=>!n.done||n.doneDate>cutStr);
+}
+function addNote(){
+    const text=document.getElementById('noteText').value.trim();
+    if(!text){toast('⚠️ Nhập ghi chú');return;}
+    if(!state.dailyNotes)state.dailyNotes=[];
+    if(!state.nextNoteId)state.nextNoteId=1;
+    state.dailyNotes.push({id:state.nextNoteId++,text,date:today(),time:nowTime(),done:false,doneDate:null});
+    document.getElementById('noteText').value='';
+    saveState();renderNotes();
+}
+function toggleNote(id){
+    if(!state.dailyNotes)return;
+    const n=state.dailyNotes.find(x=>x.id===id);if(!n)return;
+    if(!n.done){n.done=true;n.doneDate=today();}
+    else{n.done=false;n.doneDate=null;}
+    saveState();renderNotes();
+}
+function renderNotes(){
+    cleanOldNotes();
+    const el=document.getElementById('notesList');if(!el)return;
+    const notes=(state.dailyNotes||[]).slice().reverse();
+    if(!notes.length){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có ghi chú</div>';return;}
+    let lastDate='',html='';
+    notes.forEach(n=>{
+        if(n.date!==lastDate){lastDate=n.date;
+        const label=n.date===today()?'Hôm nay':n.date;
+        html+=`<div style="font-size:0.7rem;color:var(--text-muted);padding:6px 0 2px;border-top:1px solid rgba(255,255,255,0.04);margin-top:4px;">${label}</div>`;}
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;${n.done?'opacity:0.45;':''}">
+        <span style="flex:1;font-size:0.82rem;${n.done?'text-decoration:line-through;color:var(--text-muted);':''}">${esc(n.text)}</span>
+        <span style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;">${n.time}</span>
+        <button onclick="toggleNote(${n.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;" title="${n.done?'Hoàn tác':'Xong'}">${n.done?'↩️':'✔️'}</button>
+        </div>`;
+    });
+    el.innerHTML=html;
+}
 
 // ═══════════════════════════════════════
 // RECIPES

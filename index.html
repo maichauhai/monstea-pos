@@ -1353,7 +1353,7 @@ a.href=URL.createObjectURL(b);a.download=`monstea-kho-${today()}.json`;document.
 function importIngredientsJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
 r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);if(!Array.isArray(data)){toast('❌ File không hợp lệ');return;}
 let updated=0,added=0;data.forEach(d=>{if(!d.name)return;const existing=state.ingredients.find(i=>i.name===d.name);
-if(existing){if(d.unitPrice)existing.unitPrice=d.unitPrice;if(d.unit)existing.unit=d.unit;if(d.sln)existing.sln=d.sln;updated++;}
+if(existing){if(d.unitPrice)existing.unitPrice=d.unitPrice;if(d.unit)existing.unit=d.unit;if(d.sln)existing.sln=d.sln;if(d.openStock!==undefined)existing.openStock=d.openStock;if(d.warnLevel!==undefined)existing.warnLevel=d.warnLevel;updated++;}
 else{state.ingredients.push({id:state.nextIngId++,name:d.name,unit:d.unit||'g',unitPrice:d.unitPrice||0,sln:d.sln||1,openStock:d.openStock||0,warnLevel:d.warnLevel||0});added++;}});
 saveState();renderInventory();renderRecipes();toast(`✅ Cập nhật ${updated}, thêm ${added} NL`);
 }catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}

@@ -956,7 +956,7 @@ const rb=document.getElementById('roleBar'),badge=document.getElementById('roleB
 if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':'👤 Nhân viên';
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
 badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}
-const ahc=document.getElementById('attHistoryCard');if(ahc){ahc.style.display=currentRole==='owner'?'block':'none';if(currentRole==='owner')renderAttHistory();}}}
+const ahc=document.getElementById('attHistoryCard');if(ahc){ahc.style.display=currentRole==='owner'?'block':'none';if(currentRole==='owner')renderAttHistory();}}
 
 function logout(){currentRole=null;firebaseDb=null;firebaseReady=false;sessionStorage.removeItem('monsteaPwd');try{firebase.app().delete();}catch(e){}
 document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';

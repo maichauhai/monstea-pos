@@ -341,7 +341,7 @@
     <button class="tab-btn" data-tab="dashboard" onclick="switchTab('dashboard')">📊 Dashboard</button>
     <button class="tab-btn" data-tab="attendance" onclick="switchTab('attendance')">⏰ Chấm Công</button>
     <button class="tab-btn" data-tab="checklist" onclick="switchTab('checklist')">✅ Checklist</button>
-    <button class="tab-btn" data-tab="chitieu" onclick="switchTab('chitieu')">💸 Chi Tiêu<span class="lock-icon">🔒</span></button>
+    <button class="tab-btn" data-tab="chitieu" onclick="switchTab('chitieu')">💸 Chi Tiêu</button>
     <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory')">📦 Kho NL<span class="lock-icon">🔒</span></button>
     <button class="tab-btn" data-tab="recipes" onclick="switchTab('recipes')">📋 Công Thức<span class="lock-icon">🔒</span></button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Cài Đặt<span class="lock-icon">🔒</span></button>
@@ -461,15 +461,9 @@
 </div>
 
 <!-- TAB INGREDIENTS (🔒) -->
-<!-- TAB CHI TIÊU (🔒) -->
+<!-- TAB CHI TIÊU -->
 <div class="tab-content" id="tab-chitieu">
-    <div id="chitieuLock" class="lock-screen">
-        <div class="lock-emoji">🔒</div>
-        <div class="lock-msg">Tab này cần mật khẩu quản lý</div>
-        <input type="password" id="ctPwd" placeholder="Nhập mật khẩu" onkeydown="if(event.key==='Enter')unlockTab('chitieu')">
-        <br><button class="btn btn-primary btn-sm" onclick="unlockTab('chitieu')">Mở khóa</button>
-    </div>
-    <div id="chitieuContent" style="display:none;">
+    <div id="chitieuContent">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div class="card-title" style="margin-bottom:0;">💸 Chi Tiêu <span id="ctDateLabel" style="font-size:0.8rem;color:var(--text-muted);font-weight:400;"></span></div>
             <div style="display:flex;gap:6px;">
@@ -822,7 +816,7 @@ let state = {
 let posCategory='Tất cả', dashFilter='today';
 let grabCurrentItems = []; // temp items for grab order form
 let expenseViewDate = null; // null = today
-const lockedTabs = ['settings','inventory','recipes','chitieu'];
+const lockedTabs = ['settings','inventory','recipes'];
 let unlockedTabs = {};
 
 // ═══════════════════════════════════════
@@ -978,7 +972,7 @@ state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,ite
 // PASSWORD & TAB SWITCHING
 // ═══════════════════════════════════════
 function switchTab(tab){
-    if(currentRole==='staff'&&!['pos','attendance','checklist'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
+    if(currentRole==='staff'&&!['pos','attendance','checklist','chitieu'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
     if(lockedTabs.includes(tab)&&!unlockedTabs[tab]){
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -999,7 +993,7 @@ function switchTab(tab){
 }
 
 function unlockTab(tab){
-    const pwdInputs={settings:'setPwd',inventory:'invPwd',recipes:'recPwd',chitieu:'ctPwd'};
+    const pwdInputs={settings:'setPwd',inventory:'invPwd',recipes:'recPwd'};
     const pwd=document.getElementById(pwdInputs[tab]).value;
     if(pwd===state.password){
         unlockedTabs[tab]=true;
@@ -1007,7 +1001,6 @@ function unlockTab(tab){
         document.getElementById(tab+'Content').style.display='block';
         if(tab==='settings')renderSettings();
         if(tab==='inventory')renderInventory();
-        if(tab==='chitieu')renderExpenseTab();
         if(tab==='recipes')renderRecipes();
         toast('🔓 Đã mở khóa!');
     } else { toast('❌ Sai mật khẩu'); }

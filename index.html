@@ -880,6 +880,9 @@ function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',
 function nowHour(){return new Date().getHours()}
 function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;if(!state.purchases)state.purchases={};if(!state.expenses)state.expenses={};if(!state.dailyNotes)state.dailyNotes=[];
+if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
+if(!Array.isArray(state.grabOrders))state.grabOrders=[];
+if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -947,11 +950,27 @@ firebaseDb.ref('state').on('value',snap=>{
 const r=snap.val();
 if(firstLoad){
   firstLoad=false;
-  if(r){isRemoteUpdate=true;state={...state,...r};if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
+  if(r){isRemoteUpdate=true;
+  // Smart merge: protect critical arrays from being overwritten with empty/null
+  const localInvoices=state.todayInvoices||[];const localGrab=state.grabOrders||[];const localAttendance=state.attendance||{};
+  state={...state,...r};
+  // Restore local data if Firebase has less data (prevent data loss)
+  if(!state.todayInvoices||!state.todayInvoices.length)state.todayInvoices=localInvoices;
+  else if(localInvoices.length>state.todayInvoices.length){const rIds=new Set((state.todayInvoices||[]).map(i=>i.id));localInvoices.forEach(i=>{if(!rIds.has(i.id))state.todayInvoices.push(i);});}
+  if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
+  if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
+  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
+  localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
   firebaseReady=true;init();updateSyncStatus('connected');return;}
 if(!r)return;
 isRemoteUpdate=true;
+// Smart merge: protect critical arrays from being overwritten
+const localInvoices=state.todayInvoices||[];const localGrab=state.grabOrders||[];const localAttendance=state.attendance||{};
 state={...state,...r};
+if(!state.todayInvoices||!state.todayInvoices.length)state.todayInvoices=localInvoices;
+else if(localInvoices.length>state.todayInvoices.length){const rIds=new Set((state.todayInvoices||[]).map(i=>i.id));localInvoices.forEach(i=>{if(!rIds.has(i.id))state.todayInvoices.push(i);});}
+if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
+if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
 // Preserve sln/openStock/warnLevel on ingredients after sync
 if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 localStorage.setItem('monsteaPOS',JSON.stringify(state));

@@ -1860,7 +1860,34 @@ else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance()
 function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
 return `<div class="staff-card status-${st}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
 const td=today(),recs=state.attendance[td]||[];
-document.getElementById('attBody').innerHTML=recs.length?recs.map(r=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'—'}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';}
+const isOwner=currentRole==='owner';
+document.getElementById('attBody').innerHTML=recs.length?recs.map((r,idx)=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'—'}</td>${isOwner?`<td style="text-align:center"><button onclick="editAttendance(${idx})" style="background:none;border:none;cursor:pointer;font-size:0.72rem;" title="Sửa giờ">✏️</button></td>`:''}</tr>`).join(''):'<tr><td colspan="'+(isOwner?5:4)+'" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';
+// Update table header for owner
+const thead=document.querySelector('#tab-attendance .att-table thead tr');
+if(thead&&isOwner&&!thead.querySelector('.att-edit-th')){const th=document.createElement('th');th.className='att-edit-th';th.textContent='';thead.appendChild(th);}
+}
+function editAttendance(idx){
+    const td=today(),recs=state.attendance[td];if(!recs||!recs[idx])return;
+    const r=recs[idx];
+    const body=`<div style="display:flex;flex-direction:column;gap:12px;">
+    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">👤 ${esc(r.name)}</label></div>
+    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">Vào ca</label>
+    <input type="time" id="editAttIn" value="${r.checkIn||''}" style="width:100%;padding:8px;"></div>
+    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">Ra ca</label>
+    <input type="time" id="editAttOut" value="${r.checkOut||''}" style="width:100%;padding:8px;"></div>
+    <button class="btn btn-primary" onclick="saveEditAttendance(${idx})">💾 Lưu</button></div>`;
+    openModal('✏️ Sửa giờ chấm công',body);
+}
+function saveEditAttendance(idx){
+    const td=today(),r=state.attendance[td][idx];if(!r)return;
+    const newIn=document.getElementById('editAttIn').value;
+    const newOut=document.getElementById('editAttOut').value;
+    if(!newIn){toast('⚠️ Phải có giờ vào ca');return;}
+    r.checkIn=newIn;
+    if(newOut){r.checkOut=newOut;const[iH,iM]=newIn.split(':').map(Number),[oH,oM]=newOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;}
+    else{r.checkOut=null;r.hours=null;}
+    saveState();renderAttendance();closeModal();toast(`✅ Đã cập nhật giờ ${r.name}`);
+}
 
 // ═══════════════════════════════════════
 // CHECKLIST

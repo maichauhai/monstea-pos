@@ -879,7 +879,9 @@ function today(){return new Date().toISOString().slice(0,10)}
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function nowHour(){return new Date().getHours()}
 function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
-function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;
+function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;if(!state.purchases)state.purchases={};if(!state.expenses)state.expenses={};if(!state.dailyNotes)state.dailyNotes=[];
+// Ensure all ingredients have sln/openStock/warnLevel
+state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
 if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
 if(state.staff.length>0)state.nextStaffId=Math.max(state.nextStaffId||0,...state.staff.map(s=>s.id))+1;
@@ -912,7 +914,7 @@ for(let i=state.menu.length-1;i>=0;i--){
 if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
 }}catch(e){}}
 function init(){loadState();checkNewDay();renderAll();startClock();if(currentRole)applyRole();}
-function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderIngredients();renderRecipes();}
+function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();}
 
 // ═══════════════════════════════════════
 // LOGIN & ROLE
@@ -945,11 +947,13 @@ firebaseDb.ref('state').on('value',snap=>{
 const r=snap.val();
 if(firstLoad){
   firstLoad=false;
-  if(r){isRemoteUpdate=true;state={...state,...r};localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
+  if(r){isRemoteUpdate=true;state={...state,...r};if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
   firebaseReady=true;init();updateSyncStatus('connected');return;}
 if(!r)return;
 isRemoteUpdate=true;
 state={...state,...r};
+// Preserve sln/openStock/warnLevel on ingredients after sync
+if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 localStorage.setItem('monsteaPOS',JSON.stringify(state));
 renderAll();isRemoteUpdate=false;});}
 

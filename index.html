@@ -482,7 +482,11 @@
         <div class="card">
             <div class="card-title" style="font-size:0.85rem;">🛒 Nhập hàng Nguyên Liệu</div>
             <div class="add-form" style="flex-wrap:wrap;gap:8px;">
-                <select id="purchaseIng" style="flex:2;min-width:140px;" onchange="onPurchaseIngChange()"><option value="">Chọn NL...</option></select>
+                <div style="flex:2;min-width:140px;position:relative;">
+                    <input type="text" id="purchaseIngSearch" placeholder="Gõ tên NL..." autocomplete="off" oninput="filterPurchaseIng()" onfocus="filterPurchaseIng()" style="width:100%;">
+                    <input type="hidden" id="purchaseIngId">
+                    <div id="purchaseIngDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:8px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
+                </div>
                 <input type="number" id="purchaseSLN" placeholder="SLN" style="flex:0.7;min-width:60px;" title="Số lượng/gói" oninput="calcPurchasePreview()">
                 <input type="number" id="purchaseSL" placeholder="SL mua" style="flex:0.7;min-width:60px;" oninput="calcPurchasePreview()">
                 <input type="number" id="purchaseCost" placeholder="Tổng tiền (k)" style="flex:1;min-width:80px;" oninput="calcPurchasePreview()">
@@ -524,6 +528,7 @@
                     <input type="file" id="ingImportInput" accept=".json" style="display:none" onchange="importIngredientsJSON(event)">
                 </div>
             </div>
+            <div id="needToBuyCard" style="margin-bottom:14px;"></div>
             <input type="text" id="ingSearch" placeholder="🔍 Tìm nguyên liệu..." style="margin-bottom:12px;" oninput="renderInventory()">
             <div id="inventoryTable" style="overflow-x:auto;"></div>
             <div class="add-form" style="margin-top:12px;">
@@ -1205,10 +1210,18 @@ function renderInventory(){
     const list=state.ingredients.filter(i=>!search||i.name.toLowerCase().includes(search));
     document.getElementById('ingCount').textContent=`(${state.ingredients.length} nguyên liệu)`;
     const sI={ok:'🟢',warning:'🟡',danger:'🔴'};
+    // Need-to-buy card
+    const needList=state.ingredients.map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
+    const ntbEl=document.getElementById('needToBuyCard');
+    if(ntbEl){ntbEl.innerHTML=needList.length?`<div style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:var(--radius-md);padding:14px;">
+    <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">🛒 Cần mua (${needList.length})</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;">${needList.map(i=>`<span style="padding:4px 10px;border-radius:16px;font-size:0.75rem;font-weight:600;background:${i.s.status==='danger'?'rgba(255,107,107,0.2);color:var(--accent-red)':'rgba(245,158,11,0.2);color:#f59e0b'}">${sI[i.s.status]} ${esc(i.name)} (${i.s.stock} ${i.unit})</span>`).join('')}</div></div>`:'';}
+    // Table with SLN
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);text-align:left;">
     <th style="padding:6px 3px;">NL</th><th style="padding:6px 3px;">ĐV</th>
     <th style="padding:6px 3px;text-align:right;">Giá</th>
+    <th style="padding:6px 3px;text-align:center;">SLN</th>
     <th style="padding:6px 3px;text-align:right;">Tồn đầu</th>
     <th style="padding:6px 3px;text-align:right;">Nhập</th>
     <th style="padding:6px 3px;text-align:right;">Xuất</th>
@@ -1222,6 +1235,7 @@ function renderInventory(){
         <td style="padding:5px 3px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(i.name)}">${esc(i.name)}</td>
         <td style="padding:5px 3px;color:var(--text-muted);">${i.unit}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-warm);">${fmtP(i.unitPrice)}</td>
+        <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.sln||1}" style="width:45px;text-align:center;font-size:0.72rem;padding:2px;" onchange="setSLN(${i.id},this.value)"></td>
         <td style="padding:5px 3px;text-align:right;"><input type="number" value="${i.openStock||0}" style="width:55px;text-align:right;font-size:0.72rem;padding:2px 3px;" onchange="setOpenStock(${i.id},this.value)"></td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-green);">${s.purchased||0}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-red);">${s.totalUsed||0}</td>
@@ -1237,6 +1251,7 @@ function renderInventory(){
 }
 function setOpenStock(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.openStock=parseFloat(val)||0;saveState();}}
 function setWarnLevel(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.warnLevel=parseFloat(val)||0;saveState();}}
+function setSLN(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.sln=parseFloat(val)||1;saveState();}}
 function addIngredient(){const n=document.getElementById('newIngName').value.trim(),u=document.getElementById('newIngUnit').value.trim(),p=parseInt(document.getElementById('newIngPrice').value);
 if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
 state.ingredients.push({id:state.nextIngId++,name:n,unit:u,unitPrice:p,sln:1,openStock:0,warnLevel:0});
@@ -1278,9 +1293,6 @@ function changeExpenseDate(dir){
 function renderExpenseTab(){
     const dt=getExpenseDate();
     document.getElementById('ctDateLabel').textContent=dt===today()?'(Hôm nay)':'('+dt+')';
-    const sel=document.getElementById('purchaseIng');const curVal=sel.value;
-    sel.innerHTML='<option value="">Chọn NL...</option>'+state.ingredients.slice().sort((a,b)=>a.name.localeCompare(b.name)).map(i=>`<option value="${i.id}">${esc(i.name)} (${i.unit})</option>`).join('');
-    sel.value=curVal;
     const purchases=(state.purchases||{})[dt]||[];
     document.getElementById('purchaseList').innerHTML=purchases.length?purchases.map(p=>`<div class="setting-item"><span class="si-name">${esc(p.name||'?')}</span><span style="font-size:0.72rem;color:var(--text-muted);">${p.qty}×${p.sln}=${p.totalQty} ${p.unit||''}</span><span class="si-price">${fmtP(p.totalCost)}</span><span style="font-size:0.72rem;color:var(--accent-warm);">${fmtP(p.unitPrice)}/${p.unit||''}</span><button onclick="deletePurchase('${dt}',${p.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('purchaseTotal').textContent=purchases.reduce((s,p)=>s+p.totalCost,0)?'Tổng nhập NL: '+fmtP(purchases.reduce((s,p)=>s+p.totalCost,0)):'';
@@ -1288,12 +1300,24 @@ function renderExpenseTab(){
     document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
 }
-function onPurchaseIngChange(){
-    const id=parseInt(document.getElementById('purchaseIng').value);
-    const ing=state.ingredients.find(i=>i.id===id);
-    document.getElementById('purchaseSLN').value=ing?(ing.sln||1):'';
-    calcPurchasePreview();
+function filterPurchaseIng(){
+    const q=(document.getElementById('purchaseIngSearch').value||'').toLowerCase();
+    const dd=document.getElementById('purchaseIngDropdown');
+    const list=state.ingredients.filter(i=>!q||i.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,15);
+    if(!list.length||!q){dd.style.display='none';return;}
+    dd.style.display='block';
+    dd.innerHTML=list.map(i=>`<div style="padding:8px 12px;cursor:pointer;font-size:0.82rem;border-bottom:1px solid rgba(255,255,255,0.04);" onmousedown="selectPurchaseIng(${i.id})" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='none'">${esc(i.name)} <span style="color:var(--text-muted);font-size:0.72rem;">(${i.unit}, SLN:${i.sln||1})</span></div>`).join('');
 }
+function selectPurchaseIng(id){
+    const ing=state.ingredients.find(i=>i.id===id);if(!ing)return;
+    document.getElementById('purchaseIngSearch').value=ing.name;
+    document.getElementById('purchaseIngId').value=id;
+    document.getElementById('purchaseSLN').value=ing.sln||1;
+    document.getElementById('purchaseIngDropdown').style.display='none';
+    calcPurchasePreview();
+    document.getElementById('purchaseSL').focus();
+}
+document.addEventListener('click',e=>{const dd=document.getElementById('purchaseIngDropdown');if(dd&&!e.target.closest('#purchaseIngSearch')&&!e.target.closest('#purchaseIngDropdown'))dd.style.display='none';});
 function calcPurchasePreview(){
     const sln=parseFloat(document.getElementById('purchaseSLN').value)||0;
     const sl=parseFloat(document.getElementById('purchaseSL').value)||0;
@@ -1304,8 +1328,8 @@ function calcPurchasePreview(){
     else{el.style.display='none';}
 }
 function addPurchase(){
-    const ingId=parseInt(document.getElementById('purchaseIng').value);
-    const ing=state.ingredients.find(i=>i.id===ingId);if(!ing){toast('⚠️ Chọn nguyên liệu');return;}
+    const ingId=parseInt(document.getElementById('purchaseIngId').value);
+    const ing=state.ingredients.find(i=>i.id===ingId);if(!ing){toast('⚠️ Chọn nguyên liệu từ danh sách');return;}
     const sln=parseFloat(document.getElementById('purchaseSLN').value)||0;
     const sl=parseFloat(document.getElementById('purchaseSL').value)||0;
     const cost=(parseFloat(document.getElementById('purchaseCost').value)||0)*1000;
@@ -1314,7 +1338,9 @@ function addPurchase(){
     const dt=getExpenseDate();if(!state.purchases)state.purchases={};if(!state.purchases[dt])state.purchases[dt]=[];
     state.purchases[dt].push({id:state.nextPurchaseId++,ingId,name:ing.name,unit:ing.unit,totalCost:cost,qty:sl,sln,totalQty,unitPrice,time:nowTime()});
     ing.unitPrice=unitPrice;ing.sln=sln;
-    document.getElementById('purchaseSL').value='';document.getElementById('purchaseCost').value='';document.getElementById('purchasePreview').style.display='none';
+    document.getElementById('purchaseIngSearch').value='';document.getElementById('purchaseIngId').value='';
+    document.getElementById('purchaseSLN').value='';document.getElementById('purchaseSL').value='';document.getElementById('purchaseCost').value='';
+    document.getElementById('purchasePreview').style.display='none';
     saveState();renderExpenseTab();toast(`✅ Nhập ${ing.name}: ${fmtP(unitPrice)}/${ing.unit}`);
 }
 function deletePurchase(dt,id){if(!confirm('Xóa?'))return;state.purchases[dt]=(state.purchases[dt]||[]).filter(p=>p.id!==id);saveState();renderExpenseTab();}

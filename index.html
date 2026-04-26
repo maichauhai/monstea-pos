@@ -89,11 +89,14 @@
     .cat-btn:hover { color:var(--text-primary); }
     .cat-btn.active { color:var(--bg-body); background:var(--accent); border-color:var(--accent); }
     .menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
-    .menu-item-btn { padding:16px 10px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:var(--transition); text-align:center; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:4px; }
+    .menu-item-btn { padding:10px 8px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:var(--transition); text-align:center; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; }
     .menu-item-btn:hover { border-color:var(--accent); background:var(--bg-card-hover); transform:translateY(-2px); }
     .menu-item-btn:active { transform:scale(0.97); }
-    .menu-item-btn .mi-name { font-size:0.82rem; font-weight:600; color:var(--text-primary); line-height:1.2; }
-    .menu-item-btn .mi-price { font-family:var(--font-display); font-size:0.9rem; font-weight:700; color:var(--accent); }
+    .menu-item-btn .mi-img { width:52px; height:52px; object-fit:contain; border-radius:6px; pointer-events:none; }
+    .menu-item-btn .mi-img.mi-img-l { width:62px; height:62px; }
+    .menu-item-btn .mi-emoji { font-size:1.8rem; line-height:1; pointer-events:none; }
+    .menu-item-btn .mi-name { font-size:0.75rem; font-weight:600; color:var(--text-primary); line-height:1.2; margin-top:2px; }
+    .menu-item-btn .mi-price { font-family:var(--font-display); font-size:0.82rem; font-weight:700; color:var(--accent); }
     .order-panel { background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); display:flex; flex-direction:column; max-height:80vh; position:sticky; top:70px; }
     .order-header { padding:16px 20px; border-bottom:1px solid var(--border-subtle); font-family:var(--font-display); font-weight:700; font-size:0.95rem; color:var(--accent); display:flex; justify-content:space-between; align-items:center; }
     .order-items { flex:1; overflow-y:auto; padding:8px 0; }
@@ -301,7 +304,11 @@
         .app-header h1 { font-size:1.4rem; }
         .tab-content { padding:12px 12px 80px; }
         .menu-grid { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); gap:8px; }
-        .menu-item-btn { padding:12px 6px; min-height:65px; position:relative; }
+        .menu-item-btn { padding:8px 4px; min-height:65px; position:relative; }
+        .menu-item-btn .mi-img { width:40px; height:40px; }
+        .menu-item-btn .mi-img.mi-img-l { width:48px; height:48px; }
+        .menu-item-btn .mi-emoji { font-size:1.4rem; }
+        .menu-item-btn .mi-name { font-size:0.68rem; }
         .order-panel { margin-bottom:80px; }
         .mobile-order-bar { display:flex; flex-wrap:wrap; }
         .checklist-grid { grid-template-columns:1fr; }
@@ -755,6 +762,59 @@ const lockedTabs = ['settings','ingredients','recipes'];
 let unlockedTabs = {};
 
 // ═══════════════════════════════════════
+// MENU IMAGES — mapping tên món → file ảnh
+// ═══════════════════════════════════════
+const IMG_BASE = './menu-images/';
+const MENU_IMAGES = {
+  // Trà sữa
+  'Truyền thống M':'tra-truyen-thong.png','Truyền thống L':'tra-truyen-thong.png',
+  'Ô long M':'o-long.png','Ô long L':'o-long.png',
+  'Thái xanh M':'thai-xanh.png','Thái xanh L':'thai-xanh.png',
+  'Cafe đen':'cafe-den.png','Cafe sữa':'cafe-sua.png',
+  'Sữa tươi TC đường đen M':'sua-tuoi-duong-den.png','Sữa tươi TC đường đen L':'sua-tuoi-duong-den.png',
+  'Sữa tươi cà phê M':'sua-tuoi-ca-phe.png',
+  'Matcha nguyên vị':'matcha.png',
+  'Milo dầm TChâu':'milo-dam.png','Milo dầm TCẩm':'milo-dam.png',
+  'Sữa dâu':'sua-dau.png',
+  // Trà trái cây
+  'Hồng trà':'hong-tra.png','Hồng trà 0':'hong-tra.png',
+  'Trà đào M':'tra-dao.png','Trà đào L':'tra-dao.png',
+  'Trà vải M':'tra-vai.png','Trà vải L':'tra-vai.png',
+  'Trà việt quất':'tra-viet-quat.png','Trà ổi hồng':'tra-oi-hong.png',
+  'Trà dưa lưới':'tra-dua-luoi.png','Trà táo xanh':'tra-tao-xanh.png',
+  'Trà kiwi':'tra-kiwi.png','Trà chanh dây':'tra-chanh-day.png',
+  'Trà xoài':'tra-xoai.png','Trà dâu':'tra-dau.png',
+  'Xoài chanh dây':'xoai-chanh-day.png','Trà xoài chanh dây':'xoai-chanh-day.png',
+  'Kiwi dưa lưới':'kiwi-dua-luoi.png','Táo bạc hà':'tao-bac-ha.png',
+  'Trà xoài dâu':'tra-xoai-dau.png','Tắc xí muội':'tac-xi-muoi.png',
+  // Đồ chiên
+  'Cá viên':'ca-vien.png','Bò viên':'bo-vien.png','Cá cốm':'ca-com.png',
+  'Thanh cua':'thanh-cua.png','Há cảo':'ha-cao.png','Tôm viên':'tom-vien.png',
+  'Cua huỳnh đế':'cua-huynh-de.png','Xúc xích':'xuc-xich.png',
+  'Bánh bao':'banh-bao.png','Phô mai que':'pho-mai-que.png',
+  'Trứng cút':'trung-cut.png','Mực viên':'muc-vien.png',
+  'Đậu bắp':'dau-bap.png','Hoành thánh':'hoanh-thanh.png',
+  'Hải sản sốt':'hai-san-sot.png','Đậu hũ phô mai':'dau-hu-pho-mai.png',
+  'Nem chua rán':'nem-chua-ran.png',
+  'Combo':'combo-do-chien.png',
+  // Đồ ăn
+  'Bánh tráng trộn':'banh-trang-tron.png','Bánh tráng trộn (đặc biệt)':'banh-trang-tron.png',
+  'Bánh tráng khô bò':'banh-trang-kho-bo.png','Bánh tráng phô mai':'banh-trang-pho-mai.png',
+  'Bánh tráng xì ke':'banh-trang-xi-ke.png',
+  'Tré trộn M':'tre-tron.png','Tré trộn L':'tre-tron.png',
+  'Mì trộn':'mi-tron.png','Khoai tây':'khoai-tay.png','Gà chiên':'ga-chien.png'
+};
+// Topping — dùng emoji
+const TOPPING_EMOJI = {
+  'Kem trứng':'🍳','TC 3Q':'🫧','TC đen':'⚫','TC vàng':'🟡',
+  'Thạch cá':'🐟','Sương sáo':'🖤','Đường đen':'🍯','Socola':'🍫',
+  'Pudding':'🍮','Flan':'🍮','Rau câu tầng':'🟩','Bánh tráng thêm':'🫓',
+  'Mì thêm':'🍜','Thập cẩm mì':'🍜','Thập cẩm TS':'🥤','Dâu sấy thêm':'🍓',
+  'Xúc xích mì':'🌭','Lắc phomai':'🧀','Lắc TứXuyên':'🌶️','Trứng':'🥚',
+  'Khúc bạch':'🤍','Ship':'🚚','Gà mì trộn':'🍗','Full thạch':'🫧'
+};
+
+// ═══════════════════════════════════════
 // PERSISTENCE
 // ═══════════════════════════════════════
 function today(){return new Date().toISOString().slice(0,10)}
@@ -896,12 +956,22 @@ function changePassword(){
 // ═══════════════════════════════════════
 // POS
 // ═══════════════════════════════════════
+function getMenuVisual(m){
+    const img=MENU_IMAGES[m.name];
+    if(img){
+        const isL=m.name.endsWith(' L')||m.name.includes('(đặc biệt)')||m.price>=50000;
+        return `<img class="mi-img${isL?' mi-img-l':''}" src="${IMG_BASE}${img}" alt="" loading="lazy" onerror="this.style.display='none'">`;
+    }
+    const emoji=TOPPING_EMOJI[m.name];
+    if(emoji) return `<span class="mi-emoji">${emoji}</span>`;
+    return '';
+}
 function renderPOSMenu(){
     const ct=document.getElementById('posCatTabs');
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
     const items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
-    g.innerHTML=items.map(m=>{const oq=state.currentOrder.find(o=>o.menuId===m.id);const qty=oq?oq.qty:0;return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    g.innerHTML=items.map(m=>{const oq=state.currentOrder.find(o=>o.menuId===m.id);const qty=oq?oq.qty:0;const vis=getMenuVisual(m);return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
 }
 function setPosCategory(c){posCategory=c;renderPOSMenu();}
 function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});vibrate(30);renderOrder();renderPOSMenu();}

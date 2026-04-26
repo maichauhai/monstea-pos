@@ -148,7 +148,7 @@ function syncChamcong(state, today) {
   if (!sheet) { sheet = ss.insertSheet(SHEET_CHAMCONG); }
   
   if (sheet.getLastRow() === 0) {
-    sheet.appendRow(['Ngay', 'Nhan vien', 'Check-in', 'Check-out', 'So gio', 'Luong (25K/h)']);
+    sheet.appendRow(['Ngay', 'Nhan vien', 'Check-in', 'Check-out', 'So gio', 'Luong (25K, +30% sau 22h)']);
     sheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#60a5fa');
     sheet.setFrozenRows(1);
   }
@@ -194,11 +194,34 @@ function syncChamcong(state, today) {
     var hours = 0;
     if (checkIn && checkOut) {
       var p1 = checkIn.split(':'), p2 = checkOut.split(':');
-      var diff = (Number(p2[0]) * 60 + Number(p2[1])) - (Number(p1[0]) * 60 + Number(p1[1]));
+      var inMin = Number(p1[0]) * 60 + Number(p1[1]);
+      var outMin = Number(p2[0]) * 60 + Number(p2[1]);
+      var diff = outMin - inMin;
       hours = diff > 0 ? Math.round(diff / 60 * 10) / 10 : 0;
     }
     
-    var wage = Math.round(hours * HOURLY_RATE);
+    // Tính lương: trước 22h = 25K, sau 22h = 25K × 1.3
+    var wage = 0;
+    if (checkIn && checkOut) {
+      var inM = Number(checkIn.split(':')[0]) * 60 + Number(checkIn.split(':')[1]);
+      var outM = Number(checkOut.split(':')[0]) * 60 + Number(checkOut.split(':')[1]);
+      var cutoff = 22 * 60; // 22:00 = 1320 phút
+      
+      if (outM <= cutoff) {
+        // Toàn bộ trước 22h
+        wage = Math.round(hours * HOURLY_RATE);
+      } else if (inM >= cutoff) {
+        // Toàn bộ sau 22h → x1.3
+        wage = Math.round(hours * HOURLY_RATE * 1.3);
+      } else {
+        // Chia đôi: trước + sau 22h
+        var normalMin = cutoff - inM;
+        var otMin = outM - cutoff;
+        var normalH = Math.round(normalMin / 60 * 10) / 10;
+        var otH = Math.round(otMin / 60 * 10) / 10;
+        wage = Math.round(normalH * HOURLY_RATE + otH * HOURLY_RATE * 1.3);
+      }
+    }
     totalLaborCost += wage;
     
     rows.push([today, s.name, checkIn, checkOut, hours, wage]);

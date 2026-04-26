@@ -440,6 +440,17 @@
         <button class="btn btn-success btn-sm" onclick="exportIngredientsUsed()">📦 Copy NL đã dùng</button>
         <button class="btn btn-secondary btn-sm" onclick="exportDashJSON()">💾 Tải JSON</button>
     </div>
+    <div id="monthlyReportSection" style="display:none;margin-top:16px;">
+        <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div class="card-title" style="margin-bottom:0;">📅 Báo cáo tháng</div>
+                <button class="btn btn-secondary btn-sm" onclick="printMonthlyReport()" style="font-size:0.72rem;">🖨️ In/PDF</button>
+            </div>
+            <div id="monthlyCalendar" style="margin-bottom:14px;"></div>
+            <div id="monthlySummary"></div>
+            <div id="monthlyTopItems" style="margin-top:12px;"></div>
+        </div>
+    </div>
 </div>
 
 <!-- TAB ATTENDANCE -->
@@ -450,6 +461,18 @@
         <table class="att-table"><thead><tr><th>Tên</th><th>Vào ca</th><th>Ra ca</th><th>Số giờ</th></tr></thead><tbody id="attBody"></tbody></table>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="exportAttCSV()" style="margin-top:12px;">📋 Export CSV chấm công</button>
+    <div id="attHistoryCard" style="display:none;margin-top:14px;">
+        <div class="card">
+            <div class="card-title">📅 Lịch sử & Lương</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+                <button class="btn btn-secondary btn-sm" onclick="setAttView('week')">7 ngày</button>
+                <button class="btn btn-primary btn-sm" onclick="setAttView('month')">Tháng này</button>
+                <input type="month" id="attMonthPick" style="font-size:0.75rem;padding:4px 8px;" onchange="setAttView('custom')">
+            </div>
+            <div id="attHistoryBody"></div>
+            <div id="attSalaryCard" style="margin-top:10px;"></div>
+        </div>
+    </div>
 </div>
 
 <!-- TAB CHECKLIST -->
@@ -928,11 +951,12 @@ currentRole=role;sessionStorage.setItem('monsteaPwd',p);document.getElementById(
 applyRole();initFirebase();}
 
 function applyRole(){
-document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist'].includes(t))?'none':'';});
+document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist','chitieu'].includes(t))?'none':'';});
 const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
 if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':'👤 Nhân viên';
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
-badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}}
+badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}
+const ahc=document.getElementById('attHistoryCard');if(ahc){ahc.style.display=currentRole==='owner'?'block':'none';if(currentRole==='owner')renderAttHistory();}}}
 
 function logout(){currentRole=null;firebaseDb=null;firebaseReady=false;sessionStorage.removeItem('monsteaPwd');try{firebase.app().delete();}catch(e){}
 document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
@@ -988,7 +1012,8 @@ function checkNewDay(){const td=today();if(state.checklistDate!==td){state.openC
 function archiveDay(dk,invoices){if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0;const hr={};let ac=0;
 invoices.forEach(inv=>{if(inv.cancelled)return;ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
 const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;
-inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;is[i.name].revenue+=i.price*i.qty;});});
+inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);is[i.name].revenue+=(i.price+tpTotal)*i.qty;
+(i.toppings||[]).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=i.qty;});});});
 state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,itemsSold:is,hourlyRevenue:hr,grabTotal:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.grabPrice,0),grabNet:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.netAmount,0)};}
 
 // ═══════════════════════════════════════
@@ -1053,20 +1078,36 @@ function renderPOSMenu(){
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
     const items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
-    g.innerHTML=items.map(m=>{const oq=state.currentOrder.find(o=>o.menuId===m.id);const qty=oq?oq.qty:0;const vis=getMenuVisual(m);return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=o.qty;});return s;},0);const vis=getMenuVisual(m);return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
 }
 function setPosCategory(c){posCategory=c;renderPOSMenu();}
-function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;const e=state.currentOrder.find(o=>o.menuId===id);if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1});vibrate(30);renderOrder();renderPOSMenu();}
-function changeQty(id,d){const i=state.currentOrder.find(o=>o.menuId===id);if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();renderPOSMenu();}
-function removeFromOrder(id){state.currentOrder=state.currentOrder.filter(o=>o.menuId!==id);renderOrder();renderPOSMenu();}
+function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
+    const isTopping=m.category==='Topping';
+    if(isTopping&&state.currentOrder.length>0){
+        const last=state.currentOrder[state.currentOrder.length-1];
+        if(!last.toppings)last.toppings=[];
+        last.toppings.push({menuId:id,name:m.name,price:m.price});
+    }else{
+        const e=state.currentOrder.find(o=>o.menuId===id&&(!o.toppings||!o.toppings.length));
+        if(e)e.qty++;else state.currentOrder.push({menuId:id,name:m.name,price:m.price,qty:1,toppings:[]});
+    }
+    vibrate(30);renderOrder();renderPOSMenu();}
+function changeQty(idx,d){const i=state.currentOrder[idx];if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
+function removeFromOrder(idx){state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
+function removeTopping(orderIdx,tIdx){state.currentOrder[orderIdx].toppings.splice(tIdx,1);renderOrder();renderPOSMenu();}
 function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
 function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
 if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';updateMobileBar();return;}
-const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
-c.innerHTML=state.currentOrder.map(o=>`<div class="order-item"><div class="oi-name">${esc(o.name)}</div><div class="oi-qty"><button onclick="changeQty(${o.menuId},-1)">−</button><span>${o.qty}</span><button onclick="changeQty(${o.menuId},1)">+</button></div><div class="oi-price">${fmtP(o.price*o.qty)}</div><span class="oi-del" onclick="removeFromOrder(${o.menuId})">✕</span></div>`).join('');
+const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0);
+const ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,tt)=>st+tt.price,0);return s+(o.price+tp)*o.qty;},0);
+c.innerHTML=state.currentOrder.map((o,idx)=>{
+    const tp=o.toppings||[];const tpTotal=tp.reduce((s,tt)=>s+tt.price,0);const lineTotal=(o.price+tpTotal)*o.qty;
+    const tpHtml=tp.length?`<div style="padding-left:12px;font-size:0.72rem;color:var(--accent-warm);">${tp.map((tt,ti)=>`+ ${esc(tt.name)} <span style="color:var(--text-muted);cursor:pointer;font-size:0.65rem;" onclick="event.stopPropagation();removeTopping(${idx},${ti})">✕</span>`).join('<br>')}</div>`:'';
+    return `<div class="order-item" style="flex-wrap:wrap;"><div class="oi-name">${esc(o.name)}${tp.length?` <span style="color:var(--accent-warm);font-size:0.72rem;">(+${tp.length})</span>`:''}</div><div class="oi-qty"><button onclick="changeQty(${idx},-1)">−</button><span>${o.qty}</span><button onclick="changeQty(${idx},1)">+</button></div><div class="oi-price">${fmtP(lineTotal)}</div><span class="oi-del" onclick="removeFromOrder(${idx})">✕</span>${tpHtml}</div>`;
+}).join('');
 t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();updateMobileBar();}
 
-function calcChange(){const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
+function calcChange(){const total=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
 const raw=parseInt(document.getElementById('cashGiven').value)||0;
 const given=raw*1000;
 const el=document.getElementById('changeResult');
@@ -1077,17 +1118,18 @@ if(change>=0){const t='Thối: '+fmtP(change);el.textContent=t;el.style.color='v
 else{const t='Thiếu: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
 
 function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
-const total=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);
+const total=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
 if(window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?`))return;
 const note=document.getElementById('orderNote').value.trim();
+const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.price,qty:o.qty,toppings:(o.toppings||[]).map(t=>({menuId:t.menuId,name:t.name,price:t.price}))}));
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
-if(inv){const os=state._editingOldSummary,ns=state.currentOrder.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(total)}`;
+if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
 if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
-inv.items=[...state.currentOrder];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;
+inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;
 toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
 delete state._editingInvoiceId;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
-}else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...state.currentOrder],total,method,note};
+}else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
 state.todayInvoices.push(inv);toast(`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
 playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
@@ -1095,7 +1137,7 @@ function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList
 const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled).reduce((s,i)=>s+i.total,0);
 ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn — ${fmtP(tt)})`;
 if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có hóa đơn</div>';return;}
-c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ');
+c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
 return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
 function showInvoiceDetail(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv)return;
@@ -1104,7 +1146,7 @@ const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:
 const body=`${inv.cancelled?'<div style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:8px;padding:10px;margin-bottom:12px;color:var(--accent-red);font-weight:600;">🚫 Đã hủy</div>':''}
 <div style="margin-bottom:12px;font-size:0.82rem;color:var(--text-muted);">${inv.date} — ${inv.time}</div>
 <table style="width:100%;border-collapse:collapse;"><tr style="border-bottom:1px solid var(--border-subtle);"><th style="text-align:left;padding:6px;font-size:0.78rem;color:var(--text-muted);">Món</th><th style="text-align:center;padding:6px;font-size:0.78rem;color:var(--text-muted);">SL</th><th style="text-align:right;padding:6px;font-size:0.78rem;color:var(--text-muted);">Thành tiền</th></tr>
-${inv.items.map(i=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${inv.cancelled?'text-decoration:line-through;opacity:0.5;':''}"><td style="padding:8px 6px;">${esc(i.name)}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;color:var(--accent-warm);">${fmtP(i.price*i.qty)}</td></tr>`).join('')}</table>
+${inv.items.map(i=>{const tpText=(i.toppings||[]).length?' <span style="color:var(--accent-warm);font-size:0.78rem;">+ '+(i.toppings||[]).map(t=>esc(t.name)).join(' + ')+'</span>':'';const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${inv.cancelled?'text-decoration:line-through;opacity:0.5;':''}"><td style="padding:8px 6px;">${esc(i.name)}${tpText}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;color:var(--accent-warm);">${fmtP((i.price+tpTotal)*i.qty)}</td></tr>`;}).join('')}</table>
 <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><span style="font-weight:600;">Tổng</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0đ':fmtP(inv.total)}</span></div>
 ${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">📝 ${esc(inv.note)}</div>`:''}
 <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':'CK'}</div>
@@ -1181,7 +1223,7 @@ function renderDashboard(){const d=getDashData(),avg=d.totalInvoices?Math.round(
 const nlCost=calcIngredientCost(d),nvCost=calcLaborCost(d.dates),gross=d.totalRevenue-nlCost-nvCost;
 let otherExp=0;d.dates.forEach(dt=>{((state.expenses||{})[dt]||[]).forEach(e=>otherExp+=e.amount);});
 document.getElementById('dashStats').innerHTML=`<div class="stat-card"><div class="stat-label">Doanh thu</div><div class="stat-value" style="color:var(--accent)">${fmtP(d.totalRevenue)}</div></div><div class="stat-card"><div class="stat-label">Hóa đơn</div><div class="stat-value" style="color:var(--accent-blue)">${d.totalInvoices}</div></div><div class="stat-card"><div class="stat-label">TB/đơn</div><div class="stat-value" style="color:var(--accent-warm)">${fmtP(avg)}</div></div><div class="stat-card"><div class="stat-label">Tiền mặt</div><div class="stat-value" style="color:var(--accent-green)">${fmtP(d.cashTotal)}</div></div><div class="stat-card"><div class="stat-label">CK</div><div class="stat-value" style="color:var(--accent-purple)">${fmtP(d.transferTotal)}</div></div><div class="stat-card" style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"><div class="stat-label">💰 Chi phí NL</div><div class="stat-value" style="color:var(--accent-red);font-size:1.3rem">${fmtP(nlCost)}</div></div><div class="stat-card" style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"><div class="stat-label">👤 Chi phí NV</div><div class="stat-value" style="color:var(--accent-blue);font-size:1.3rem">${fmtP(nvCost)}</div></div><div class="stat-card" style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"><div class="stat-label">🧾 CP khác</div><div class="stat-value" style="color:#fbbf24;font-size:1.3rem">${fmtP(otherExp)}</div></div><div class="stat-card" style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"><div class="stat-label">📊 Lãi gộp</div><div class="stat-value" style="color:${gross>=0?'var(--accent-green)':'var(--accent-red)'};font-size:1.3rem">${fmtP(gross)}</div></div>`;
-renderRevenueChart();renderHourlyChart(d.hourlyRevenue);
+renderRevenueChart();renderHourlyChart(d.hourlyRevenue);renderMonthlyReport();
 const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty),tq=ti.reduce((s,i)=>s+i.qty,0);
 document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';}
 
@@ -1240,8 +1282,17 @@ function renderInventory(){
     const needList=state.ingredients.map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     const ntbEl=document.getElementById('needToBuyCard');
     if(ntbEl){ntbEl.innerHTML=needList.length?`<div style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:var(--radius-md);padding:14px;">
-    <div style="font-weight:700;font-size:0.85rem;margin-bottom:8px;">🛒 Cần mua (${needList.length})</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px;">${needList.map(i=>`<span style="padding:4px 10px;border-radius:16px;font-size:0.75rem;font-weight:600;background:${i.s.status==='danger'?'rgba(255,107,107,0.2);color:var(--accent-red)':'rgba(245,158,11,0.2);color:#f59e0b'}">${sI[i.s.status]} ${esc(i.name)} (${i.s.stock} ${i.unit})</span>`).join('')}</div></div>`:'';}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:700;font-size:0.85rem;">🛒 Gợi ý nhập hàng (${needList.length})</span><button class="btn btn-secondary btn-sm" onclick="copyNeedToBuyList()" style="font-size:0.68rem;padding:3px 8px;">📋 Copy</button></div>
+    <div style="display:flex;flex-direction:column;gap:6px;">${needList.map(i=>{
+    const need=Math.max(0,Math.ceil(i.s.avgDaily*7-i.s.stock));const packs=i.sln>1?Math.ceil(need/i.sln):need;
+    const packText=i.sln>1?`${packs} gói (×${i.sln})`:`${need} ${i.unit}`;
+    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:${i.s.status==='danger'?'rgba(255,107,107,0.12)':'rgba(245,158,11,0.08)'}">
+    <span style="font-size:0.82rem;">${sI[i.s.status]}</span>
+    <span style="flex:1;font-size:0.78rem;font-weight:600;">${esc(i.name)}</span>
+    <span style="font-size:0.7rem;color:var(--text-muted);">${i.s.stock} ${i.unit}${i.s.daysLeft<999?' (≈'+i.s.daysLeft+'d)':''}</span>
+    ${need>0?`<span style="font-size:0.7rem;color:var(--accent-green);font-weight:600;">→ ${packText}</span>`:''}
+    </div>`;}).join('')}</div></div>`:'';
+    }
     // Table with SLN
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);text-align:left;">
@@ -1424,6 +1475,223 @@ function renderNotes(){
         </div>`;
     });
     el.innerHTML=html;
+}
+
+// ═══════════════════════════════════════
+// ATTENDANCE HISTORY (#8)
+// ═══════════════════════════════════════
+let attViewMode='month';
+function setAttView(mode,val){
+    attViewMode=mode;
+    if(mode==='custom'&&val)document.getElementById('attMonthPick').value=val;
+    renderAttHistory();
+}
+function getAttDates(mode){
+    const td=new Date();
+    if(mode==='week'){const dates=[];for(let i=6;i>=0;i--){const d=new Date(td);d.setDate(d.getDate()-i);dates.push(d.toISOString().slice(0,10));}return dates;}
+    if(mode==='month'||mode==='custom'){
+        let y=td.getFullYear(),m=td.getMonth();
+        const pick=document.getElementById('attMonthPick')?.value;
+        if(mode==='custom'&&pick){const [py,pm]=pick.split('-');y=parseInt(py);m=parseInt(pm)-1;}
+        const days=new Date(y,m+1,0).getDate();const dates=[];
+        for(let d=1;d<=days;d++){const dt=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;dates.push(dt);}
+        return dates;
+    }
+    return [today()];
+}
+function renderAttHistory(){
+    const el=document.getElementById('attHistoryBody');
+    const sal=document.getElementById('attSalaryCard');
+    if(!el)return;
+    const dates=getAttDates(attViewMode);
+    const RATE=25000,OT_START=22*60,OT_MULT=1.3;
+    const staffTotals={};
+    state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0});
+    let html=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
+    <thead><tr style="border-bottom:2px solid var(--border-subtle);">
+    <th style="padding:4px;text-align:left;">Ngày</th>`;
+    state.staff.forEach(s=>html+=`<th style="padding:4px;text-align:center;">${esc(s.name)}</th>`);
+    html+=`</tr></thead><tbody>`;
+    dates.forEach(dt=>{
+        const recs=(state.attendance||{})[dt]||[];
+        html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${dt===today()?'background:rgba(232,166,53,0.06);':''}">`;
+        const label=dt===today()?'Hôm nay':dt.slice(5);
+        html+=`<td style="padding:4px;color:var(--text-muted);white-space:nowrap;">${label}</td>`;
+        state.staff.forEach(s=>{
+            const r=recs.find(x=>x.staffId===s.id);
+            if(r&&r.hours){
+                const [iH,iM]=(r.checkIn||'0:0').split(':').map(Number);
+                const [oH,oM]=(r.checkOut||'0:0').split(':').map(Number);
+                const inMin=iH*60+iM,outMin=oH*60+oM;
+                let normH=r.hours,otHr=0;
+                if(outMin>OT_START){normH=Math.max(0,(Math.min(outMin,OT_START)-inMin)/60);otHr=Math.max(0,(outMin-Math.max(inMin,OT_START))/60);}
+                staffTotals[s.id].totalH+=r.hours;staffTotals[s.id].normalH+=normH;staffTotals[s.id].otH+=otHr;staffTotals[s.id].days++;
+                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);">${r.hours}h</td>`;
+            }else html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">—</td>`;
+        });
+        html+=`</tr>`;
+    });
+    html+=`</tbody></table>`;
+    el.innerHTML=html;
+    // Salary summary
+    sal.innerHTML=`<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;">💰 Tính lương</div>
+    <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+    <thead><tr style="border-bottom:2px solid var(--border-subtle);">
+    <th style="padding:4px;text-align:left;">NV</th><th>Ngày</th><th>Tổng giờ</th><th>Thường</th><th>OT</th><th style="text-align:right;">Lương</th></tr></thead><tbody>
+    ${state.staff.map(s=>{const t=staffTotals[s.id];const salary=Math.round(t.normalH*RATE+t.otH*RATE*OT_MULT);
+    return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+    <td style="padding:4px;font-weight:600;">${esc(t.name)}</td>
+    <td style="padding:4px;text-align:center;">${t.days}</td>
+    <td style="padding:4px;text-align:center;">${Math.round(t.totalH*10)/10}h</td>
+    <td style="padding:4px;text-align:center;">${Math.round(t.normalH*10)/10}h</td>
+    <td style="padding:4px;text-align:center;color:${t.otH?'var(--accent-warm)':'var(--text-muted)'};">${Math.round(t.otH*10)/10}h</td>
+    <td style="padding:4px;text-align:right;font-weight:700;color:var(--accent);">${fmtP(salary)}</td></tr>`;}).join('')}
+    <tr style="border-top:2px solid var(--border-subtle);"><td colspan="5" style="padding:4px;font-weight:700;">TỔNG</td>
+    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];return s+Math.round(t.normalH*RATE+t.otH*RATE*OT_MULT);},0))}</td></tr>
+    </tbody></table>`;
+}
+
+// ═══════════════════════════════════════
+// MONTHLY REPORT (#10)
+// ═══════════════════════════════════════
+function renderMonthlyReport(){
+    const sec=document.getElementById('monthlyReportSection');
+    if(!sec)return;
+    if(dashFilter!=='month'){sec.style.display='none';return;}
+    sec.style.display='block';
+    const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+    const daysInMonth=new Date(y,m+1,0).getDate();
+    const firstDay=new Date(y,m,1).getDay(); // 0=Sun
+    const RATE=25000,OT_START=22*60,OT_MULT=1.3;
+    // Collect daily data
+    const dailyData=[];let totalRev=0,totalNL=0,totalNV=0,totalOther=0,totalInv=0;
+    const monthItems={};
+    // Previous month for comparison
+    const pmDays=new Date(y,m,0).getDate();let pmRev=0,pmProfit=0;
+    for(let d=1;d<=pmDays;d++){
+        const dt=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const h=state.history[dt];if(h){pmRev+=h.totalRevenue||0;}
+    }
+    for(let d=1;d<=daysInMonth;d++){
+        const dt=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const h=state.history[dt];
+        let rev=0,inv=0,nlc=0,nvc=0,oexp=0;
+        if(h){
+            rev=h.totalRevenue||0;inv=h.invoices||0;
+            // NL cost from recipes
+            Object.entries(h.itemsSold||{}).forEach(([name,x])=>{
+                if(!monthItems[name])monthItems[name]={qty:0,revenue:0};
+                monthItems[name].qty+=x.qty;monthItems[name].revenue+=x.revenue;
+                const mi=state.menu.find(m2=>m2.name===name);
+                if(mi){const recipe=state.recipes[mi.id]||[];recipe.forEach(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);if(ing)nlc+=ing.unitPrice*r.qty*x.qty;});}
+            });
+            // Labor cost
+            const recs=(state.attendance||{})[dt]||[];
+            recs.forEach(r=>{if(!r.hours)return;const[iH,iM]=(r.checkIn||'0:0').split(':').map(Number);const outMin=(parseInt((r.checkOut||'0:0').split(':')[0]))*60+parseInt((r.checkOut||'0:0').split(':')[1]);const inMin=iH*60+iM;if(outMin<=OT_START)nvc+=r.hours*RATE;else if(inMin>=OT_START)nvc+=r.hours*RATE*OT_MULT;else{nvc+=((OT_START-inMin)/60)*RATE+((outMin-OT_START)/60)*RATE*OT_MULT;}});
+        }
+        // Other expenses
+        ((state.expenses||{})[dt]||[]).forEach(e=>oexp+=e.amount);
+        const grossProfit=rev-nlc-nvc;
+        const netProfit=grossProfit-oexp;
+        totalRev+=rev;totalNL+=nlc;totalNV+=nvc;totalOther+=oexp;totalInv+=inv;
+        dailyData.push({day:d,dt,rev,inv,nlc,nvc,oexp,grossProfit,netProfit,isPast:dt<=today()});
+    }
+    const totalGross=totalRev-totalNL-totalNV;
+    const totalNet=totalGross-totalOther;
+    // Calendar heatmap
+    const dayNames=['CN','T2','T3','T4','T5','T6','T7'];
+    let cal=`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;font-size:0.7rem;">`;
+    dayNames.forEach(d=>cal+=`<div style="color:var(--text-muted);font-weight:600;padding:4px;">${d}</div>`);
+    for(let i=0;i<firstDay;i++)cal+=`<div></div>`;
+    dailyData.forEach(d=>{
+        let bg='rgba(255,255,255,0.03)',color='var(--text-muted)',glow='';
+        if(d.isPast&&d.rev>0){
+            const gp=d.grossProfit/1000;
+            if(gp>=1000){bg='rgba(74,222,128,0.35)';color='#4ade80';glow='box-shadow:0 0 8px rgba(74,222,128,0.4),inset 0 0 6px rgba(74,222,128,0.15);';}
+            else if(gp>=500){bg='rgba(74,222,128,0.2)';color='#4ade80';}
+            else if(gp>0){bg='rgba(74,222,128,0.08)';color='rgba(74,222,128,0.7)';}
+            else{bg='rgba(255,107,107,0.15)';color='var(--accent-red)';}
+        }
+        const isToday=d.dt===today()?'border:2px solid var(--accent);':'';
+        cal+=`<div style="padding:6px 2px;border-radius:6px;background:${bg};${isToday}${glow}cursor:default;" title="${d.dt}: DT ${fmtP(d.rev)}, Lãi gộp ${fmtP(d.grossProfit)}">
+        <div style="font-weight:700;color:${color};">${d.day}</div>
+        ${d.rev?`<div style="font-size:0.6rem;color:${color};opacity:0.8;">${Math.round(d.grossProfit/1000)}k</div>`:''}
+        </div>`;
+    });
+    cal+=`</div>`;
+    cal+=`<div style="display:flex;gap:12px;justify-content:center;margin-top:8px;font-size:0.65rem;color:var(--text-muted);">
+    <span>⬜ Chưa bán</span><span style="color:rgba(74,222,128,0.7);">🟩 &lt;500k</span><span style="color:#4ade80;">🟩 500k-1tr</span><span style="color:#4ade80;text-shadow:0 0 4px rgba(74,222,128,0.5);">✨ &gt;1tr</span><span style="color:var(--accent-red);">🟥 Lỗ</span>
+    </div>`;
+    document.getElementById('monthlyCalendar').innerHTML=cal;
+    // Summary
+    const prevCmp=pmRev?Math.round((totalRev-pmRev)/pmRev*100):0;
+    const cmpText=pmRev?`(${prevCmp>=0?'↑':'↓'}${Math.abs(prevCmp)}% vs tháng trước)`:'';
+    const cmpColor=prevCmp>=0?'var(--accent-green)':'var(--accent-red)';
+    document.getElementById('monthlySummary').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;">
+    <div style="text-align:center;padding:8px;background:rgba(232,166,53,0.06);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">Doanh thu</div>
+        <div style="font-weight:800;color:var(--accent);font-size:1rem;">${fmtP(totalRev)}</div>
+        <div style="font-size:0.62rem;color:${cmpColor};">${cmpText}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(255,107,107,0.04);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">CP NL</div>
+        <div style="font-weight:700;color:var(--accent-red);">${fmtP(totalNL)}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(96,165,250,0.04);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">CP NV</div>
+        <div style="font-weight:700;color:var(--accent-blue);">${fmtP(totalNV)}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(251,191,36,0.04);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">CP khác</div>
+        <div style="font-weight:700;color:#fbbf24;">${fmtP(totalOther)}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(74,222,128,0.06);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">Lãi gộp</div>
+        <div style="font-weight:800;color:${totalGross>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(totalGross)}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(192,132,252,0.06);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">💎 Lãi ròng</div>
+        <div style="font-weight:800;color:${totalNet>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(totalNet)}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">Hóa đơn</div>
+        <div style="font-weight:700;color:var(--accent-blue);">${totalInv}</div></div>
+    <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;">
+        <div style="font-size:0.68rem;color:var(--text-muted);">TB/ngày</div>
+        <div style="font-weight:700;color:var(--accent-warm);">${fmtP(dailyData.filter(d=>d.rev>0).length?Math.round(totalRev/dailyData.filter(d=>d.rev>0).length):0)}</div></div>
+    </div>`;
+    // Top items
+    const ti=Object.entries(monthItems).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty).slice(0,10);
+    document.getElementById('monthlyTopItems').innerHTML=ti.length?`<div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;">🏆 Top 10 món tháng này</div>
+    ${ti.map((i,x)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.78rem;">
+    <span style="width:20px;color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400};">${x+1}</span>
+    <span style="flex:1;">${x===0?'🏆 ':''}${esc(i.name)}</span>
+    <span style="font-weight:600;">${i.qty}</span>
+    <span style="color:var(--accent-warm);min-width:70px;text-align:right;">${fmtP(i.revenue)}</span></div>`).join('')}`:'';
+}
+function printMonthlyReport(){
+    const sec=document.getElementById('monthlyReportSection');
+    if(!sec)return;
+    const w=window.open('','','width=800,height=600');
+    w.document.write(`<html><head><title>Monstea - Báo cáo tháng</title>
+    <style>body{font-family:Arial,sans-serif;padding:20px;background:#1a1520;color:#f0ece4;}
+    table{width:100%;border-collapse:collapse;}th,td{padding:6px;border:1px solid rgba(255,255,255,0.1);font-size:12px;}
+    @media print{body{background:white;color:black;}}</style></head>
+    <body><h2>📊 Monstea — Báo cáo tháng</h2>${sec.querySelector('.card').innerHTML}</body></html>`);
+    w.document.close();w.print();
+}
+
+// ═══════════════════════════════════════
+// SMART RESTOCK (#13)
+// ═══════════════════════════════════════
+function copyNeedToBuyList(){
+    const items=state.ingredients.map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
+    if(!items.length){toast('✅ Kho đầy đủ!');return;}
+    const text=items.map(i=>{
+        const emoji=i.s.status==='danger'?'🔴':'🟡';
+        const daysText=i.s.daysLeft<999?`≈${i.s.daysLeft} ngày`:'';
+        const targetDays=7;
+        const need=Math.max(0,Math.ceil(i.s.avgDaily*targetDays-i.s.stock));
+        const packs=i.sln>1?Math.ceil(need/i.sln):need;
+        const packText=i.sln>1?` (${packs} gói×${i.sln})`:` ${need} ${i.unit}`;
+        return `${emoji} ${i.name}: còn ${i.s.stock} ${i.unit} ${daysText}\n   → Nhập${packText}`;
+    }).join('\n');
+    navigator.clipboard.writeText(text).then(()=>toast('📋 Đã copy danh sách cần mua!')).catch(()=>toast('❌ Không copy được'));
 }
 
 // ═══════════════════════════════════════

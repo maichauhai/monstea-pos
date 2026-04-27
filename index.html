@@ -365,6 +365,15 @@
             <div class="order-footer">
                 <div class="order-note"><input type="text" id="orderNote" placeholder="Ghi chú (ít đường, nhiều đá...)"></div>
                 <div class="order-total"><span class="label">TỔNG CỘNG</span><span class="amount" id="orderTotal">0đ</span></div>
+                <div id="discountRow" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span style="font-size:0.78rem;color:var(--accent-purple);white-space:nowrap;">🎁 Giảm giá (x1000):</span>
+                    <input type="number" id="discountInput" placeholder="VD: 25 = 25k" style="flex:1;padding:7px 12px;font-size:0.85rem;border-color:rgba(192,132,252,0.3);" oninput="applyDiscount()">
+                    <span id="discountDisplay" style="font-family:var(--font-display);font-weight:700;font-size:0.88rem;min-width:80px;text-align:right;color:var(--accent-purple);"></span>
+                </div>
+                <div id="finalTotalRow" style="display:none;align-items:center;justify-content:space-between;margin-bottom:10px;padding:8px 12px;background:rgba(74,222,128,0.06);border:1px solid rgba(74,222,128,0.15);border-radius:var(--radius-sm);">
+                    <span style="font-size:0.82rem;color:var(--accent-green);font-weight:600;">THÀNH TIỀN</span>
+                    <span id="finalTotal" style="font-family:var(--font-display);font-weight:800;font-size:1.3rem;color:var(--accent-green);">0đ</span>
+                </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
                     <span style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">💵 Khách đưa (x1000):</span>
                     <input type="number" id="cashGiven" placeholder="VD: 50 = 50k" style="flex:1;padding:8px 12px;font-size:0.88rem;" oninput="calcChange()">
@@ -650,6 +659,8 @@
         <button class="btn btn-sm" onclick="payOrder('staff')" style="background:rgba(192,132,252,0.15);color:var(--accent-purple);border:1px solid rgba(192,132,252,0.3);font-size:0.72rem;">🏠</button>
     </div>
     <div class="mob-cash-row" id="mobCashRow">
+        <span style="font-size:0.72rem;color:var(--accent-purple);white-space:nowrap;">🎁Giảm:</span>
+        <input type="number" id="mobDiscountInput" placeholder="25=25k" style="max-width:70px;" oninput="document.getElementById('discountInput').value=this.value;applyDiscount()">
         <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">💵x1000:</span>
         <input type="number" id="mobCashGiven" placeholder="50=50k" oninput="document.getElementById('cashGiven').value=this.value;calcChange()">
         <span class="mob-change" id="mobChangeResult"></span>
@@ -1101,7 +1112,7 @@ function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
 function changeQty(idx,d){const i=state.currentOrder[idx];if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
 function removeFromOrder(idx){state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
 function removeTopping(orderIdx,tIdx){state.currentOrder[orderIdx].toppings.splice(tIdx,1);renderOrder();renderPOSMenu();}
-function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
+function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
 function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
 if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';updateMobileBar();return;}
 const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0);
@@ -1113,7 +1124,25 @@ c.innerHTML=state.currentOrder.map((o,idx)=>{
 }).join('');
 t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();updateMobileBar();}
 
-function calcChange(){const total=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
+function getDiscountAmount(){
+const raw=parseInt(document.getElementById('discountInput')?.value)||0;
+return raw*1000;
+}
+function applyDiscount(){
+const discount=getDiscountAmount();
+const dd=document.getElementById('discountDisplay'),fr=document.getElementById('finalTotalRow'),ft=document.getElementById('finalTotal');
+const subtotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
+if(discount>0&&subtotal>0){
+const final=Math.max(0,subtotal-discount);
+dd.textContent='-'+fmtP(discount);
+fr.style.display='flex';ft.textContent=fmtP(final);
+}else{dd.textContent='';fr.style.display='none';}
+calcChange();updateMobileBar();
+}
+
+function calcChange(){const subtotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
+const discount=getDiscountAmount();
+const total=Math.max(0,subtotal-discount);
 const raw=parseInt(document.getElementById('cashGiven').value)||0;
 const given=raw*1000;
 const el=document.getElementById('changeResult');
@@ -1124,24 +1153,26 @@ if(change>=0){const t='Thối: '+fmtP(change);el.textContent=t;el.style.color='v
 else{const t='Thiếu: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
 
 function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
-const rawTotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
+const subtotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
+const discount=getDiscountAmount();
 const isStaff=method==='staff';
-const total=isStaff?0:rawTotal;
-if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?`))return;
-if(isStaff&&!confirm(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(rawTotal)})? Giá sẽ = 0đ`))return;
+const total=isStaff?0:Math.max(0,subtotal-discount);
+if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?${discount>0?' (giảm '+fmtP(discount)+')':''}`))return;
+if(isStaff&&!confirm(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(subtotal)})? Giá sẽ = 0đ`))return;
 const note=document.getElementById('orderNote').value.trim();
 const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.price,qty:o.qty,toppings:(o.toppings||[]).map(t=>({menuId:t.menuId,name:t.name,price:t.price}))}));
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
 if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
 if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
-inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;
+inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;inv.discount=discount>0?discount:undefined;
 toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
 delete state._editingInvoiceId;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
 }else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
-if(isStaff)inv.staffOriginalTotal=rawTotal;
-state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
-playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
+if(discount>0)inv.discount=discount;
+if(isStaff)inv.staffOriginalTotal=subtotal;
+state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${inv.id} — ${fmtP(total)}${discount>0?' (giảm '+fmtP(discount)+')':''}`);}
+playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
 const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
@@ -1153,11 +1184,16 @@ return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoic
 function showInvoiceDetail(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv)return;
 const logs=(state.editLog||[]).filter(l=>l.invoiceId===id);
 const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">📝 Lịch sử (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} — ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Trước: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
+const invSubTotal=inv.items.reduce((s,i)=>{const tp=(i.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(i.price+tp)*i.qty;},0);
+const discLine=inv.discount?`<div style="display:flex;justify-content:space-between;margin-top:6px;padding:6px 0;"><span style="font-size:0.85rem;color:var(--text-muted);">Tạm tính</span><span style="font-size:0.85rem;color:var(--text-muted);">${fmtP(invSubTotal)}</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:0.88rem;color:var(--accent-purple);">🎁 Giảm giá</span><span style="color:var(--accent-purple);font-weight:700;font-size:0.88rem;">-${fmtP(inv.discount)}</span></div>`:'';
 const body=`${inv.cancelled?'<div style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:8px;padding:10px;margin-bottom:12px;color:var(--accent-red);font-weight:600;">🚫 Đã hủy</div>':''}
 <div style="margin-bottom:12px;font-size:0.82rem;color:var(--text-muted);">${inv.date} — ${inv.time}</div>
 <table style="width:100%;border-collapse:collapse;"><tr style="border-bottom:1px solid var(--border-subtle);"><th style="text-align:left;padding:6px;font-size:0.78rem;color:var(--text-muted);">Món</th><th style="text-align:center;padding:6px;font-size:0.78rem;color:var(--text-muted);">SL</th><th style="text-align:right;padding:6px;font-size:0.78rem;color:var(--text-muted);">Thành tiền</th></tr>
 ${inv.items.map(i=>{const tpText=(i.toppings||[]).length?' <span style="color:var(--accent-warm);font-size:0.78rem;">+ '+(i.toppings||[]).map(t=>esc(t.name)).join(' + ')+'</span>':'';const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${inv.cancelled?'text-decoration:line-through;opacity:0.5;':''}"><td style="padding:8px 6px;">${esc(i.name)}${tpText}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;color:var(--accent-warm);">${fmtP((i.price+tpTotal)*i.qty)}</td></tr>`;}).join('')}</table>
-<div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><span style="font-weight:600;">Tổng</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0đ':fmtP(inv.total)}</span></div>
+<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);">
+${discLine}
+<div style="display:flex;justify-content:space-between;${inv.discount?'margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-subtle);':''}"><span style="font-weight:600;">${inv.discount?'THÀNH TIỀN':'Tổng'}</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0đ':fmtP(inv.total)}</span></div>
+</div>
 ${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">📝 ${esc(inv.note)}</div>`:''}
 <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':inv.method==='staff'?'🏠 Nội bộ (NV/Người nhà)':'CK'}</div>
 ${inv.method==='staff'&&inv.staffOriginalTotal?'<div style="margin-top:4px;font-size:0.78rem;color:var(--accent-purple);">💡 Giá gốc: '+fmtP(inv.staffOriginalTotal)+' → Giảm 100%</div>':''}
@@ -2094,7 +2130,7 @@ function esc(s){const d=document.createElement('div');d.textContent=s;return d.i
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.getElementById('toastContainer').appendChild(e);setTimeout(()=>e.remove(),3000);}
 function vibrate(ms){try{navigator.vibrate(ms||30);}catch(e){}}
 function playPaySound(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o1=ctx.createOscillator(),g1=ctx.createGain();o1.connect(g1);g1.connect(ctx.destination);o1.type='sine';o1.frequency.value=800;g1.gain.setValueAtTime(0.3,ctx.currentTime);g1.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o1.start(ctx.currentTime);o1.stop(ctx.currentTime+0.3);const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(ctx.destination);o2.type='sine';o2.frequency.value=1200;g2.gain.setValueAtTime(0.3,ctx.currentTime+0.15);g2.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.5);o2.start(ctx.currentTime+0.15);o2.stop(ctx.currentTime+0.5);}catch(e){}}
-function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');if(!bar)return;const ct=document.getElementById('mobCount'),tt=document.getElementById('mobTotal');const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>s+o.price*o.qty,0);if(tq>0){bar.classList.add('has-items');ct.textContent=tq+' món';tt.textContent=fmtP(ta);}else{bar.classList.remove('has-items');}}
+function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');if(!bar)return;const ct=document.getElementById('mobCount'),tt=document.getElementById('mobTotal');const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);const disc=getDiscountAmount();const final=Math.max(0,ta-disc);if(tq>0){bar.classList.add('has-items');ct.textContent=tq+' món';tt.textContent=fmtP(final);}else{bar.classList.remove('has-items');}}
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('active');}
 function closeModal(){document.getElementById('modal').classList.remove('active');}
 

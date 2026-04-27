@@ -128,12 +128,14 @@
     .inv-row .inv-method { font-size:0.7rem; padding:2px 8px; border-radius:10px; }
     .inv-row .inv-method.cash { background:rgba(74,222,128,0.1); color:var(--accent-green); }
     .inv-row .inv-method.transfer { background:rgba(96,165,250,0.1); color:var(--accent-blue); }
+    .inv-row .inv-method.staff { background:rgba(192,132,252,0.1); color:var(--accent-purple); }
     .inv-row.cancelled { opacity:0.4; }
     .inv-row.cancelled .inv-items { text-decoration:line-through; }
     .inv-row.cancelled .inv-total { text-decoration:line-through; color:var(--accent-red); }
     .inv-row .inv-badge { font-size:0.65rem; padding:2px 6px; border-radius:8px; margin-left:4px; }
     .inv-row .inv-badge.edited { background:rgba(232,166,53,0.15); color:var(--accent); }
     .inv-row .inv-badge.cancelled-badge { background:rgba(255,107,107,0.15); color:var(--accent-red); }
+    .inv-row .inv-badge.staff-badge { background:rgba(192,132,252,0.15); color:var(--accent-purple); }
 
     /* DASHBOARD */
     .chart-container { padding:20px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); margin-bottom:16px; }
@@ -372,6 +374,7 @@
                     <button class="btn btn-secondary btn-sm" onclick="clearOrder()">🗑️ Hủy</button>
                     <button class="btn btn-success btn-sm" onclick="payOrder('cash')">💵 Tiền mặt</button>
                     <button class="btn btn-primary btn-sm" onclick="payOrder('transfer')">📱 CK</button>
+                    <button class="btn btn-sm" onclick="payOrder('staff')" style="background:rgba(192,132,252,0.15);color:var(--accent-purple);border:1px solid rgba(192,132,252,0.3);">🏠 Nội bộ</button>
                 </div>
             </div>
         </div>
@@ -644,6 +647,7 @@
         <button class="btn btn-secondary btn-sm" onclick="clearOrder()">🗑️</button>
         <button class="btn btn-success btn-sm" onclick="payOrder('cash')">💵</button>
         <button class="btn btn-primary btn-sm" onclick="payOrder('transfer')">📱 CK</button>
+        <button class="btn btn-sm" onclick="payOrder('staff')" style="background:rgba(192,132,252,0.15);color:var(--accent-purple);border:1px solid rgba(192,132,252,0.3);font-size:0.72rem;">🏠</button>
     </div>
     <div class="mob-cash-row" id="mobCashRow">
         <span style="font-size:0.72rem;color:var(--text-muted);white-space:nowrap;">💵x1000:</span>
@@ -1009,12 +1013,14 @@ const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang
 el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}`;}
 function checkNewDay(){const td=today();if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;if(state.todayInvoices.length>0){const yk=state.todayInvoices[0]?.date||td;if(yk!==td&&!state.history[yk])archiveDay(yk,state.todayInvoices);}state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);state.nextInvoiceId=state.todayInvoices.length+1;saveState();}}
 
-function archiveDay(dk,invoices){if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0;const hr={};let ac=0;
-invoices.forEach(inv=>{if(inv.cancelled)return;ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
-const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;
-inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);is[i.name].revenue+=(i.price+tpTotal)*i.qty;
+function archiveDay(dk,invoices){if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
+invoices.forEach(inv=>{if(inv.cancelled)return;ac++;
+if(inv.method==='staff'){staffCount++;staffOrigTotal+=(inv.staffOriginalTotal||0);}
+else{tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
+const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;}
+inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;if(inv.method!=='staff'){const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);is[i.name].revenue+=(i.price+tpTotal)*i.qty;}
 (i.toppings||[]).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=i.qty;});});});
-state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,itemsSold:is,hourlyRevenue:hr,grabTotal:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.grabPrice,0),grabNet:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.netAmount,0)};}
+state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,hourlyRevenue:hr,grabTotal:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.grabPrice,0),grabNet:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.netAmount,0)};}
 
 // ═══════════════════════════════════════
 // PASSWORD & TAB SWITCHING
@@ -1118,8 +1124,11 @@ if(change>=0){const t='Thối: '+fmtP(change);el.textContent=t;el.style.color='v
 else{const t='Thiếu: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
 
 function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
-const total=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
-if(window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?`))return;
+const rawTotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
+const isStaff=method==='staff';
+const total=isStaff?0:rawTotal;
+if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?`))return;
+if(isStaff&&!confirm(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(rawTotal)})? Giá sẽ = 0đ`))return;
 const note=document.getElementById('orderNote').value.trim();
 const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.price,qty:o.qty,toppings:(o.toppings||[]).map(t=>({menuId:t.menuId,name:t.name,price:t.price}))}));
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
@@ -1130,15 +1139,16 @@ toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
 delete state._editingInvoiceId;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
 }else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
-state.todayInvoices.push(inv);toast(`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
+if(isStaff)inv.staffOriginalTotal=rawTotal;
+state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${inv.id} — ${fmtP(total)}`);}
 playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
-const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled).reduce((s,i)=>s+i.total,0);
-ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn — ${fmtP(tt)})`;
+const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
+ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn${sc?' ('+sc+' nội bộ)':''} — ${fmtP(tt)})`;
 if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có hóa đơn</div>';return;}
 c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
-return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
+return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
 function showInvoiceDetail(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv)return;
 const logs=(state.editLog||[]).filter(l=>l.invoiceId===id);
@@ -1149,7 +1159,8 @@ const body=`${inv.cancelled?'<div style="background:rgba(255,107,107,0.1);border
 ${inv.items.map(i=>{const tpText=(i.toppings||[]).length?' <span style="color:var(--accent-warm);font-size:0.78rem;">+ '+(i.toppings||[]).map(t=>esc(t.name)).join(' + ')+'</span>':'';const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${inv.cancelled?'text-decoration:line-through;opacity:0.5;':''}"><td style="padding:8px 6px;">${esc(i.name)}${tpText}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;color:var(--accent-warm);">${fmtP((i.price+tpTotal)*i.qty)}</td></tr>`;}).join('')}</table>
 <div style="display:flex;justify-content:space-between;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);"><span style="font-weight:600;">Tổng</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0đ':fmtP(inv.total)}</span></div>
 ${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">📝 ${esc(inv.note)}</div>`:''}
-<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':'CK'}</div>
+<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':inv.method==='staff'?'🏠 Nội bộ (NV/Người nhà)':'CK'}</div>
+${inv.method==='staff'&&inv.staffOriginalTotal?'<div style="margin-top:4px;font-size:0.78rem;color:var(--accent-purple);">💡 Giá gốc: '+fmtP(inv.staffOriginalTotal)+' → Giảm 100%</div>':''}
 ${logS}
 ${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
 openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}

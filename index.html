@@ -652,8 +652,15 @@
                 <div class="add-form"><input type="text" id="newCloseCl" placeholder="Thêm mục đóng quán"><button class="btn btn-primary btn-sm" onclick="addChecklistItem('close')">➕</button></div>
             </div>
             <div class="card"><div class="card-title">🔑 Đổi mật khẩu</div>
-                <div class="add-form"><input type="password" id="newPwd" placeholder="Mật khẩu mới"><button class="btn btn-primary btn-sm" onclick="changePassword()">Đổi</button></div>
-                <p style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;">Mặc định: 1234</p>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px;">👑 Mật khẩu chủ quán (login)</label>
+                    <div class="add-form"><input type="text" id="ownerPwdInput" placeholder="Pass chủ quán" style="flex:2;"><button class="btn btn-primary btn-sm" onclick="changeOwnerPassword()">Đổi</button></div>
+                </div>
+                <div>
+                    <label style="font-size:0.75rem;color:var(--text-muted);display:block;margin-bottom:4px;">🔒 Mật khẩu mở khóa tab (Cài đặt/Kho/Công thức)</label>
+                    <div class="add-form"><input type="password" id="newPwd" placeholder="Mật khẩu mới"><button class="btn btn-primary btn-sm" onclick="changePassword()">Đổi</button></div>
+                    <p style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;">Mặc định: 1234</p>
+                </div>
             </div>
             <div class="card"><div class="card-title">💾 Backup & Khôi phục</div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -871,6 +878,7 @@ let state = {
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
     nextPurchaseId:1, nextExpenseId:1,
     shopName:'Monstea', password:'1234',
+    ownerPassword:'T123123t',
     weekSchedule:{}
 };
 
@@ -948,6 +956,7 @@ if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
 if(!state.weekSchedule)state.weekSchedule={};
+if(!state.ownerPassword)state.ownerPassword='T123123t';
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -979,8 +988,7 @@ if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
 // LOGIN & ROLE
 // ═══════════════════════════════════════
 function attemptLogin(){const p=document.getElementById('loginPwd').value;
-const ownerEntry=APP_PASSWORDS[p];
-if(ownerEntry){currentRole=ownerEntry.role;currentStaffId=null;currentStaffName=ownerEntry.name;
+if(p===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chủ quán';
 sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
 applyRole();initFirebase();return;}
 const staffMatch=state.staff.find(s=>s.password===p);
@@ -1103,7 +1111,17 @@ function unlockTab(tab){
 function changePassword(){
     const np=document.getElementById('newPwd').value.trim();
     if(!np||np.length<4){toast('⚠️ Mật khẩu tối thiểu 4 ký tự');return;}
-    state.password=np;saveState();document.getElementById('newPwd').value='';toast('✅ Đã đổi mật khẩu');
+    state.password=np;saveState();document.getElementById('newPwd').value='';toast('✅ Đã đổi mật khẩu tab');
+}
+function changeOwnerPassword(){
+    const np=document.getElementById('ownerPwdInput').value.trim();
+    if(!np||np.length<4){toast('⚠️ Mật khẩu tối thiểu 4 ký tự');return;}
+    const dup=state.staff.find(s=>s.password===np);
+    if(dup){toast(`⚠️ Trùng pass NV "${dup.name}"`);return;}
+    state.ownerPassword=np;saveState();
+    sessionStorage.setItem('monsteaPwd',np);
+    document.getElementById('ownerPwdInput').value='';
+    toast('✅ Đã đổi mật khẩu chủ quán');
 }
 
 // ═══════════════════════════════════════
@@ -2262,8 +2280,7 @@ document.addEventListener('keydown',e=>{if(!document.getElementById('tab-pos').c
 // Auto-login from session
 const _sp=sessionStorage.getItem('monsteaPwd');
 if(_sp){
-const ownerEntry=APP_PASSWORDS[_sp];
-if(ownerEntry){currentRole=ownerEntry.role;currentStaffId=null;currentStaffName=ownerEntry.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
+if(_sp===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chủ quán';document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
 else{const sm=state.staff.find(s=>s.password===_sp);if(sm){currentRole='staff';currentStaffId=sm.id;currentStaffName=sm.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}}
 }else{document.getElementById('loginPwd').focus();}
 </script>

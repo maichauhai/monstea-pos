@@ -890,7 +890,8 @@ let state = {
     shopName:'Monstea', password:'1234',
     ownerPassword:'T123123t',
     weekSchedule:{},
-    menuGuides:{}
+    menuGuides:{},
+    guideImages:{}
 };
 
 let posCategory='Tất cả', dashFilter='today';
@@ -969,6 +970,7 @@ state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.w
 if(!state.weekSchedule)state.weekSchedule={};
 if(!state.ownerPassword)state.ownerPassword='T123123t';
 if(!state.menuGuides)state.menuGuides={};
+if(!state.guideImages)state.guideImages={};
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -2226,7 +2228,7 @@ function renderGuide(){
     const g=document.getElementById('guideMenuGrid');
     const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory));
     g.innerHTML=items.map(m=>{
-        const hasGuide=state.menuGuides&&state.menuGuides[m.id];
+        const hasGuide=(state.menuGuides&&state.menuGuides[m.id])||((state.guideImages&&state.guideImages[m.id]&&state.guideImages[m.id].length));
         const vis=getMenuVisual(m);
         return `<div class="menu-item-btn" style="position:relative;${hasGuide?'border-color:rgba(74,222,128,0.4);':''}" onclick="showGuide(${m.id})">
         ${hasGuide?'<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;">✅</span>':''}
@@ -2238,15 +2240,61 @@ function setGuideCategory(c){guideCategory=c;renderGuide();}
 function showGuide(id){
     const m=state.menu.find(x=>x.id===id);if(!m)return;
     const guide=(state.menuGuides&&state.menuGuides[id])||'';
+    const imgs=(state.guideImages&&state.guideImages[id])||[];
     const isOwner=currentRole==='owner';
+    const imgGallery=imgs.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;">${imgs.map((src,i)=>`<div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border-subtle);">
+    <img src="${src}" style="width:120px;height:120px;object-fit:cover;display:block;cursor:pointer;" onclick="window.open(this.src,'_blank')">
+    ${isOwner?`<button onclick="removeGuideImage(${id},${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#ff6b6b;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center;">✕</button>`:''}
+    </div>`).join('')}</div>`:'';
     const body=`<div style="display:flex;flex-direction:column;gap:12px;">
     <div><div style="font-weight:700;font-size:1rem;">${esc(m.name)}</div>
     <div style="font-size:0.82rem;color:var(--accent-warm);">${fmtP(m.price)} — ${esc(m.category)}</div></div>
-    ${isOwner?`<textarea id="guideText" rows="12" style="width:100%;padding:10px;font-size:0.85rem;line-height:1.6;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);resize:vertical;" placeholder="Nhập hướng dẫn pha chế...&#10;&#10;VD:&#10;1. Cho 30ml siro vào ly&#10;2. Thêm trà nền 200ml&#10;3. Thêm đá...">${esc(guide)}</textarea>
+    ${isOwner?`<textarea id="guideText" rows="8" style="width:100%;padding:10px;font-size:0.85rem;line-height:1.6;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);resize:vertical;" placeholder="Nhập hướng dẫn pha chế...">${esc(guide)}</textarea>
+    ${imgGallery}
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+    <label class="btn btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
+    📷 Thêm ảnh <input type="file" accept="image/*" capture="environment" multiple style="display:none;" onchange="addGuideImage(${m.id},this.files)">
+    </label>
+    <span style="font-size:0.7rem;color:var(--text-muted);">${imgs.length}/5 ảnh</span>
+    </div>
     <button class="btn btn-primary" onclick="saveGuide(${m.id})">💾 Lưu hướng dẫn</button>`
-    :`<div style="padding:16px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border-subtle);white-space:pre-wrap;line-height:1.7;font-size:0.88rem;min-height:100px;">${guide?esc(guide):'<span style="color:var(--text-muted);font-style:italic;">Chưa có hướng dẫn cho món này</span>'}</div>`}
+    :`${imgGallery}
+    <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border-subtle);white-space:pre-wrap;line-height:1.7;font-size:0.88rem;min-height:60px;">${guide?esc(guide):'<span style="color:var(--text-muted);font-style:italic;">Chưa có hướng dẫn</span>'}</div>`}
     </div>`;
     openModal(`📖 ${m.name}`,body);
+}
+function compressImage(file,maxW,quality){return new Promise((resolve,reject)=>{
+    const reader=new FileReader();reader.onerror=reject;
+    reader.onload=e=>{
+        const img=new Image();img.onerror=reject;
+        img.onload=()=>{
+            const ratio=Math.min(maxW/img.width,maxW/img.height,1);
+            const w=Math.round(img.width*ratio),h=Math.round(img.height*ratio);
+            const c=document.createElement('canvas');c.width=w;c.height=h;
+            c.getContext('2d').drawImage(img,0,0,w,h);
+            resolve(c.toDataURL('image/jpeg',quality));
+        };img.src=e.target.result;
+    };reader.readAsDataURL(file);
+});}
+function addGuideImage(id,files){
+    if(!state.guideImages)state.guideImages={};
+    if(!state.guideImages[id])state.guideImages[id]=[];
+    const current=state.guideImages[id];
+    if(current.length>=5){toast('⚠️ Tối đa 5 ảnh');return;}
+    const remaining=5-current.length;
+    const toProcess=Array.from(files).slice(0,remaining);
+    toast(`📷 Đang nén ${toProcess.length} ảnh...`);
+    Promise.all(toProcess.map(f=>compressImage(f,600,0.5))).then(results=>{
+        state.guideImages[id].push(...results);
+        saveState();showGuide(id);renderGuide();
+        toast(`✅ Đã thêm ${results.length} ảnh`);
+    }).catch(()=>toast('❌ Lỗi xử lý ảnh'));
+}
+function removeGuideImage(id,idx){
+    if(!confirm('Xóa ảnh này?'))return;
+    state.guideImages[id].splice(idx,1);
+    saveState();showGuide(id);renderGuide();
+    toast('🗑️ Đã xóa ảnh');
 }
 function saveGuide(id){
     const txt=document.getElementById('guideText').value;

@@ -354,6 +354,7 @@
     <button class="tab-btn" data-tab="chitieu" onclick="switchTab('chitieu')">💸 Chi Tiêu</button>
     <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory')">📦 Kho NL<span class="lock-icon">🔒</span></button>
     <button class="tab-btn" data-tab="recipes" onclick="switchTab('recipes')">📋 Công Thức<span class="lock-icon">🔒</span></button>
+    <button class="tab-btn" data-tab="guide" onclick="switchTab('guide')">📖 Hướng Dẫn</button>
     <button class="tab-btn" data-tab="settings" onclick="switchTab('settings')">⚙️ Cài Đặt<span class="lock-icon">🔒</span></button>
 </div>
 
@@ -674,6 +675,15 @@
     </div>
 </div>
 
+<!-- TAB GUIDE -->
+<div class="tab-content" id="tab-guide">
+    <div style="margin-bottom:14px;">
+        <div style="font-size:1.1rem;font-weight:700;margin-bottom:10px;">📖 Hướng dẫn pha chế</div>
+        <div class="pos-categories" id="guideCatTabs"></div>
+    </div>
+    <div class="menu-grid" id="guideMenuGrid"></div>
+</div>
+
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()"><div class="modal"><h3 id="modalTitle">Chi tiết</h3><div id="modalBody"></div><div style="text-align:right;margin-top:16px;"><button class="btn btn-secondary btn-sm" onclick="closeModal()">Đóng</button></div></div></div>
 <div class="toast-container" id="toastContainer"></div>
 <div class="mobile-order-bar" id="mobileOrderBar">
@@ -879,7 +889,8 @@ let state = {
     nextPurchaseId:1, nextExpenseId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'T123123t',
-    weekSchedule:{}
+    weekSchedule:{},
+    menuGuides:{}
 };
 
 let posCategory='Tất cả', dashFilter='today';
@@ -957,6 +968,7 @@ if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
 if(!state.weekSchedule)state.weekSchedule={};
 if(!state.ownerPassword)state.ownerPassword='T123123t';
+if(!state.menuGuides)state.menuGuides={};
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -998,7 +1010,7 @@ applyRole();initFirebase();return;}
 document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';}
 
 function applyRole(){
-document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist','chitieu'].includes(t))?'none':'';});
+document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist','chitieu','guide'].includes(t))?'none':'';});
 const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
 if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':`👤 ${currentStaffName}`;
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
@@ -1074,7 +1086,7 @@ state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,sta
 // PASSWORD & TAB SWITCHING
 // ═══════════════════════════════════════
 function switchTab(tab){
-    if(currentRole==='staff'&&!['pos','attendance','checklist','chitieu'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
+    if(currentRole==='staff'&&!['pos','attendance','checklist','chitieu','guide'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
     if(lockedTabs.includes(tab)&&!unlockedTabs[tab]){
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -1092,6 +1104,7 @@ function switchTab(tab){
     if(tab==='inventory')renderInventory();
     if(tab==='chitieu')renderExpenseTab();
     if(tab==='recipes')renderRecipes();
+    if(tab==='guide')renderGuide();
 }
 
 function unlockTab(tab){
@@ -2202,6 +2215,49 @@ function playPaySound(){try{const ctx=new(window.AudioContext||window.webkitAudi
 function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');if(!bar)return;const ct=document.getElementById('mobCount'),tt=document.getElementById('mobTotal');const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);const disc=getDiscountAmount();const final=Math.max(0,ta-disc);if(tq>0){bar.classList.add('has-items');ct.textContent=tq+' món';tt.textContent=fmtP(final);}else{bar.classList.remove('has-items');}}
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('active');}
 function closeModal(){document.getElementById('modal').classList.remove('active');}
+
+// ═══════════════════════════════════════
+// GUIDE (Hướng dẫn pha chế)
+// ═══════════════════════════════════════
+let guideCategory='Tất cả';
+function renderGuide(){
+    const ct=document.getElementById('guideCatTabs');if(!ct)return;
+    ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===guideCategory?'active':''}" onclick="setGuideCategory('${c}')">${c}</button>`).join('');
+    const g=document.getElementById('guideMenuGrid');
+    const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory));
+    g.innerHTML=items.map(m=>{
+        const hasGuide=state.menuGuides&&state.menuGuides[m.id];
+        const vis=getMenuVisual(m);
+        return `<div class="menu-item-btn" style="position:relative;${hasGuide?'border-color:rgba(74,222,128,0.4);':''}" onclick="showGuide(${m.id})">
+        ${hasGuide?'<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;">✅</span>':''}
+        ${vis}<div class="mi-name">${esc(m.name)}</div>
+        <div style="font-size:0.65rem;color:${hasGuide?'var(--accent-green)':'var(--text-muted)'};">${hasGuide?'Đã có HD':'Chưa có'}</div></div>`;
+    }).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+}
+function setGuideCategory(c){guideCategory=c;renderGuide();}
+function showGuide(id){
+    const m=state.menu.find(x=>x.id===id);if(!m)return;
+    const guide=(state.menuGuides&&state.menuGuides[id])||'';
+    const isOwner=currentRole==='owner';
+    const body=`<div style="display:flex;flex-direction:column;gap:12px;">
+    <div style="display:flex;align-items:center;gap:10px;">
+        ${getMenuVisual(m)?`<div>${getMenuVisual(m)}</div>`:''}
+        <div><div style="font-weight:700;font-size:1rem;">${esc(m.name)}</div>
+        <div style="font-size:0.82rem;color:var(--accent-warm);">${fmtP(m.price)} — ${esc(m.category)}</div></div>
+    </div>
+    ${isOwner?`<textarea id="guideText" rows="12" style="width:100%;padding:10px;font-size:0.85rem;line-height:1.6;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);resize:vertical;" placeholder="Nhập hướng dẫn pha chế...&#10;&#10;VD:&#10;1. Cho 30ml siro vào ly&#10;2. Thêm trà nền 200ml&#10;3. Thêm đá...">${esc(guide)}</textarea>
+    <button class="btn btn-primary" onclick="saveGuide(${m.id})">💾 Lưu hướng dẫn</button>`
+    :`<div style="padding:16px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border-subtle);white-space:pre-wrap;line-height:1.7;font-size:0.88rem;min-height:100px;">${guide?esc(guide):'<span style="color:var(--text-muted);font-style:italic;">Chưa có hướng dẫn cho món này</span>'}</div>`}
+    </div>`;
+    openModal(`📖 ${m.name}`,body);
+}
+function saveGuide(id){
+    const txt=document.getElementById('guideText').value;
+    if(!state.menuGuides)state.menuGuides={};
+    state.menuGuides[id]=txt;
+    saveState();renderGuide();closeModal();
+    toast('✅ Đã lưu hướng dẫn');
+}
 
 // ═══════════════════════════════════════
 // HELP ALERT (cross-device via Firebase)

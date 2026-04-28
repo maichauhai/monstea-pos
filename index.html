@@ -84,10 +84,17 @@
 
     /* POS */
     .pos-layout { display:grid; grid-template-columns:1fr 380px; gap:16px; min-height:70vh; }
-    .pos-categories { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
-    .cat-btn { padding:6px 14px; font-size:0.78rem; font-family:var(--font-body); font-weight:600; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); border-radius:20px; color:var(--text-muted); cursor:pointer; transition:var(--transition); }
+    .pos-categories { display:flex; gap:6px; margin-bottom:12px; flex-wrap:nowrap; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .pos-categories::-webkit-scrollbar { display:none; }
+    .cat-btn { padding:6px 14px; font-size:0.78rem; font-family:var(--font-body); font-weight:600; background:rgba(255,255,255,0.04); border:1px solid var(--border-subtle); border-radius:20px; color:var(--text-muted); cursor:pointer; transition:var(--transition); scroll-snap-align:start; flex-shrink:0; }
     .cat-btn:hover { color:var(--text-primary); }
     .cat-btn.active { color:var(--bg-body); background:var(--accent); border-color:var(--accent); }
+    .help-btn { position:fixed; top:16px; right:16px; z-index:900; width:52px; height:52px; border-radius:50%; border:2px solid rgba(255,107,107,0.4); background:rgba(255,107,107,0.1); color:var(--accent-red); font-size:1.3rem; cursor:pointer; transition:var(--transition); display:flex; align-items:center; justify-content:center; }
+    .help-btn:hover { background:rgba(255,107,107,0.25); transform:scale(1.1); }
+    .help-btn.ringing { animation:helpRing .4s ease 2; }
+    @keyframes helpRing { 0%,100%{transform:rotate(0)} 25%{transform:rotate(15deg)} 75%{transform:rotate(-15deg)} }
+    .staff-card.locked { opacity:0.5; pointer-events:none; position:relative; }
+    .staff-card.locked::after { content:'🔒'; position:absolute; top:6px; right:8px; font-size:0.7rem; }
     .menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
     .menu-item-btn { padding:10px 8px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); cursor:pointer; transition:var(--transition); text-align:center; min-height:80px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:2px; }
     .menu-item-btn:hover { border-color:var(--accent); background:var(--bg-card-hover); transform:translateY(-2px); }
@@ -337,6 +344,7 @@
     <div class="sync-status" id="syncStatus"><span class="sync-dot offline"></span>Chưa kết nối</div>
     <div class="role-bar" id="roleBar" style="display:none;"><span class="role-badge" id="roleBadge"></span><button class="logout-btn" onclick="logout()">Đăng xuất</button></div>
 </div>
+<button class="help-btn" id="helpBtn" onclick="sendHelpAlert()" title="Gọi hỗ trợ" style="display:none;">🔔</button>
 
 <div class="tab-nav">
     <button class="tab-btn active" data-tab="pos" onclick="switchTab('pos')">☕ Bán Hàng</button>
@@ -473,6 +481,17 @@
         <table class="att-table"><thead><tr><th>Tên</th><th>Vào ca</th><th>Ra ca</th><th>Số giờ</th></tr></thead><tbody id="attBody"></tbody></table>
     </div>
     <button class="btn btn-secondary btn-sm" onclick="exportAttCSV()" style="margin-top:12px;">📋 Export CSV chấm công</button>
+    <div class="card" style="margin-top:14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+            <div class="card-title" style="margin-bottom:0;">📅 Đăng ký lịch làm</div>
+            <div style="display:flex;gap:6px;">
+                <button class="btn btn-secondary btn-sm" onclick="shiftScheduleWeek(-1)" style="font-size:0.7rem;">◀</button>
+                <span id="scheduleWeekLabel" style="font-size:0.75rem;color:var(--text-muted);align-self:center;"></span>
+                <button class="btn btn-secondary btn-sm" onclick="shiftScheduleWeek(1)" style="font-size:0.7rem;">▶</button>
+            </div>
+        </div>
+        <div id="weekScheduleGrid"></div>
+    </div>
     <div id="attHistoryCard" style="display:none;margin-top:14px;">
         <div class="card">
             <div class="card-title">📅 Lịch sử & Lương</div>
@@ -680,12 +699,15 @@ const FIREBASE_CONFIG = {
     messagingSenderId: "742890598182",
     appId: "1:742890598182:web:ce67a7db065fe94b845be7"
 };
-const APP_PASSWORDS = {'T123123t':'owner','257234':'staff'};
+const APP_PASSWORDS = {'T123123t':{role:'owner',name:'Chủ quán'}};
 let currentRole = null;
+let currentStaffId = null;
+let currentStaffName = '';
 let firebaseDb = null;
 let syncTimeout = null;
 let isRemoteUpdate = false;
 let firebaseReady = false;
+let lastHelpTs = 0;
 
 // ═══════════════════════════════════════
 // DEFAULT DATA
@@ -832,7 +854,7 @@ const DEFAULT_MENU = [
     {id:12,name:'Tré trộn',price:20000,category:'Ăn vặt',active:true},
 ];
 
-const DEFAULT_STAFF = [{id:1,name:'Nhân viên 1'},{id:2,name:'Nhân viên 2'},{id:3,name:'Nhân viên 3'},{id:4,name:'Nhân viên 4'}];
+const DEFAULT_STAFF = [{id:1,name:'Đăng',password:'1000',wageRate:25000},{id:2,name:'Lệ',password:'2000',wageRate:25000},{id:3,name:'Phương',password:'3000',wageRate:25000},{id:4,name:'Trình',password:'4000',wageRate:25000}];
 
 const DEFAULT_OPEN_CL = ['Mở cửa, bật đèn, bật quạt/máy lạnh','Kiểm tra nguyên liệu (trà, sữa, đường, topping)','Nấu trân châu / topping mới','Pha sẵn trà nền (trà đen, trà xanh, oolong)','Kiểm tra máy xay, máy pha, tủ lạnh','Lau bàn ghế, sắp xếp gọn gàng','Kiểm tra WiFi, loa nhạc','Đếm tiền quỹ đầu ca'];
 const DEFAULT_CLOSE_CL = ['Đếm tiền và kiểm kê cuối ngày','Rửa bình pha trà, máy xay, dụng cụ','Dọn dẹp bàn ghế, quầy pha chế','Đổ rác, lau sàn','Kiểm tra tồn kho, ghi chú thiếu gì','Tắt thiết bị điện (máy pha, đèn bảng hiệu)','Khóa tủ lạnh, khóa cửa'];
@@ -848,10 +870,12 @@ let state = {
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
     nextPurchaseId:1, nextExpenseId:1,
-    shopName:'Monstea', password:'1234'
+    shopName:'Monstea', password:'1234',
+    weekSchedule:{}
 };
 
 let posCategory='Tất cả', dashFilter='today';
+let scheduleWeekOffset = 0;
 let grabCurrentItems = []; // temp items for grab order form
 let expenseViewDate = null; // null = today
 const lockedTabs = ['settings','inventory','recipes'];
@@ -921,6 +945,9 @@ function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const 
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!Array.isArray(state.grabOrders))state.grabOrders=[];
 if(!Array.isArray(state.currentOrder))state.currentOrder=[];
+// Migrate staff: add password+wageRate if missing
+state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
+if(!state.weekSchedule)state.weekSchedule={};
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -935,18 +962,11 @@ for(let i=state.menu.length-1;i>=0;i--){
     hadDups=true;
     const orig=state.menu[seenIds[m.id]];
     if(m.name===orig.name){
-      // Same name = true duplicate: update price on original if different, remove this one
       if(m.price!==orig.price)orig.price=m.price;
       state.menu.splice(i,1);
-      // Adjust seenIds indices after splice
       for(const k in seenIds){if(seenIds[k]>i)seenIds[k]--;}
     }else{
-      // Different name = assign new unique ID to this item (the later one)
-      const newId=state.nextMenuId++;
-      const oldId=m.id;
-      m.id=newId;
-      // If old recipe belongs to original item, don't move it
-      // The duplicate item gets no recipe (user can set it via UI)
+      m.id=state.nextMenuId++;
     }
   }else{
     seenIds[m.id]=i;
@@ -954,8 +974,36 @@ for(let i=state.menu.length-1;i>=0;i--){
 }
 if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
 }}catch(e){}}
+
+// ═══════════════════════════════════════
+// LOGIN & ROLE
+// ═══════════════════════════════════════
+function attemptLogin(){const p=document.getElementById('loginPwd').value;
+const ownerEntry=APP_PASSWORDS[p];
+if(ownerEntry){currentRole=ownerEntry.role;currentStaffId=null;currentStaffName=ownerEntry.name;
+sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
+applyRole();initFirebase();return;}
+const staffMatch=state.staff.find(s=>s.password===p);
+if(staffMatch){currentRole='staff';currentStaffId=staffMatch.id;currentStaffName=staffMatch.name;
+sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
+applyRole();initFirebase();return;}
+document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';}
+
+function applyRole(){
+document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist','chitieu'].includes(t))?'none':'';});
+const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
+if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':`👤 ${currentStaffName}`;
+badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
+badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}
+const ahc=document.getElementById('attHistoryCard');if(ahc){ahc.style.display=currentRole==='owner'?'block':'none';if(currentRole==='owner')renderAttHistory();}
+const hb=document.getElementById('helpBtn');if(hb)hb.style.display='flex';}
+
+function logout(){currentRole=null;currentStaffId=null;currentStaffName='';firebaseDb=null;firebaseReady=false;sessionStorage.removeItem('monsteaPwd');try{firebase.app().delete();}catch(e){}
+document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
+document.getElementById('roleBar').style.display='none';document.getElementById('helpBtn').style.display='none';
+document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
 function init(){loadState();checkNewDay();renderAll();startClock();if(currentRole)applyRole();}
-function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();}
+function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();renderWeekSchedule();}
 
 // ═══════════════════════════════════════
 // LOGIN & ROLE
@@ -1000,7 +1048,7 @@ if(firstLoad){
   if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
   localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
-  firebaseReady=true;init();updateSyncStatus('connected');return;}
+  firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');return;}
 if(!r)return;
 isRemoteUpdate=true;
 // Smart merge: protect critical arrays from being overwritten
@@ -1553,7 +1601,7 @@ function renderAttHistory(){
     const dates=getAttDates(attViewMode);
     const RATE=25000,OT_START=22*60,OT_MULT=1.3;
     const staffTotals={};
-    state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0});
+    state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,wageRate:s.wageRate||25000});
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">Ngày</th>`;
@@ -1585,7 +1633,7 @@ function renderAttHistory(){
     <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">NV</th><th>Ngày</th><th>Tổng giờ</th><th>Thường</th><th>OT</th><th style="text-align:right;">Lương</th></tr></thead><tbody>
-    ${state.staff.map(s=>{const t=staffTotals[s.id];const salary=Math.round(t.normalH*RATE+t.otH*RATE*OT_MULT);
+    ${state.staff.map(s=>{const t=staffTotals[s.id];const rate=t.wageRate||25000;const salary=Math.round(t.normalH*rate+t.otH*rate*OT_MULT);
     return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
     <td style="padding:4px;font-weight:600;">${esc(t.name)}</td>
     <td style="padding:4px;text-align:center;">${t.days}</td>
@@ -1594,7 +1642,7 @@ function renderAttHistory(){
     <td style="padding:4px;text-align:center;color:${t.otH?'var(--accent-warm)':'var(--text-muted)'};">${Math.round(t.otH*10)/10}h</td>
     <td style="padding:4px;text-align:right;font-weight:700;color:var(--accent);">${fmtP(salary)}</td></tr>`;}).join('')}
     <tr style="border-top:2px solid var(--border-subtle);"><td colspan="5" style="padding:4px;font-weight:700;">TỔNG</td>
-    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];return s+Math.round(t.normalH*RATE+t.otH*RATE*OT_MULT);},0))}</td></tr>
+    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];const rate=t.wageRate||25000;return s+Math.round(t.normalH*rate+t.otH*rate*OT_MULT);},0))}</td></tr>
     </tbody></table>`;
 }
 
@@ -1900,12 +1948,14 @@ function exportIngredientsUsed(){
 function startClock(){function u(){const n=new Date(),e=document.getElementById('liveClock'),d=document.getElementById('liveDate');if(e)e.textContent=n.toLocaleTimeString('vi-VN');if(d)d.textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}u();setInterval(u,1000);}
 function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>x.staffId===id);if(!r)return 'out';return r.checkOut?'done':'in';}
 function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>x.staffId===id)||null;}
-function toggleAttendance(id){const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=state.staff.find(x=>x.id===id);
+function toggleAttendance(id){if(currentRole==='staff'&&currentStaffId!==id){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
+const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=state.staff.find(x=>x.id===id);
 if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null});toast(`✅ ${s.name} — Vào ca`);}
 else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
 else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
 function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
-return `<div class="staff-card status-${st}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
+const isLocked=currentRole==='staff'&&currentStaffId!==s.id;
+return `<div class="staff-card status-${st}${isLocked?' locked':''}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
 const td=today(),recs=state.attendance[td]||[];
 const isOwner=currentRole==='owner';
 document.getElementById('attBody').innerHTML=recs.length?recs.map((r,idx)=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'—'}</td>${isOwner?`<td style="text-align:center"><button onclick="editAttendance(${idx})" style="background:none;border:none;cursor:pointer;font-size:0.72rem;" title="Sửa giờ">✏️</button></td>`:''}</tr>`).join(''):'<tr><td colspan="'+(isOwner?5:4)+'" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';
@@ -1953,7 +2003,7 @@ function renderSettings(){
 <span class="si-name">${esc(m.name)}</span><span class="si-price">${fmtP(m.price)}</span>
 <div class="si-actions"><button onclick="editMenuItem(${m.id})" title="Sửa món">✏️</button><button onclick="toggleMenuItem(${m.id})" title="${m.active?'Ẩn':'Hiện'}">${m.active?'👁️':'🚫'}</button><button onclick="deleteMenuItem(${m.id})" title="Xóa">🗑️</button></div></div>`).join('');
     document.getElementById('newMenuCat').innerHTML=state.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
-    document.getElementById('staffList').innerHTML=state.staff.map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><div class="si-actions"><button onclick="deleteStaff(${s.id})">🗑️</button></div></div>`).join('');
+    document.getElementById('staffList').innerHTML=state.staff.map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><span style="font-size:0.7rem;color:var(--accent);margin-left:auto;margin-right:8px;">💰${fmtP(s.wageRate||25000)}/h</span><span style="font-size:0.65rem;color:var(--text-muted);margin-right:8px;">🔑****</span><div class="si-actions"><button onclick="editStaff(${s.id})" title="Sửa">✏️</button><button onclick="deleteStaff(${s.id})">🗑️</button></div></div>`).join('');
     ['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist;
     document.getElementById(t+'ClSettings').innerHTML=l.map(c=>`<div class="setting-item"><span class="si-name">${esc(c.text)}</span><div class="si-actions"><button onclick="deleteChecklistItem('${t}',${c.id})">🗑️</button></div></div>`).join('');});
 }
@@ -1981,7 +2031,27 @@ function addMenuItem(){const n=document.getElementById('newMenuName').value.trim
 function addCategory(){const n=document.getElementById('newCatName').value.trim();if(!n)return;if(state.categories.includes(n)){toast('⚠️ Đã tồn tại');return;}state.categories.push(n);document.getElementById('newCatName').value='';saveState();renderSettings();renderPOSMenu();toast(`✅ Đã thêm "${n}"`);}
 function toggleMenuItem(id){const m=state.menu.find(x=>x.id===id);if(m)m.active=!m.active;saveState();renderSettings();renderPOSMenu();}
 function deleteMenuItem(id){if(!confirm('Xóa món này khỏi menu?'))return;state.menu=state.menu.filter(m=>m.id!==id);saveState();renderSettings();renderPOSMenu();toast('🗑️ Đã xóa');}
-function addStaff(){const n=document.getElementById('newStaffName').value.trim();if(!n)return;state.staff.push({id:state.nextStaffId++,name:n});document.getElementById('newStaffName').value='';saveState();renderSettings();renderAttendance();toast(`✅ Đã thêm "${n}"`);}
+function addStaff(){const n=document.getElementById('newStaffName').value.trim();if(!n)return;const pwd=String(state.nextStaffId)+'000';state.staff.push({id:state.nextStaffId++,name:n,password:pwd,wageRate:25000});document.getElementById('newStaffName').value='';saveState();renderSettings();renderAttendance();toast(`✅ Đã thêm "${n}" (pass: ${pwd})`);}
+function editStaff(id){const s=state.staff.find(x=>x.id===id);if(!s)return;
+const body=`<div style="display:flex;flex-direction:column;gap:12px;">
+<label style="font-size:0.78rem;color:var(--text-muted)">Tên</label>
+<input type="text" id="editStaffName" value="${esc(s.name)}">
+<label style="font-size:0.78rem;color:var(--text-muted)">Mật khẩu</label>
+<input type="text" id="editStaffPwd" value="${esc(s.password||'')}">
+<label style="font-size:0.78rem;color:var(--text-muted)">Lương/giờ (đ)</label>
+<input type="number" id="editStaffWage" value="${s.wageRate||25000}">
+<button class="btn btn-primary" onclick="saveEditStaff(${s.id})">💾 Lưu</button>
+</div>`;openModal(`✏️ Sửa NV: ${s.name}`,body);}
+function saveEditStaff(id){const s=state.staff.find(x=>x.id===id);if(!s)return;
+const n=document.getElementById('editStaffName').value.trim();
+const p=document.getElementById('editStaffPwd').value.trim();
+const w=parseInt(document.getElementById('editStaffWage').value)||25000;
+if(!n||!p){toast('⚠️ Nhập đủ thông tin');return;}
+// Check duplicate password
+const dup=state.staff.find(x=>x.id!==id&&x.password===p);
+if(dup){toast(`⚠️ Pass "${p}" đã dùng cho ${dup.name}`);return;}
+if(APP_PASSWORDS[p]){toast('⚠️ Pass trùng với chủ quán');return;}
+s.name=n;s.password=p;s.wageRate=w;saveState();renderSettings();renderAttendance();closeModal();toast(`✅ Đã cập nhật ${n}`);}
 function deleteStaff(id){state.staff=state.staff.filter(s=>s.id!==id);saveState();renderSettings();renderAttendance();toast('🗑️ Đã xóa');}
 function addChecklistItem(t){const iid=t==='open'?'newOpenCl':'newCloseCl';const txt=document.getElementById(iid).value.trim();if(!txt)return;(t==='open'?state.openChecklist:state.closeChecklist).push({id:state.nextClId++,text:txt,checked:false});document.getElementById(iid).value='';saveState();renderSettings();renderChecklist();toast('✅ Đã thêm');}
 function deleteChecklistItem(t,id){if(t==='open')state.openChecklist=state.openChecklist.filter(c=>c.id!==id);else state.closeChecklist=state.closeChecklist.filter(c=>c.id!==id);saveState();renderSettings();renderChecklist();}
@@ -2134,12 +2204,87 @@ function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');i
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('active');}
 function closeModal(){document.getElementById('modal').classList.remove('active');}
 
+// ═══════════════════════════════════════
+// HELP ALERT (cross-device via Firebase)
+// ═══════════════════════════════════════
+function playHelpSound(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();
+function beep(freq,start,dur){const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.value=freq;g.gain.setValueAtTime(0.5,ctx.currentTime+start);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+start+dur);o.start(ctx.currentTime+start);o.stop(ctx.currentTime+start+dur);}
+beep(880,0,0.3);beep(1100,0.15,0.3);beep(880,0.6,0.3);beep(1100,0.75,0.3);
+const btn=document.getElementById('helpBtn');if(btn){btn.classList.add('ringing');setTimeout(()=>btn.classList.remove('ringing'),1600);}
+}catch(e){}}
+function sendHelpAlert(){const now=Date.now();if(now-lastHelpTs<3000){toast('⏳ Đợi 3 giây');return;}lastHelpTs=now;
+playHelpSound();vibrate(300);toast('🔔 Đang gọi hỗ trợ...');
+if(firebaseReady&&firebaseDb){firebaseDb.ref('helpAlert').set({ts:now,from:currentStaffName||'?'});}}
+function listenHelpAlert(){if(!firebaseDb)return;
+firebaseDb.ref('helpAlert').on('value',snap=>{const v=snap.val();if(!v||!v.ts)return;
+if(v.ts>lastHelpTs&&Date.now()-v.ts<5000){lastHelpTs=v.ts;playHelpSound();vibrate(500);toast(`🔔 ${v.from} cần hỗ trợ!`);}});}
+
+// ═══════════════════════════════════════
+// WEEKLY SCHEDULE
+// ═══════════════════════════════════════
+function getISOWeekKey(offset){const d=new Date();d.setDate(d.getDate()+offset*7);
+const thu=new Date(d);thu.setDate(thu.getDate()-((d.getDay()+6)%7)+3);
+const yr=thu.getFullYear();const wk=Math.ceil(((thu-new Date(yr,0,4))/86400000+new Date(yr,0,4).getDay()+1)/7);
+return `${yr}-W${String(wk).padStart(2,'0')}`;}
+function getWeekDates(offset){const d=new Date();d.setDate(d.getDate()+offset*7);
+const mon=new Date(d);mon.setDate(mon.getDate()-((d.getDay()+6)%7));
+const dates=[];for(let i=0;i<7;i++){const dd=new Date(mon);dd.setDate(mon.getDate()+i);dates.push(dd);}return dates;}
+function shiftScheduleWeek(dir){scheduleWeekOffset+=dir;renderWeekSchedule();}
+function renderWeekSchedule(){const wk=getISOWeekKey(scheduleWeekOffset);
+const dates=getWeekDates(scheduleWeekOffset);
+const dayNames=['T2','T3','T4','T5','T6','T7','CN'];
+const label=document.getElementById('scheduleWeekLabel');
+if(label)label.textContent=`${dates[0].getDate()}/${dates[0].getMonth()+1} — ${dates[6].getDate()}/${dates[6].getMonth()+1}`;
+if(!state.weekSchedule)state.weekSchedule={};
+if(!state.weekSchedule[wk])state.weekSchedule[wk]={};
+const sched=state.weekSchedule[wk];
+const isPast=scheduleWeekOffset<0;
+const grid=document.getElementById('weekScheduleGrid');if(!grid)return;
+let html=`<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
+<thead><tr style="border-bottom:2px solid var(--border-subtle);">
+<th style="padding:4px;text-align:left;">NV</th>`;
+dayNames.forEach((d,i)=>{const isToday=dates[i].toISOString().slice(0,10)===today();
+html+=`<th style="padding:4px;text-align:center;${isToday?'color:var(--accent);font-weight:800;':''}">${d}<br><span style="font-size:0.6rem;font-weight:400;color:var(--text-muted)">${dates[i].getDate()}</span></th>`;});
+html+=`</tr></thead><tbody>`;
+state.staff.forEach(s=>{if(!sched[s.id])sched[s.id]=[false,false,false,false,false,false,false];
+const canEdit=!isPast&&(currentRole==='owner'||currentStaffId===s.id);
+const isMyRow=currentStaffId===s.id;
+html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${isMyRow?'background:rgba(96,165,250,0.06);':''}">
+<td style="padding:6px 4px;font-weight:600;white-space:nowrap;">${esc(s.name)}</td>`;
+for(let i=0;i<7;i++){const checked=sched[s.id][i];
+html+=`<td style="text-align:center;padding:4px;"><div style="width:28px;height:28px;margin:auto;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:${canEdit?'pointer':'default'};
+background:${checked?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.03)'};border:1px solid ${checked?'rgba(74,222,128,0.3)':'var(--border-subtle)'};font-size:0.7rem;"
+onclick="${canEdit?`toggleSchedule(${s.id},${i},'${wk}')`:''}">${checked?'✅':''}</div></td>`;}
+html+=`</tr>`;});
+html+=`</tbody></table>`;
+if(isPast)html+=`<div style="text-align:center;font-size:0.7rem;color:var(--text-muted);margin-top:6px;">📖 Tuần cũ — chỉ xem</div>`;
+grid.innerHTML=html;}
+function toggleSchedule(staffId,dayIdx,wk){if(!state.weekSchedule[wk])state.weekSchedule[wk]={};
+if(!state.weekSchedule[wk][staffId])state.weekSchedule[wk][staffId]=[false,false,false,false,false,false,false];
+state.weekSchedule[wk][staffId][dayIdx]=!state.weekSchedule[wk][staffId][dayIdx];
+saveState();renderWeekSchedule();}
+
+// ═══════════════════════════════════════
+// SWIPE TABS (mobile)
+// ═══════════════════════════════════════
+(function(){const ct=document.getElementById('posCatTabs');if(!ct)return;let sx=0;
+ct.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
+ct.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)<50)return;
+const cats=['Tất cả',...state.categories];const ci=cats.indexOf(posCategory);
+if(dx<0&&ci<cats.length-1)setPosCategory(cats[ci+1]);
+else if(dx>0&&ci>0)setPosCategory(cats[ci-1]);
+const ab=ct.querySelector('.cat-btn.active');if(ab)ab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+},{passive:true});})();
+
 document.addEventListener('keydown',e=>{if(!document.getElementById('tab-pos').classList.contains('active'))return;if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(e.key==='Enter'&&state.currentOrder.length>0){e.preventDefault();payOrder('cash');}if(e.key==='Escape')clearOrder();});
 
 // Auto-login from session
 const _sp=sessionStorage.getItem('monsteaPwd');
-if(_sp&&APP_PASSWORDS[_sp]){currentRole=APP_PASSWORDS[_sp];document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
-else{document.getElementById('loginPwd').focus();}
+if(_sp){
+const ownerEntry=APP_PASSWORDS[_sp];
+if(ownerEntry){currentRole=ownerEntry.role;currentStaffId=null;currentStaffName=ownerEntry.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
+else{const sm=state.staff.find(s=>s.password===_sp);if(sm){currentRole='staff';currentStaffId=sm.id;currentStaffName=sm.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}}
+}else{document.getElementById('loginPwd').focus();}
 </script>
 </body>
 </html>

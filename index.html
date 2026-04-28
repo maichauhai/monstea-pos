@@ -1075,7 +1075,7 @@ const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang
 el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}`;}
 function checkNewDay(){const td=today();if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;if(state.todayInvoices.length>0){const yk=state.todayInvoices[0]?.date||td;if(yk!==td&&!state.history[yk])archiveDay(yk,state.todayInvoices);}state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);state.nextInvoiceId=state.todayInvoices.length+1;saveState();}}
 
-function archiveDay(dk,invoices){if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
+function archiveDay(dk,invoices){invoices=invoices.filter(i=>i.date===dk);if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
 invoices.forEach(inv=>{if(inv.cancelled)return;
 if(inv.method==='staff'){staffCount++;staffOrigTotal+=(inv.staffOriginalTotal||0);}
 else{ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;

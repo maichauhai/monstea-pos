@@ -1005,26 +1005,7 @@ document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('
 function init(){loadState();checkNewDay();renderAll();startClock();if(currentRole)applyRole();}
 function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();renderWeekSchedule();}
 
-// ═══════════════════════════════════════
-// LOGIN & ROLE
-// ═══════════════════════════════════════
-function attemptLogin(){const p=document.getElementById('loginPwd').value;const role=APP_PASSWORDS[p];
-if(!role){document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';return;}
-currentRole=role;sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
-applyRole();initFirebase();}
 
-function applyRole(){
-document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist','chitieu'].includes(t))?'none':'';});
-const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
-if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':'👤 Nhân viên';
-badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
-badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}
-const ahc=document.getElementById('attHistoryCard');if(ahc){ahc.style.display=currentRole==='owner'?'block':'none';if(currentRole==='owner')renderAttHistory();}}
-
-function logout(){currentRole=null;firebaseDb=null;firebaseReady=false;sessionStorage.removeItem('monsteaPwd');try{firebase.app().delete();}catch(e){}
-document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
-document.getElementById('roleBar').style.display='none';
-document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
 
 // ═══════════════════════════════════════
 // FIREBASE SYNC

@@ -867,11 +867,19 @@ function addPurchase(){
     const totalQty=sl*sln,unitPrice=Math.round(cost/totalQty);
     const dt=getExpenseDate();if(!state.purchases)state.purchases={};if(!state.purchases[dt])state.purchases[dt]=[];
     state.purchases[dt].push({id:state.nextPurchaseId++,ingId,name:ing.name,unit:ing.unit,totalCost:cost,qty:sl,sln,totalQty,unitPrice,time:nowTime()});
-    ing.unitPrice=unitPrice;ing.sln=sln;
+    // Tính giá trung bình 3 lần nhập gần nhất cho nguyên liệu này
+    const allPurchases=Object.entries(state.purchases)
+        .sort((a,b)=>a[0]<b[0]?1:-1) // sort ngày mới nhất trước
+        .flatMap(([,ps])=>ps)
+        .filter(p=>p.ingId===ingId && p.unitPrice>0);
+    const last3=allPurchases.slice(0,3);
+    const avgPrice=last3.length>0?Math.round(last3.reduce((s,p)=>s+p.unitPrice,0)/last3.length):unitPrice;
+    ing.unitPrice=avgPrice;ing.sln=sln;
     document.getElementById('purchaseIngSearch').value='';document.getElementById('purchaseIngId').value='';
     document.getElementById('purchaseSLN').value='';document.getElementById('purchaseSL').value='';document.getElementById('purchaseCost').value='';
     document.getElementById('purchasePreview').style.display='none';
-    saveState();renderExpenseTab();toast(`✅ Nhập ${ing.name}: ${fmtP(unitPrice)}/${ing.unit}`);
+    const noteAvg=last3.length>1?` (TB ${last3.length} lần: ${fmtP(avgPrice)}/${ing.unit})`:'';
+    saveState();renderExpenseTab();toast(`✅ Nhập ${ing.name}: ${fmtP(unitPrice)}/${ing.unit}${noteAvg}`);
 }
 function deletePurchase(dt,id){if(!confirm('Xóa?'))return;state.purchases[dt]=(state.purchases[dt]||[]).filter(p=>p.id!==id);saveState();renderExpenseTab();}
 function addExpense(){

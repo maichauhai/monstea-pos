@@ -1,4 +1,4 @@
-﻿// ═══════════════════════════════════════
+// ═══════════════════════════════════════
 // FIREBASE CONFIG & AUTH
 // ═══════════════════════════════════════
 const FIREBASE_CONFIG = {
@@ -536,7 +536,7 @@ if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var
 c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
 return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
-function showInvoiceDetail(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv)return;
+function showInvoiceDetail(id){const td=today();const inv=state.todayInvoices.find(i=>i.id===id&&i.date===td);if(!inv)return;
 const logs=(state.editLog||[]).filter(l=>l.invoiceId===id);
 const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">📝 Lịch sử (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} — ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Trước: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
 const invSubTotal=inv.items.reduce((s,i)=>{const tp=(i.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(i.price+tp)*i.qty;},0);
@@ -556,18 +556,18 @@ ${logS}
 ${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
 openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}
 
-function editInvoice(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv||inv.cancelled)return;closeModal();
+function editInvoice(id){const td=today();const inv=state.todayInvoices.find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;closeModal();
 state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=id;state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
 document.getElementById('orderTitle').textContent=`✏️ SỬA #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
 document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${String(id).padStart(3,'0')}`);}
 
-function cancelInvoice(id){const inv=state.todayInvoices.find(i=>i.id===id);if(!inv||inv.cancelled)return;if(!confirm(`Hủy đơn #${String(id).padStart(3,'0')}?`))return;
+function cancelInvoice(id){const td=today();const inv=state.todayInvoices.find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;if(!confirm(`Hủy đơn #${String(id).padStart(3,'0')}?`))return;
 inv.cancelled=true;if(!state.editLog)state.editLog=[];
 state.editLog.push({invoiceId:id,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
 archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${String(id).padStart(3,'0')}`);}
 
-function showEditLog(){const logs=state.editLog||[];if(!logs.length){openModal('📝 Nhật ký','<div style="text-align:center;padding:20px;color:var(--text-muted);">Chưa có</div>');return;}
-openModal(`📝 Nhật ký (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">🕒 ${l.time} — #${String(l.invoiceId).padStart(3,'0')} — <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">❌ ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">✅ ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
+function showEditLog(){const td=today();const logs=(state.editLog||[]).filter(l=>l.time&&l.time.startsWith(td));if(!logs.length){openModal('📝 Nhật ký','<div style="text-align:center;padding:20px;color:var(--text-muted);">Hôm nay chưa có thay đổi</div>');return;}
+openModal(`📝 Nhật ký hôm nay (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">🕒 ${l.time} — #${String(l.invoiceId).padStart(3,'0')} — <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">❌ ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">✅ ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
 
 // ═══════════════════════════════════════
 // DASHBOARD

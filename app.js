@@ -449,10 +449,42 @@ function renderPOSMenu(){
     const ct=document.getElementById('posCatTabs');
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
-    const items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
-    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=o.qty;});return s;},0);const vis=getMenuVisual(m);return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    const searchVal=(document.getElementById('menuSearch')?.value||'').trim().toLowerCase();
+    let items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
+    // Build global numbering (across all active items)
+    const allActive=state.menu.filter(m=>m.active);
+    const numMap={};allActive.forEach((m,idx)=>{numMap[m.id]=idx+1;});
+    // Search filter
+    if(searchVal){
+        const allForSearch=state.menu.filter(m=>m.active);
+        const isNum=/^\d+$/.test(searchVal);
+        items=allForSearch.filter(m=>{
+            if(isNum)return String(numMap[m.id])===searchVal;
+            return m.name.toLowerCase().includes(searchVal);
+        });
+    }
+    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=o.qty;});return s;},0);const vis=getMenuVisual(m);const num=numMap[m.id]||'';return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<span class="mi-number">${num}</span>${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Không tìm thấy</div>';
 }
-function setPosCategory(c){posCategory=c;renderPOSMenu();}
+function setPosCategory(c){posCategory=c;document.getElementById('menuSearch').value='';renderPOSMenu();}
+
+// Swipe to change category tabs
+(function(){
+    let touchStartX=0,touchEndX=0;
+    function handleSwipe(){
+        const diff=touchStartX-touchEndX;
+        if(Math.abs(diff)<50)return;
+        const cats=['Tất cả',...(state?.categories||[])];
+        const idx=cats.indexOf(posCategory);
+        if(diff>0&&idx<cats.length-1)setPosCategory(cats[idx+1]);
+        else if(diff<0&&idx>0)setPosCategory(cats[idx-1]);
+    }
+    document.addEventListener('DOMContentLoaded',()=>{
+        const grid=document.getElementById('posMenuGrid');
+        if(!grid)return;
+        grid.addEventListener('touchstart',e=>{touchStartX=e.changedTouches[0].screenX;},{passive:true});
+        grid.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX;handleSwipe();},{passive:true});
+    });
+})();
 function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
     const isTopping=m.category==='Topping';
     if(isTopping&&state.currentOrder.length>0){

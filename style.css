@@ -1,4 +1,4 @@
-﻿:root {
+:root {
         --bg-body: #1a1520;
         --bg-card: #221e2a;
         --bg-card-hover: #2a2533;
@@ -123,9 +123,12 @@
     .inv-row .inv-method.cash { background:rgba(74,222,128,0.1); color:var(--accent-green); }
     .inv-row .inv-method.transfer { background:rgba(96,165,250,0.1); color:var(--accent-blue); }
     .inv-row .inv-method.staff { background:rgba(192,132,252,0.1); color:var(--accent-purple); }
-    .inv-row.cancelled { opacity:0.4; }
+    .inv-row.cancelled { opacity:0.45; }
+    .inv-row.cancelled .inv-id { text-decoration:line-through; color:var(--accent-red); }
     .inv-row.cancelled .inv-items { text-decoration:line-through; }
+    .inv-row.cancelled .inv-time { text-decoration:line-through; }
     .inv-row.cancelled .inv-total { text-decoration:line-through; color:var(--accent-red); }
+    .mi-number { position:absolute; top:3px; left:5px; font-family:var(--font-display); font-size:0.6rem; font-weight:700; color:var(--text-muted); opacity:0.5; pointer-events:none; }
     .inv-row .inv-badge { font-size:0.65rem; padding:2px 6px; border-radius:8px; margin-left:4px; }
     .inv-row .inv-badge.edited { background:rgba(232,166,53,0.15); color:var(--accent); }
     .inv-row .inv-badge.cancelled-badge { background:rgba(255,107,107,0.15); color:var(--accent-red); }

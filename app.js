@@ -344,6 +344,8 @@ if(firstLoad){
   if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
   if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
+  // Purge stale invoices on first load (prevent ghost data)
+  const _ftd=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===_ftd);
   localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
   firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');return;}
 if(!r)return;
@@ -357,6 +359,8 @@ if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
 if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
 // Preserve sln/openStock/warnLevel on ingredients after sync
 if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
+// Purge stale invoices after sync (prevent ghost data from Firebase)
+const _td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===_td);
 localStorage.setItem('monsteaPOS',JSON.stringify(state));
 renderAll();isRemoteUpdate=false;});}
 
@@ -367,7 +371,14 @@ firebaseDb.ref('state').set(state).then(()=>updateSyncStatus('connected')).catch
 function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;
 const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};
 el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}`;}
-function checkNewDay(){const td=today();if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;if(state.todayInvoices.length>0){const yk=state.todayInvoices[0]?.date||td;if(yk!==td&&!state.history[yk])archiveDay(yk,state.todayInvoices);}state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);state.nextInvoiceId=state.todayInvoices.length+1;saveState();}}
+function checkNewDay(){const td=today();
+// ALWAYS purge stale invoices from other dates (root cause of ghost data)
+const before=state.todayInvoices.length;
+state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);
+if(state.todayInvoices.length!==before)console.log(`[POS] Purged ${before-state.todayInvoices.length} stale invoices from todayInvoices`);
+if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;
+state.nextInvoiceId=state.todayInvoices.length?Math.max(...state.todayInvoices.map(i=>i.id))+1:1;saveState();}
+}
 
 function archiveDay(dk,invoices){invoices=invoices.filter(i=>i.date===dk);if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
 invoices.forEach(inv=>{if(inv.cancelled)return;
@@ -568,8 +579,10 @@ if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var
 c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
 return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
-function showInvoiceDetail(id){const td=today();const inv=state.todayInvoices.find(i=>i.id===id&&i.date===td);if(!inv)return;
-const logs=(state.editLog||[]).filter(l=>l.invoiceId===id);
+function showInvoiceDetail(id){const td=today();
+// Use reverse search to get the LATEST matching invoice (today's, not stale)
+const inv=[...state.todayInvoices].reverse().find(i=>i.id===id&&i.date===td);if(!inv)return;
+const logs=(state.editLog||[]).filter(l=>l.invoiceId===id&&l.time&&l.time.startsWith(td));
 const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">📝 Lịch sử (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} — ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Trước: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
 const invSubTotal=inv.items.reduce((s,i)=>{const tp=(i.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(i.price+tp)*i.qty;},0);
 const discLine=inv.discount?`<div style="display:flex;justify-content:space-between;margin-top:6px;padding:6px 0;"><span style="font-size:0.85rem;color:var(--text-muted);">Tạm tính</span><span style="font-size:0.85rem;color:var(--text-muted);">${fmtP(invSubTotal)}</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:0.88rem;color:var(--accent-purple);">🎁 Giảm giá</span><span style="color:var(--accent-purple);font-weight:700;font-size:0.88rem;">-${fmtP(inv.discount)}</span></div>`:'';
@@ -588,12 +601,17 @@ ${logS}
 ${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
 openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}
 
-function editInvoice(id){const td=today();const inv=state.todayInvoices.find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;closeModal();
+function editInvoice(id){const td=today();const inv=[...state.todayInvoices].reverse().find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;closeModal();
 state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=id;state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
 document.getElementById('orderTitle').textContent=`✏️ SỬA #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
 document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${String(id).padStart(3,'0')}`);}
 
-function cancelInvoice(id){const td=today();const inv=state.todayInvoices.find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;if(!confirm(`Hủy đơn #${String(id).padStart(3,'0')}?`))return;
+function cancelInvoice(id){const td=today();
+// Find the actual invoice object in the array (not a copy) using index
+const idx=state.todayInvoices.findIndex(i=>i.id===id&&i.date===td&&!i.cancelled);
+if(idx===-1){toast(`⚠️ Không tìm thấy đơn #${String(id).padStart(3,'0')} hôm nay hoặc đã hủy rồi`);return;}
+const inv=state.todayInvoices[idx];
+if(!confirm(`Hủy đơn #${String(id).padStart(3,'0')}?`))return;
 inv.cancelled=true;if(!state.editLog)state.editLog=[];
 state.editLog.push({invoiceId:id,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
 archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${String(id).padStart(3,'0')}`);}

@@ -98,6 +98,7 @@
         </div>
         <div class="grab-form">
             <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:4px;">Chọn món đã bán trên Grab:</div>
+            <input type="text" id="grabMenuSearch" placeholder="🔍 Tìm món Grab..." oninput="renderGrabMenuPicker()" style="width:100%;padding:8px 12px;margin-bottom:6px;font-size:0.82rem;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);">
             <div class="grab-menu-picker" id="grabMenuPicker"></div>
             <div class="grab-selected-items" id="grabSelectedItems">Chưa chọn món</div>
             <div class="grab-price-row">
@@ -121,6 +122,7 @@
             <div class="grab-stat"><div class="gs-label">Tổng đơn Grab</div><div class="gs-value" id="grabTotalOrders" style="color:var(--accent-blue);">0</div></div>
             <div class="grab-stat"><div class="gs-label">DT Grab (gross)</div><div class="gs-value" id="grabTotalGross" style="color:var(--accent);">0đ</div></div>
             <div class="grab-stat"><div class="gs-label">Thực nhận (52%)</div><div class="gs-value" id="grabTotalNet" style="color:var(--accent-green);">0đ</div></div>
+            <div class="grab-stat"><div class="gs-label">📦 Chi phí NL</div><div class="gs-value" id="grabIngCost" style="color:var(--accent-red);">0đ</div></div>
         </div>
         <div class="grab-list" id="grabList"></div>
     </div>

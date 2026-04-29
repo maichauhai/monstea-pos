@@ -1427,12 +1427,14 @@ renderGrabList();
 function renderGrabMenuPicker(){
 const picker=document.getElementById('grabMenuPicker');
 if(!picker)return;
-const activeMenu=state.menu.filter(m=>m.active);
+const searchVal=(document.getElementById('grabMenuSearch')?.value||'').trim().toLowerCase();
+let activeMenu=state.menu.filter(m=>m.active);
+if(searchVal){activeMenu=activeMenu.filter(m=>m.name.toLowerCase().includes(searchVal));}
 picker.innerHTML=activeMenu.map(m=>{
     const sel=grabCurrentItems.find(g=>g.menuId===m.id);
     const qty=sel?sel.qty:0;
     return `<div class="grab-menu-btn ${qty>0?'selected':''}" onclick="toggleGrabItem(${m.id})">${m.name}${qty>1?' ×'+qty:''}</div>`;
-}).join('');
+}).join('')||'<div style="padding:10px;color:var(--text-muted);font-size:0.78rem;">Không tìm thấy</div>';
 updateGrabSelected();
 }
 
@@ -1498,6 +1500,7 @@ archiveDay(today(),state.todayInvoices);
 // Reset form
 grabCurrentItems=[];
 document.getElementById('grabPrice').value='';
+const gms=document.getElementById('grabMenuSearch');if(gms)gms.value='';
 calcGrabDiff();
 saveState();
 renderGrabSection();
@@ -1529,9 +1532,32 @@ if(!todayGrabs.length){list.innerHTML='';summary.style.display='none';return;}
 summary.style.display='grid';
 const totalGross=todayGrabs.reduce((s,g)=>s+g.grabPrice,0);
 const totalNet=todayGrabs.reduce((s,g)=>s+g.netAmount,0);
+// Calculate ingredient cost for all grab orders
+let ingCost=0;
+todayGrabs.forEach(g=>{
+    (g.items||[]).forEach(item=>{
+        const mi=state.menu.find(m=>m.name===item.name||m.id===item.menuId);
+        if(!mi)return;
+        const recipe=state.recipes[mi.id]||[];
+        recipe.forEach(r=>{
+            const ing=state.ingredients.find(i=>i.id===r.ingId);
+            if(ing)ingCost+=r.qty*item.qty*ing.unitPrice;
+        });
+    });
+});
+ingCost=Math.round(ingCost);
 document.getElementById('grabTotalOrders').textContent=todayGrabs.length;
 document.getElementById('grabTotalGross').textContent=fmtP(totalGross);
 document.getElementById('grabTotalNet').textContent=fmtP(totalNet);
+const ingCostEl=document.getElementById('grabIngCost');
+if(ingCostEl){
+    ingCostEl.textContent=ingCost>0?fmtP(ingCost):'Chưa có CT';
+    // Show profit after ingredient cost
+    if(ingCost>0){
+        const profit=totalNet-ingCost;
+        ingCostEl.innerHTML=fmtP(ingCost)+`<div style="font-size:0.65rem;color:${profit>=0?'var(--accent-green)':'var(--accent-red)'};margin-top:2px;">Lãi: ${fmtP(profit)}</div>`;
+    }
+}
 list.innerHTML=todayGrabs.map((g,idx)=>{
     const items=g.items.map(i=>`${i.name}×${i.qty}`).join(', ');
     return `<div class="grab-item"><span class="gi-items">${esc(items)}</span><span class="gi-prices"><span class="gi-menu">${fmtP(g.menuTotal)}</span><span class="gi-grab">${fmtP(g.grabPrice)}</span><span class="gi-net">→${fmtP(g.netAmount)}</span></span><button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:0.7rem;margin-left:8px;" onclick="deleteGrabOrder(${idx})">✕</button></div>`;

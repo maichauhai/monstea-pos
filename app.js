@@ -21,160 +21,14 @@ let firebaseReady = false;
 let lastHelpTs = 0;
 
 // ═══════════════════════════════════════
-// DEFAULT DATA
+// DEFAULT DATA — moved to data.js
 // ═══════════════════════════════════════
-const DEFAULT_INGREDIENTS = [
-    {id:1,name:'Banh bao cam 28c',unit:'cái',unitPrice:3214},
-    {id:2,name:'Banh phong tom',unit:'g',unitPrice:65},
-    {id:3,name:'Banh trang bo kho',unit:'bịch',unitPrice:6000},
-    {id:4,name:'Banh trang pho mai',unit:'bịch',unitPrice:6000},
-    {id:5,name:'Banh trang tron',unit:'g',unitPrice:26},
-    {id:6,name:'Bo la lot 30c',unit:'cái',unitPrice:2900},
-    {id:7,name:'Bo vien 160c',unit:'cái',unitPrice:413},
-    {id:8,name:'Bot pho mai 100g',unit:'g',unitPrice:300},
-    {id:9,name:'BT me',unit:'bịch',unitPrice:5500},
-    {id:10,name:'BT muoi nhuyen',unit:'bịch',unitPrice:5000},
-    {id:11,name:'Ca com xanh 35c',unit:'cái',unitPrice:1171},
-    {id:12,name:'Ca rot',unit:'g',unitPrice:18},
-    {id:13,name:'Ca vien 160c',unit:'cái',unitPrice:363},
-    {id:14,name:'Cai thia',unit:'g',unitPrice:17},
-    {id:15,name:'Cha heo',unit:'cái',unitPrice:3000},
-    {id:16,name:'Chanh',unit:'g',unitPrice:20},
-    {id:17,name:'Cu khoai mon',unit:'g',unitPrice:45},
-    {id:18,name:'Cua huynh de 30c',unit:'cái',unitPrice:1875},
-    {id:19,name:'Dau an',unit:'ml',unitPrice:38},
-    {id:20,name:'Dau bap',unit:'g',unitPrice:17},
-    {id:21,name:'Dau hu pho mai 30c',unit:'cái',unitPrice:1483},
-    {id:22,name:'Dau phong',unit:'g',unitPrice:50},
-    {id:23,name:'Ha cao 48c',unit:'cái',unitPrice:771},
-    {id:24,name:'Hai san 35c',unit:'cái',unitPrice:1000},
-    {id:25,name:'Hanh kho',unit:'g',unitPrice:15},
-    {id:26,name:'Hanh phi',unit:'g',unitPrice:100},
-    {id:27,name:'Hanh tuoi',unit:'g',unitPrice:19},
-    {id:28,name:'Hoanh thanh',unit:'bịch',unitPrice:15000},
-    {id:29,name:'Holo 44c',unit:'cái',unitPrice:1205},
-    {id:30,name:'Khoai tay Bi',unit:'g',unitPrice:53},
-    {id:31,name:'Mi gau do 30c',unit:'cái',unitPrice:3000},
-    {id:32,name:'Mi Indo 40c',unit:'cái',unitPrice:4375},
-    {id:33,name:'Muc vien 70c',unit:'cái',unitPrice:943},
-    {id:34,name:'Muc xoan 32c',unit:'cái',unitPrice:2531},
-    {id:35,name:'Muoi nhuyen',unit:'g',unitPrice:140},
-    {id:36,name:'Nem chua ran 20c',unit:'cái',unitPrice:2100},
-    {id:37,name:'Nem tre',unit:'cái',unitPrice:22000},
-    {id:38,name:'Pho mai que 13c',unit:'cái',unitPrice:4400},
-    {id:39,name:'Rau ram',unit:'g',unitPrice:18},
-    {id:40,name:'So diep 48c',unit:'cái',unitPrice:2750},
-    {id:41,name:'Tac',unit:'g',unitPrice:20},
-    {id:42,name:'Tep 500g',unit:'g',unitPrice:170},
-    {id:43,name:'Thanh cua 28c',unit:'cái',unitPrice:2143},
-    {id:44,name:'Tom hum vien 25c',unit:'cái',unitPrice:800},
-    {id:45,name:'Tom surimi 30c',unit:'cái',unitPrice:2833},
-    {id:46,name:'Tom Vien 80c',unit:'cái',unitPrice:713},
-    {id:47,name:'Top mo',unit:'g',unitPrice:240},
-    {id:48,name:'Tre',unit:'cái',unitPrice:6500},
-    {id:49,name:'Trung cut',unit:'cái',unitPrice:400},
-    {id:50,name:'Trung ga',unit:'cái',unitPrice:2500},
-    {id:51,name:'Tuong ca 5000ml',unit:'ml',unitPrice:16},
-    {id:52,name:'Tuong den 5000ml',unit:'ml',unitPrice:17},
-    {id:53,name:'Tuong ot 5000ml',unit:'ml',unitPrice:15},
-    {id:54,name:'Xi dau 2000ml',unit:'ml',unitPrice:33},
-    {id:55,name:'Xoai',unit:'g',unitPrice:10},
-    {id:56,name:'Xuc xich CP 10c',unit:'cái',unitPrice:3400},
-    {id:57,name:'Bao 2 ly',unit:'g',unitPrice:38},
-    {id:58,name:'Bao 20',unit:'g',unitPrice:35},
-    {id:59,name:'Bao 24',unit:'g',unitPrice:35},
-    {id:60,name:'Coc lon in 1000c',unit:'cái',unitPrice:750},
-    {id:61,name:'Coc nho in 1000c',unit:'cái',unitPrice:650},
-    {id:62,name:'Dua 4000c',unit:'cái',unitPrice:94},
-    {id:63,name:'Giay',unit:'bịch',unitPrice:9000},
-    {id:64,name:'Hop Com lon 150c',unit:'cái',unitPrice:360},
-    {id:65,name:'Hop dung mi 100c',unit:'cái',unitPrice:1020},
-    {id:66,name:'Ly 80 200',unit:'cái',unitPrice:420},
-    {id:67,name:'Ly CF nap cau',unit:'cái',unitPrice:600},
-    {id:68,name:'Muong den 100c',unit:'cái',unitPrice:135},
-    {id:69,name:'Ong hut TC',unit:'cái',unitPrice:103},
-    {id:70,name:'Tui giay',unit:'cái',unitPrice:363},
-    {id:71,name:'Tui TS don',unit:'g',unitPrice:38},
-    {id:72,name:'Xien ngan',unit:'cái',unitPrice:15000},
-    {id:73,name:'Bot beo Vana 25kg',unit:'g',unitPrice:70},
-    {id:74,name:'Bot kem trung 500g',unit:'g',unitPrice:310},
-    {id:75,name:'Bot matcha 500g',unit:'g',unitPrice:760},
-    {id:76,name:'CF chon 500g',unit:'g',unitPrice:107},
-    {id:77,name:'Đá',unit:'bịch',unitPrice:15000},
-    {id:78,name:'Dao mieng 20c',unit:'cái',unitPrice:1500},
-    {id:79,name:'Dua nuong 500g',unit:'g',unitPrice:150},
-    {id:80,name:'Duong den',unit:'g',unitPrice:48},
-    {id:81,name:'Duong trang',unit:'g',unitPrice:19},
-    {id:82,name:'Gelatine 1000g',unit:'g',unitPrice:290},
-    {id:83,name:'Hong tra 1000g',unit:'g',unitPrice:105},
-    {id:84,name:'Milo 10c',unit:'cái',unitPrice:4000},
-    {id:85,name:'O Long 1000g',unit:'g',unitPrice:160},
-    {id:86,name:'Pd dao 1000g',unit:'g',unitPrice:160},
-    {id:87,name:'Pd khoai mon 1000g',unit:'g',unitPrice:160},
-    {id:88,name:'Pd socola 1000g',unit:'g',unitPrice:180},
-    {id:89,name:'Pd tra xanh 1000g',unit:'g',unitPrice:180},
-    {id:90,name:'Pd Trung 1000g',unit:'g',unitPrice:200},
-    {id:91,name:'Pho mai tuoi 12c',unit:'cái',unitPrice:4500},
-    {id:92,name:'Phuc Long 500g',unit:'g',unitPrice:230},
-    {id:93,name:'Rau cau ca 12g',unit:'g',unitPrice:542},
-    {id:94,name:'Rich 454g',unit:'g',unitPrice:88},
-    {id:95,name:'Siro bac ha 2000ml',unit:'ml',unitPrice:75},
-    {id:96,name:'Siro dao 2000ml',unit:'ml',unitPrice:79},
-    {id:97,name:'Siro tao 2000ml',unit:'ml',unitPrice:75},
-    {id:98,name:'Siro vai 2000ml',unit:'ml',unitPrice:75},
-    {id:99,name:'Socola hershey 680g',unit:'g',unitPrice:221},
-    {id:100,name:'ST Chanh day 1000ml',unit:'ml',unitPrice:86},
-    {id:101,name:'ST Dau 1000ml',unit:'ml',unitPrice:85},
-    {id:102,name:'ST Dua luoi 1000ml',unit:'ml',unitPrice:110},
-    {id:103,name:'ST Kiwi 1000ml',unit:'ml',unitPrice:110},
-    {id:104,name:'ST Mang cau 1000ml',unit:'ml',unitPrice:110},
-    {id:105,name:'ST Oi hong 1000ml',unit:'ml',unitPrice:106},
-    {id:106,name:'ST Viet quat 1000ml',unit:'ml',unitPrice:115},
-    {id:107,name:'ST Xoai 1000ml',unit:'ml',unitPrice:87},
-    {id:108,name:'Sua dac 1000ml',unit:'ml',unitPrice:38},
-    {id:109,name:'Sua TH 1000ml',unit:'ml',unitPrice:45},
-    {id:110,name:'Suong sao 50g',unit:'g',unitPrice:300},
-    {id:111,name:'Tac xi muoi 900g',unit:'g',unitPrice:67},
-    {id:112,name:'TC 3Q 2000g',unit:'g',unitPrice:27},
-    {id:113,name:'TC den 3000g',unit:'g',unitPrice:28},
-    {id:114,name:'TC hoang kim 1000g',unit:'g',unitPrice:42},
-    {id:115,name:'Thach ca 2500g',unit:'g',unitPrice:27},
-    {id:116,name:'Thai xanh 200g',unit:'g',unitPrice:320},
-    {id:117,name:'Tra bi dao 330ml',unit:'ml',unitPrice:26},
-    {id:118,name:'Tra lai 1000g',unit:'g',unitPrice:155},
-    {id:119,name:'Vai ngam 15c',unit:'cái',unitPrice:2133},
-    {id:120,name:'Cafe Trung Nguyen I',unit:'g',unitPrice:166},
-    {id:121,name:'Sua TH tiet',unit:'ml',unitPrice:28},
-    {id:122,name:'Bo Tuong An',unit:'g',unitPrice:225},
-    {id:123,name:'BT xi ke',unit:'cái',unitPrice:6000},
-    {id:124,name:'Dau tay say',unit:'g',unitPrice:576},
-];
-
-const DEFAULT_MENU = [
-    {id:1,name:'Trà sữa trân châu',price:25000,category:'Trà sữa',active:true},
-    {id:2,name:'Trà sữa matcha',price:30000,category:'Trà sữa',active:true},
-    {id:3,name:'Trà sữa socola',price:28000,category:'Trà sữa',active:true},
-    {id:4,name:'Trà sữa oolong',price:25000,category:'Trà sữa',active:true},
-    {id:5,name:'Trà đào cam sả',price:22000,category:'Trà trái cây',active:true},
-    {id:6,name:'Trà vải',price:22000,category:'Trà trái cây',active:true},
-    {id:7,name:'Trà chanh dây',price:20000,category:'Trà trái cây',active:true},
-    {id:8,name:'Khoai tây chiên',price:20000,category:'Đồ chiên',active:true},
-    {id:9,name:'Gà viên chiên',price:25000,category:'Đồ chiên',active:true},
-    {id:10,name:'Xúc xích chiên',price:15000,category:'Đồ chiên',active:true},
-    {id:11,name:'Bánh tráng trộn',price:15000,category:'Ăn vặt',active:true},
-    {id:12,name:'Tré trộn',price:20000,category:'Ăn vặt',active:true},
-];
-
-const DEFAULT_STAFF = [{id:1,name:'Đăng',password:'1000',wageRate:25000},{id:2,name:'Lệ',password:'2000',wageRate:25000},{id:3,name:'Phương',password:'3000',wageRate:25000},{id:4,name:'Trình',password:'4000',wageRate:25000}];
-
-const DEFAULT_OPEN_CL = ['Mở cửa, bật đèn, bật quạt/máy lạnh','Kiểm tra nguyên liệu (trà, sữa, đường, topping)','Nấu trân châu / topping mới','Pha sẵn trà nền (trà đen, trà xanh, oolong)','Kiểm tra máy xay, máy pha, tủ lạnh','Lau bàn ghế, sắp xếp gọn gàng','Kiểm tra WiFi, loa nhạc','Đếm tiền quỹ đầu ca'];
-const DEFAULT_CLOSE_CL = ['Đếm tiền và kiểm kê cuối ngày','Rửa bình pha trà, máy xay, dụng cụ','Dọn dẹp bàn ghế, quầy pha chế','Đổ rác, lau sàn','Kiểm tra tồn kho, ghi chú thiếu gì','Tắt thiết bị điện (máy pha, đèn bảng hiệu)','Khóa tủ lạnh, khóa cửa'];
 
 let state = {
     menu:[...DEFAULT_MENU], categories:['Trà sữa','Trà trái cây','Đồ chiên','Ăn vặt','Khác'],
     staff:[...DEFAULT_STAFF], ingredients:[...DEFAULT_INGREDIENTS],
-    recipes:{}, // { menuId: [{ ingId, qty }] }
-    recipeTemplates:[], // [{ id, name, items: [{ ingId, qty }] }]
+    recipes:{},
+    recipeTemplates:[],
     currentOrder:[], todayInvoices:[], grabOrders:[], history:{}, attendance:{}, editLog:[],
     purchases:{}, expenses:{}, dailyNotes:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
@@ -190,63 +44,10 @@ let state = {
 
 let posCategory='Tất cả', dashFilter='today';
 let scheduleWeekOffset = 0;
-let grabCurrentItems = []; // temp items for grab order form
-let expenseViewDate = null; // null = today
+let grabCurrentItems = [];
+let expenseViewDate = null;
 const lockedTabs = ['settings','inventory','recipes'];
 let unlockedTabs = {};
-
-// ═══════════════════════════════════════
-// MENU IMAGES — mapping tên món → file ảnh
-// ═══════════════════════════════════════
-const IMG_BASE = './menu-images/';
-const MENU_IMAGES = {
-  // Trà sữa
-  'Truyền thống M':'tra-truyen-thong.png','Truyền thống L':'tra-truyen-thong.png',
-  'Ô long M':'o-long.png','Ô long L':'o-long.png',
-  'Thái xanh M':'thai-xanh.png','Thái xanh L':'thai-xanh.png',
-  'Cafe đen':'cafe-den.png','Cafe sữa':'cafe-sua.png',
-  'Sữa tươi TC đường đen M':'sua-tuoi-duong-den.png','Sữa tươi TC đường đen L':'sua-tuoi-duong-den.png',
-  'Sữa tươi cà phê M':'sua-tuoi-ca-phe.png',
-  'Matcha nguyên vị':'matcha.png',
-  'Milo dầm TChâu':'milo-dam.png','Milo dầm TCẩm':'milo-dam.png',
-  'Sữa dâu':'sua-dau.png',
-  // Trà trái cây
-  'Hồng trà':'hong-tra.png','Hồng trà 0':'hong-tra.png',
-  'Trà đào M':'tra-dao.png','Trà đào L':'tra-dao.png',
-  'Trà vải M':'tra-vai.png','Trà vải L':'tra-vai.png',
-  'Trà việt quất':'tra-viet-quat.png','Trà ổi hồng':'tra-oi-hong.png',
-  'Trà dưa lưới':'tra-dua-luoi.png','Trà táo xanh':'tra-tao-xanh.png',
-  'Trà kiwi':'tra-kiwi.png','Trà chanh dây':'tra-chanh-day.png',
-  'Trà xoài':'tra-xoai.png','Trà dâu':'tra-dau.png',
-  'Xoài chanh dây':'xoai-chanh-day.png','Trà xoài chanh dây':'xoai-chanh-day.png',
-  'Kiwi dưa lưới':'kiwi-dua-luoi.png','Táo bạc hà':'tao-bac-ha.png',
-  'Trà xoài dâu':'tra-xoai-dau.png','Tắc xí muội':'tac-xi-muoi.png',
-  // Đồ chiên
-  'Cá viên':'ca-vien.png','Bò viên':'bo-vien.png','Cá cốm':'ca-com.png',
-  'Thanh cua':'thanh-cua.png','Há cảo':'ha-cao.png','Tôm viên':'tom-vien.png',
-  'Cua huỳnh đế':'cua-huynh-de.png','Xúc xích':'xuc-xich.png',
-  'Bánh bao':'banh-bao.png','Phô mai que':'pho-mai-que.png',
-  'Trứng cút':'trung-cut.png','Mực viên':'muc-vien.png',
-  'Đậu bắp':'dau-bap.png','Hoành thánh':'hoanh-thanh.png',
-  'Hải sản sốt':'hai-san-sot.png','Đậu hũ phô mai':'dau-hu-pho-mai.png',
-  'Nem chua rán':'nem-chua-ran.png',
-  'Combo':'combo-do-chien.png',
-  // Đồ ăn
-  'Bánh tráng trộn':'banh-trang-tron.png','Bánh tráng trộn (đặc biệt)':'banh-trang-tron.png',
-  'Bánh tráng khô bò':'banh-trang-kho-bo.png','Bánh tráng phô mai':'banh-trang-pho-mai.png',
-  'Bánh tráng xì ke':'banh-trang-xi-ke.png',
-  'Tré trộn M':'tre-tron.png','Tré trộn L':'tre-tron.png',
-  'Mì trộn':'mi-tron.png','Khoai tây':'khoai-tay.png','Gà chiên':'ga-chien.png'
-};
-// Topping — dùng emoji
-const TOPPING_EMOJI = {
-  'Kem trứng':'🍳','TC 3Q':'🟤','TC đen':'⚫','TC vàng':'🟡',
-  'Thạch cá':'🐟','Sương sáo':'🖤','Đường đen':'🍯','Socola':'🍫',
-  'Pudding':'🍮','Flan':'🍮','Rau câu tầng':'🟩','Bánh tráng thêm':'🥞',
-  'Mì thêm':'🍜','Thập cẩm mì':'🍜','Thập cẩm TS':'🥤','Dâu sấy thêm':'🍓',
-  'Xúc xích mì':'🌭','Lắc phomai':'🧀','Lắc TứXuyên':'🌶️','Trứng':'🥚',
-  'Khúc bạch':'🤍','Ship':'🚚','Gà mì trộn':'🍗','Full thạch':'🍡'
-};
 
 // ═══════════════════════════════════════
 // PERSISTENCE
@@ -326,6 +127,25 @@ function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderG
 // ═══════════════════════════════════════
 // FIREBASE SYNC
 // ═══════════════════════════════════════
+function mergeFirebaseState(r){
+  const localInvoices=state.todayInvoices||[];
+  const localGrab=state.grabOrders||[];
+  const localAttendance=state.attendance||{};
+  state={...state,...r};
+  // Restore local data if Firebase has less data (prevent data loss)
+  if(!state.todayInvoices||!state.todayInvoices.length)state.todayInvoices=localInvoices;
+  else if(localInvoices.length>state.todayInvoices.length){
+    const rIds=new Set((state.todayInvoices||[]).map(i=>i.id));
+    localInvoices.forEach(i=>{if(!rIds.has(i.id))state.todayInvoices.push(i);});
+  }
+  if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
+  if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
+  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
+  // Purge stale invoices (prevent ghost data from Firebase)
+  const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
+  localStorage.setItem('monsteaPOS',JSON.stringify(state));
+}
+
 function initFirebase(){
 firebase.initializeApp(FIREBASE_CONFIG);firebaseDb=firebase.database();
 firebaseDb.ref('.info/connected').on('value',s=>updateSyncStatus(s.val()?'connected':'offline'));
@@ -334,34 +154,10 @@ firebaseDb.ref('state').on('value',snap=>{
 const r=snap.val();
 if(firstLoad){
   firstLoad=false;
-  if(r){isRemoteUpdate=true;
-  // Smart merge: protect critical arrays from being overwritten with empty/null
-  const localInvoices=state.todayInvoices||[];const localGrab=state.grabOrders||[];const localAttendance=state.attendance||{};
-  state={...state,...r};
-  // Restore local data if Firebase has less data (prevent data loss)
-  if(!state.todayInvoices||!state.todayInvoices.length)state.todayInvoices=localInvoices;
-  else if(localInvoices.length>state.todayInvoices.length){const rIds=new Set((state.todayInvoices||[]).map(i=>i.id));localInvoices.forEach(i=>{if(!rIds.has(i.id))state.todayInvoices.push(i);});}
-  if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
-  if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
-  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
-  // Purge stale invoices on first load (prevent ghost data)
-  const _ftd=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===_ftd);
-  localStorage.setItem('monsteaPOS',JSON.stringify(state));isRemoteUpdate=false;}
+  if(r){isRemoteUpdate=true;mergeFirebaseState(r);isRemoteUpdate=false;}
   firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');return;}
 if(!r)return;
-isRemoteUpdate=true;
-// Smart merge: protect critical arrays from being overwritten
-const localInvoices=state.todayInvoices||[];const localGrab=state.grabOrders||[];const localAttendance=state.attendance||{};
-state={...state,...r};
-if(!state.todayInvoices||!state.todayInvoices.length)state.todayInvoices=localInvoices;
-else if(localInvoices.length>state.todayInvoices.length){const rIds=new Set((state.todayInvoices||[]).map(i=>i.id));localInvoices.forEach(i=>{if(!rIds.has(i.id))state.todayInvoices.push(i);});}
-if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
-if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
-// Preserve sln/openStock/warnLevel on ingredients after sync
-if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
-// Purge stale invoices after sync (prevent ghost data from Firebase)
-const _td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===_td);
-localStorage.setItem('monsteaPOS',JSON.stringify(state));
+isRemoteUpdate=true;mergeFirebaseState(r);
 renderAll();isRemoteUpdate=false;});}
 
 function saveStateToFirebase(){if(!firebaseDb)return;clearTimeout(syncTimeout);
@@ -385,7 +181,8 @@ invoices.forEach(inv=>{if(inv.cancelled)return;
 if(inv.method==='staff'){staffCount++;staffOrigTotal+=(inv.staffOriginalTotal||0);}
 else{ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
 const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;}
-inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;if(inv.method!=='staff'){const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);is[i.name].revenue+=(i.price+tpTotal)*i.qty;}});});
+inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;if(inv.method!=='staff'){is[i.name].revenue+=i.price*i.qty;}
+(i.toppings||[]).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=i.qty;if(inv.method!=='staff'){is[t.name].revenue+=t.price*i.qty;}});});});
 state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,hourlyRevenue:hr,grabTotal:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.grabPrice,0),grabNet:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.netAmount,0)};}
 
 // ═══════════════════════════════════════
@@ -647,37 +444,53 @@ function calcIngredientCost(dashData){
     return Math.round(total);
 }
 function calcLaborCost(dates){
-    const RATE=25000,OT_MULT=1.3,OT_HOUR=22;
+    const OT_MULT=1.3,OT_HOUR=22;
     let total=0;
     dates.forEach(d=>{
         const recs=state.attendance[d]||[];
         recs.forEach(r=>{
             if(!r.checkIn||!r.checkOut||!r.hours)return;
+            const staff=state.staff.find(s=>s.id===r.staffId);
+            const rate=staff?.wageRate||25000;
             const [iH,iM]=r.checkIn.split(':').map(Number);
             const [oH,oM]=r.checkOut.split(':').map(Number);
             const inMin=iH*60+iM, outMin=oH*60+oM;
             const otStart=OT_HOUR*60;
             if(outMin<=otStart){
-                total+=r.hours*RATE;
+                total+=r.hours*rate;
             } else if(inMin>=otStart){
-                total+=r.hours*RATE*OT_MULT;
+                total+=r.hours*rate*OT_MULT;
             } else {
                 const normalH=(otStart-inMin)/60;
                 const otH=(outMin-otStart)/60;
-                total+=normalH*RATE + otH*RATE*OT_MULT;
+                total+=normalH*rate + otH*rate*OT_MULT;
             }
         });
     });
     return Math.round(total);
 }
 
-function renderDashboard(){const d=getDashData(),avg=d.totalInvoices?Math.round(d.totalRevenue/d.totalInvoices):0;
-const nlCost=calcIngredientCost(d),nvCost=calcLaborCost(d.dates),gross=d.totalRevenue-nlCost-nvCost;
-let otherExp=0;d.dates.forEach(dt=>{((state.expenses||{})[dt]||[]).forEach(e=>otherExp+=e.amount);});
-document.getElementById('dashStats').innerHTML=`<div class="stat-card"><div class="stat-label">Doanh thu</div><div class="stat-value" style="color:var(--accent)">${fmtP(d.totalRevenue)}</div></div><div class="stat-card"><div class="stat-label">Hóa đơn</div><div class="stat-value" style="color:var(--accent-blue)">${d.totalInvoices}</div></div><div class="stat-card"><div class="stat-label">TB/đơn</div><div class="stat-value" style="color:var(--accent-warm)">${fmtP(avg)}</div></div><div class="stat-card"><div class="stat-label">Tiền mặt</div><div class="stat-value" style="color:var(--accent-green)">${fmtP(d.cashTotal)}</div></div><div class="stat-card"><div class="stat-label">CK</div><div class="stat-value" style="color:var(--accent-purple)">${fmtP(d.transferTotal)}</div></div><div class="stat-card" style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"><div class="stat-label">💰 Chi phí NL</div><div class="stat-value" style="color:var(--accent-red);font-size:1.3rem">${fmtP(nlCost)}</div></div><div class="stat-card" style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"><div class="stat-label">👤 Chi phí NV</div><div class="stat-value" style="color:var(--accent-blue);font-size:1.3rem">${fmtP(nvCost)}</div></div><div class="stat-card" style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"><div class="stat-label">🧾 CP khác</div><div class="stat-value" style="color:#fbbf24;font-size:1.3rem">${fmtP(otherExp)}</div></div><div class="stat-card" style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"><div class="stat-label">📊 Lãi gộp</div><div class="stat-value" style="color:${gross>=0?'var(--accent-green)':'var(--accent-red)'};font-size:1.3rem">${fmtP(gross)}</div></div>`;
-renderRevenueChart();renderHourlyChart(d.hourlyRevenue);renderMonthlyReport();
-const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty),tq=ti.reduce((s,i)=>s+i.qty,0);
-document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';}
+function statCard(label, value, color, extra='') {
+    return `<div class="stat-card"${extra}><div class="stat-label">${label}</div><div class="stat-value" style="color:${color}">${value}</div></div>`;
+}
+function renderDashboard(){
+    const d=getDashData(), avg=d.totalInvoices?Math.round(d.totalRevenue/d.totalInvoices):0;
+    const nlCost=calcIngredientCost(d), nvCost=calcLaborCost(d.dates), gross=d.totalRevenue-nlCost-nvCost;
+    let otherExp=0; d.dates.forEach(dt=>{((state.expenses||{})[dt]||[]).forEach(e=>otherExp+=e.amount);});
+    document.getElementById('dashStats').innerHTML = [
+        statCard('Doanh thu', fmtP(d.totalRevenue), 'var(--accent)'),
+        statCard('Hóa đơn', d.totalInvoices, 'var(--accent-blue)'),
+        statCard('TB/đơn', fmtP(avg), 'var(--accent-warm)'),
+        statCard('Tiền mặt', fmtP(d.cashTotal), 'var(--accent-green)'),
+        statCard('CK', fmtP(d.transferTotal), 'var(--accent-purple)'),
+        statCard('💰 Chi phí NL', fmtP(nlCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
+        statCard('👤 Chi phí NV', fmtP(nvCost), 'var(--accent-blue)', ' style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"'),
+        statCard('🧾 CP khác', fmtP(otherExp), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
+        statCard('📊 Lãi gộp', fmtP(gross), gross>=0?'var(--accent-green)':'var(--accent-red)', ' style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"'),
+    ].join('');
+    renderRevenueChart(); renderHourlyChart(d.hourlyRevenue); renderMonthlyReport();
+    const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty), tq=ti.reduce((s,i)=>s+i.qty,0);
+    document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';}
 
 function renderRevenueChart(){const c=document.getElementById('revenueChart'),days=[];
 for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toISOString().slice(0,10),dn=['CN','T2','T3','T4','T5','T6','T7'];

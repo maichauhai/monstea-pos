@@ -604,17 +604,40 @@ function renderInventory(){
     // Need-to-buy card
     const needList=state.ingredients.map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     const ntbEl=document.getElementById('needToBuyCard');
-    if(ntbEl){ntbEl.innerHTML=needList.length?`<div style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:var(--radius-md);padding:14px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-weight:700;font-size:0.85rem;">🛒 Gợi ý nhập hàng (${needList.length})</span><button class="btn btn-secondary btn-sm" onclick="copyNeedToBuyList()" style="font-size:0.68rem;padding:3px 8px;">📋 Copy</button></div>
-    <div style="display:flex;flex-direction:column;gap:6px;">${needList.map(i=>{
-    const need=Math.max(0,Math.ceil(i.s.avgDaily*7-i.s.stock));const packs=i.sln>1?Math.ceil(need/i.sln):need;
-    const packText=i.sln>1?`${packs} gói (×${i.sln})`:`${need} ${i.unit}`;
-    return `<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:${i.s.status==='danger'?'rgba(255,107,107,0.12)':'rgba(245,158,11,0.08)'}">
-    <span style="font-size:0.82rem;">${sI[i.s.status]}</span>
-    <span style="flex:1;font-size:0.78rem;font-weight:600;">${esc(i.name)}</span>
-    <span style="font-size:0.7rem;color:var(--text-muted);">${i.s.stock} ${i.unit}${i.s.daysLeft<999?' (≈'+i.s.daysLeft+'d)':''}</span>
-    ${need>0?`<span style="font-size:0.7rem;color:var(--accent-green);font-weight:600;">→ ${packText}</span>`:''}
-    </div>`;}).join('')}</div></div>`:'';
+    if(ntbEl){
+      if(!needList.length){ntbEl.innerHTML='';}
+      else{
+        // Group by supplier
+        const groups={};
+        needList.forEach(i=>{
+          const sup=i.supplier||'Chưa gán NCC';
+          if(!groups[sup])groups[sup]=[];
+          groups[sup].push(i);
+        });
+        const groupKeys=Object.keys(groups).sort((a,b)=>a==='Chưa gán NCC'?1:b==='Chưa gán NCC'?-1:a.localeCompare(b));
+        let html=`<div style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:var(--radius-md);padding:14px;">`;
+        html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:700;font-size:0.85rem;">🛒 Gợi ý nhập hàng (${needList.length})</span><button class="btn btn-secondary btn-sm" onclick="copyNeedToBuyList()" style="font-size:0.68rem;padding:3px 8px;">📋 Copy</button></div>`;
+        groupKeys.forEach(sup=>{
+          const items=groups[sup];
+          const supColor=sup==='Chưa gán NCC'?'var(--text-muted)':'var(--accent-blue)';
+          html+=`<div style="margin-bottom:8px;"><div style="font-size:0.75rem;font-weight:700;color:${supColor};margin-bottom:4px;padding:2px 6px;background:rgba(96,165,250,0.08);border-radius:4px;display:inline-block;">📦 ${esc(sup)} (${items.length})</div>`;
+          html+=`<div style="display:flex;flex-direction:column;gap:4px;">`;
+          items.forEach(i=>{
+            const need=Math.max(0,Math.ceil(i.s.avgDaily*7-i.s.stock));const packs=i.sln>1?Math.ceil(need/i.sln):need;
+            const packText=i.sln>1?`${packs} gói (×${i.sln})`:`${need} ${i.unit}`;
+            const linkHtml=i.supplierLink?`<a href="${esc(i.supplierLink)}" target="_blank" style="font-size:0.68rem;text-decoration:none;">🔗</a>`:'';
+            html+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:${i.s.status==='danger'?'rgba(255,107,107,0.12)':'rgba(245,158,11,0.08)'}">`;
+            html+=`<span style="font-size:0.82rem;">${sI[i.s.status]}</span>`;
+            html+=`<span style="flex:1;font-size:0.78rem;font-weight:600;">${esc(i.name)} ${linkHtml}</span>`;
+            html+=`<span style="font-size:0.7rem;color:var(--text-muted);">${i.s.stock} ${i.unit}${i.s.daysLeft<999?' (≈'+i.s.daysLeft+'d)':''}</span>`;
+            html+=need>0?`<span style="font-size:0.7rem;color:var(--accent-green);font-weight:600;">→ ${packText}</span>`:'';
+            html+=`</div>`;
+          });
+          html+=`</div></div>`;
+        });
+        html+=`</div>`;
+        ntbEl.innerHTML=html;
+      }
     }
     // Table with SLN
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
@@ -663,14 +686,23 @@ const body=`<div style="display:flex;flex-direction:column;gap:12px;">
 <label style="font-size:0.78rem;color:var(--text-muted)">Đơn vị</label><input type="text" id="editIngUnit" value="${i.unit}">
 <label style="font-size:0.78rem;color:var(--text-muted)">Đơn giá (đ/${i.unit})</label><input type="number" id="editIngPrice" value="${i.unitPrice}">
 <label style="font-size:0.78rem;color:var(--text-muted)">SLN (số lượng/gói khi mua)</label><input type="number" id="editIngSLN" value="${i.sln||1}">
+<div style="border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:4px;">
+<label style="font-size:0.78rem;color:var(--accent-blue);font-weight:600;">📦 Nhà cung cấp</label>
+<input type="text" id="editIngSupplier" value="${esc(i.supplier||'')}" placeholder="VD: Shopee - ABC Store, Chợ Thủ Đức, Metro...">
+<label style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">🔗 Link mua hàng (tuỳ chọn)</label>
+<input type="url" id="editIngSupplierLink" value="${esc(i.supplierLink||'')}" placeholder="https://shopee.vn/...">
+</div>
 <button class="btn btn-primary" onclick="saveEditIngredient(${i.id})">💾 Lưu</button></div>`;
 openModal(`✏️ Sửa: ${i.name}`,body);}
 function saveEditIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;
 const n=document.getElementById('editIngName').value.trim(),u=document.getElementById('editIngUnit').value.trim(),p=parseInt(document.getElementById('editIngPrice').value),sln=parseInt(document.getElementById('editIngSLN')?.value)||1;
+const supplier=document.getElementById('editIngSupplier')?.value.trim()||'';
+const supplierLink=document.getElementById('editIngSupplierLink')?.value.trim()||'';
 if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
-i.name=n;i.unit=u;i.unitPrice=p;i.sln=sln;saveState();renderInventory();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
+i.name=n;i.unit=u;i.unitPrice=p;i.sln=sln;i.supplier=supplier;i.supplierLink=supplierLink;
+saveState();renderInventory();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
 function deleteIngredient(id){if(!confirm('Xóa NL này?'))return;state.ingredients=state.ingredients.filter(i=>i.id!==id);saveState();renderInventory();toast('🗑️ Đã xóa');}
-function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0}));
+function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0,supplier:i.supplier||'',supplierLink:i.supplierLink||''}));
 const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
 a.href=URL.createObjectURL(b);a.download=`monstea-kho-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã xuất JSON!');}
 function importIngredientsJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();

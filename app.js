@@ -66,6 +66,7 @@ if(!state.weekSchedule)state.weekSchedule={};
 if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
+if(!state.manualUsage)state.manualUsage={};
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -134,6 +135,7 @@ function mergeFirebaseState(r){
   const localAttendance=JSON.parse(JSON.stringify(state.attendance||{}));
   const localPurchases=JSON.parse(JSON.stringify(state.purchases||{}));
   const localExpenses=JSON.parse(JSON.stringify(state.expenses||{}));
+  const localManualUsage=JSON.parse(JSON.stringify(state.manualUsage||{}));
   const localHistory=JSON.parse(JSON.stringify(state.history||{}));
 
   // Overwrite state with Firebase (shallow)
@@ -165,6 +167,9 @@ function mergeFirebaseState(r){
 
   // ── 5. Expenses: key = id per date ──
   _mergeByDate(state, 'expenses', localExpenses, 'id');
+
+  // ── 5b. Manual Usage (xuất kho): key = id per date ──
+  _mergeByDate(state, 'manualUsage', localManualUsage, 'id');
 
   // ── 6. History: keep richer version per date ──
   const remoteHistory=state.history||{};
@@ -577,8 +582,10 @@ function calcAvgDailyUsage(ingId){
 function getStockInfo(ing){
     const purchased=calcTotalPurchased(ing.id);
     let totalUsed=0;Object.keys(state.history||{}).forEach(d=>{const u=calcDailyUsage(d);if(u[ing.id])totalUsed+=u[ing.id];});
+    // Tính xuất kho thủ công
+    let manualUsed=0;Object.values(state.manualUsage||{}).forEach(list=>{list.forEach(s=>{if(s.ingId===ing.id)manualUsed+=s.qty;});});
     const openStock=ing.openStock||0;
-    const stock=Math.round((openStock+purchased-totalUsed)*100)/100;
+    const stock=Math.round((openStock+purchased-totalUsed-manualUsed)*100)/100;
     const warn=ing.warnLevel||0;
     const avgDaily=Math.round(calcAvgDailyUsage(ing.id)*10)/10;
     const daysLeft=avgDaily>0?Math.round(stock/avgDaily*10)/10:999;
@@ -587,7 +594,7 @@ function getStockInfo(ing){
     else if(warn>0&&stock<=warn*2)status='warning';
     else if(daysLeft<=2&&avgDaily>0)status='danger';
     else if(daysLeft<=5&&avgDaily>0)status='warning';
-    return{stock,purchased,totalUsed:Math.round(totalUsed*100)/100,avgDaily,daysLeft,status};
+    return{stock,purchased,totalUsed:Math.round((totalUsed+manualUsed)*100)/100,avgDaily,daysLeft,status};
 }
 function renderInventory(){
     const search=(document.getElementById('ingSearch')?.value||'').toLowerCase();
@@ -692,6 +699,16 @@ function renderExpenseTab(){
     const expenses=(state.expenses||{})[dt]||[];
     document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
+    // Xuất kho thủ công
+    const reasonIcons={used:'🔧',spoiled:'🗑️',loss:'📉',other:'📌'};
+    const reasonLabels={used:'Sử dụng',spoiled:'Hư/Hết hạn',loss:'Hao hụt',other:'Khác'};
+    const stockOuts=(state.manualUsage||{})[dt]||[];
+    const soEl=document.getElementById('stockOutList');
+    if(soEl){
+        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${reasonLabels[s.reason]||s.reason}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+    }
+    const soTotal=document.getElementById('stockOutTotal');
+    if(soTotal)soTotal.textContent=stockOuts.length?`Tổng xuất: ${stockOuts.length} mục`:'';
     renderNotes();
 }
 function filterPurchaseIng(){
@@ -756,6 +773,54 @@ function addExpense(){
     saveState();renderExpenseTab();toast(`✅ ${name}: ${fmtP(amount)}`);
 }
 function deleteExpense(dt,id){if(!confirm('Xóa?'))return;state.expenses[dt]=(state.expenses[dt]||[]).filter(e=>e.id!==id);saveState();renderExpenseTab();}
+
+// ═══════════════════════════════════════
+// XUẤT KHO THỦ CÔNG
+// ═══════════════════════════════════════
+function filterStockOutIng(){
+    const q=(document.getElementById('stockOutIngSearch').value||'').toLowerCase();
+    const dd=document.getElementById('stockOutIngDropdown');
+    const list=state.ingredients.filter(i=>!q||i.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,15);
+    if(!list.length||!q){dd.style.display='none';return;}
+    dd.style.display='block';
+    dd.innerHTML=list.map(i=>`<div style="padding:8px 12px;cursor:pointer;font-size:0.82rem;border-bottom:1px solid rgba(255,255,255,0.04);" onmousedown="selectStockOutIng(${i.id})" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='none'">${esc(i.name)} <span style="color:var(--text-muted);font-size:0.72rem;">(${i.unit})</span></div>`).join('');
+}
+function selectStockOutIng(id){
+    const ing=state.ingredients.find(i=>i.id===id);if(!ing)return;
+    document.getElementById('stockOutIngSearch').value=ing.name;
+    document.getElementById('stockOutIngId').value=id;
+    document.getElementById('stockOutIngDropdown').style.display='none';
+    document.getElementById('stockOutQty').focus();
+}
+document.addEventListener('click',e=>{const dd=document.getElementById('stockOutIngDropdown');if(dd&&!e.target.closest('#stockOutIngSearch')&&!e.target.closest('#stockOutIngDropdown'))dd.style.display='none';});
+
+function addStockOut(){
+    const ingId=parseInt(document.getElementById('stockOutIngId').value);
+    const ing=state.ingredients.find(i=>i.id===ingId);
+    if(!ing){toast('⚠️ Chọn nguyên liệu');return;}
+    const qty=parseFloat(document.getElementById('stockOutQty').value)||0;
+    if(!qty){toast('⚠️ Nhập số lượng');return;}
+    const reason=document.getElementById('stockOutReason').value;
+    const reasonLabels={used:'Sử dụng',spoiled:'Hư/Hết hạn',loss:'Hao hụt',other:'Khác'};
+    const dt=getExpenseDate();
+    if(!state.manualUsage)state.manualUsage={};
+    if(!state.manualUsage[dt])state.manualUsage[dt]=[];
+    if(!state.nextStockOutId)state.nextStockOutId=1;
+    state.manualUsage[dt].push({
+        id:state.nextStockOutId++, ingId, name:ing.name, unit:ing.unit,
+        qty, reason, time:nowTime()
+    });
+    document.getElementById('stockOutIngSearch').value='';
+    document.getElementById('stockOutIngId').value='';
+    document.getElementById('stockOutQty').value='';
+    saveState();renderExpenseTab();renderInventory();
+    toast(`📤 Xuất ${qty} ${ing.unit} ${ing.name} — ${reasonLabels[reason]}`);
+}
+function deleteStockOut(dt,id){
+    if(!confirm('Xóa mục xuất kho này?'))return;
+    state.manualUsage[dt]=(state.manualUsage[dt]||[]).filter(s=>s.id!==id);
+    saveState();renderExpenseTab();renderInventory();
+}
 
 // ═══════════════════════════════════════
 // NOTES (Ghi chú)

@@ -244,6 +244,28 @@
             <div id="expenseList" style="margin-top:12px;"></div>
             <div id="expenseTotal" style="text-align:right;font-weight:700;color:var(--accent-purple);margin-top:8px;"></div>
         </div>
+        <!-- XUẤT KHO THỦ CÔNG -->
+        <div class="card" style="margin-top:14px;">
+            <div class="card-title" style="font-size:0.85rem;">📤 Xuất kho thủ công</div>
+            <p style="font-size:0.72rem;color:var(--text-muted);margin-bottom:8px;">Trừ NL không tính trong công thức (dầu ăn, hư hỏng, hao hụt...)</p>
+            <div class="add-form" style="flex-wrap:wrap;gap:8px;">
+                <div style="flex:2;min-width:140px;position:relative;">
+                    <input type="text" id="stockOutIngSearch" placeholder="Gõ tên NL..." autocomplete="off" oninput="filterStockOutIng()" onfocus="filterStockOutIng()" style="width:100%;">
+                    <input type="hidden" id="stockOutIngId">
+                    <div id="stockOutIngDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--bg-card);border:1px solid var(--border-subtle);border-radius:8px;max-height:200px;overflow-y:auto;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);"></div>
+                </div>
+                <input type="number" id="stockOutQty" placeholder="Số lượng" style="flex:0.8;min-width:70px;">
+                <select id="stockOutReason" style="flex:1;min-width:100px;padding:8px;font-size:0.82rem;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);background:var(--bg-input);color:var(--text-primary);">
+                    <option value="used">Sử dụng</option>
+                    <option value="spoiled">Hư / Hết hạn</option>
+                    <option value="loss">Hao hụt</option>
+                    <option value="other">Khác</option>
+                </select>
+                <button class="btn btn-primary btn-sm" onclick="addStockOut()">Xuất</button>
+            </div>
+            <div id="stockOutList" style="margin-top:12px;"></div>
+            <div id="stockOutTotal" style="text-align:right;font-weight:700;color:var(--accent-red);margin-top:8px;"></div>
+        </div>
         <!-- GHI CHÚ -->
         <div class="card" style="margin-top:14px;">
             <div class="card-title" style="font-size:0.85rem;">📌 Ghi chú</div>

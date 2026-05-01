@@ -132,13 +132,23 @@ function mergeFirebaseState(r){
   const localGrab=state.grabOrders||[];
   const localAttendance=state.attendance||{};
   state={...state,...r};
-  // Restore local data if Firebase has less data (prevent data loss)
-  if(!state.todayInvoices||!state.todayInvoices.length)state.todayInvoices=localInvoices;
-  else if(localInvoices.length>state.todayInvoices.length){
-    const rIds=new Set((state.todayInvoices||[]).map(i=>i.id));
-    localInvoices.forEach(i=>{if(!rIds.has(i.id))state.todayInvoices.push(i);});
-  }
+  // ── Bidirectional merge: union of local + Firebase invoices by ID ──
+  const remoteInvoices=state.todayInvoices||[];
+  const mergedMap=new Map();
+  // Firebase invoices first (remote is source of truth for existing)
+  remoteInvoices.forEach(i=>mergedMap.set(i.id+'_'+i.date, i));
+  // Then local invoices (add any that Firebase doesn't have)
+  localInvoices.forEach(i=>{const k=i.id+'_'+i.date; if(!mergedMap.has(k))mergedMap.set(k, i);});
+  state.todayInvoices=[...mergedMap.values()];
+  // ── Grab orders: same union merge ──
   if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
+  else{
+    const remoteGrab=state.grabOrders||[];
+    const grabMap=new Map();
+    remoteGrab.forEach(g=>grabMap.set(g.time+'_'+g.date, g));
+    localGrab.forEach(g=>{const k=g.time+'_'+g.date; if(!grabMap.has(k))grabMap.set(k, g);});
+    state.grabOrders=[...grabMap.values()];
+  }
   if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
   // Purge stale invoices (prevent ghost data from Firebase)

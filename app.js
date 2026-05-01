@@ -128,32 +128,73 @@ function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderG
 // FIREBASE SYNC
 // ═══════════════════════════════════════
 function mergeFirebaseState(r){
+  // ── Snapshot local data BEFORE overwrite ──
   const localInvoices=state.todayInvoices||[];
   const localGrab=state.grabOrders||[];
-  const localAttendance=state.attendance||{};
+  const localAttendance=JSON.parse(JSON.stringify(state.attendance||{}));
+  const localPurchases=JSON.parse(JSON.stringify(state.purchases||{}));
+  const localExpenses=JSON.parse(JSON.stringify(state.expenses||{}));
+  const localHistory=JSON.parse(JSON.stringify(state.history||{}));
+
+  // Overwrite state with Firebase (shallow)
   state={...state,...r};
-  // ── Bidirectional merge: union of local + Firebase invoices by ID ──
+
+  // ══════════════════════════════════════
+  // BIDIRECTIONAL MERGE — union by unique key
+  // ══════════════════════════════════════
+
+  // ── 1. Invoices: key = id_date ──
   const remoteInvoices=state.todayInvoices||[];
-  const mergedMap=new Map();
-  // Firebase invoices first (remote is source of truth for existing)
-  remoteInvoices.forEach(i=>mergedMap.set(i.id+'_'+i.date, i));
-  // Then local invoices (add any that Firebase doesn't have)
-  localInvoices.forEach(i=>{const k=i.id+'_'+i.date; if(!mergedMap.has(k))mergedMap.set(k, i);});
-  state.todayInvoices=[...mergedMap.values()];
-  // ── Grab orders: same union merge ──
-  if(!state.grabOrders||!state.grabOrders.length)state.grabOrders=localGrab;
-  else{
-    const remoteGrab=state.grabOrders||[];
-    const grabMap=new Map();
-    remoteGrab.forEach(g=>grabMap.set(g.time+'_'+g.date, g));
-    localGrab.forEach(g=>{const k=g.time+'_'+g.date; if(!grabMap.has(k))grabMap.set(k, g);});
-    state.grabOrders=[...grabMap.values()];
-  }
-  if(!state.attendance||!Object.keys(state.attendance).length)state.attendance=localAttendance;
+  const invMap=new Map();
+  remoteInvoices.forEach(i=>invMap.set(i.id+'_'+i.date, i));
+  localInvoices.forEach(i=>{const k=i.id+'_'+i.date; if(!invMap.has(k))invMap.set(k, i);});
+  state.todayInvoices=[...invMap.values()];
+
+  // ── 2. Grab orders: key = time_date ──
+  const remoteGrab=state.grabOrders||[];
+  const grabMap=new Map();
+  remoteGrab.forEach(g=>grabMap.set(g.time+'_'+g.date, g));
+  localGrab.forEach(g=>{const k=g.time+'_'+g.date; if(!grabMap.has(k))grabMap.set(k, g);});
+  state.grabOrders=[...grabMap.values()];
+
+  // ── 3. Attendance: key = staffId per date ──
+  _mergeByDate(state, 'attendance', localAttendance, 'staffId');
+
+  // ── 4. Purchases: key = id per date ──
+  _mergeByDate(state, 'purchases', localPurchases, 'id');
+
+  // ── 5. Expenses: key = id per date ──
+  _mergeByDate(state, 'expenses', localExpenses, 'id');
+
+  // ── 6. History: keep richer version per date ──
+  const remoteHistory=state.history||{};
+  Object.keys(localHistory).forEach(d=>{
+    if(!remoteHistory[d])remoteHistory[d]=localHistory[d];
+    else if(localHistory[d].invoices>remoteHistory[d].invoices)remoteHistory[d]=localHistory[d];
+  });
+  state.history=remoteHistory;
+
+  // ── Migrate ingredients ──
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
-  // Purge stale invoices (prevent ghost data from Firebase)
+
+  // ── Purge stale invoices ──
   const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   localStorage.setItem('monsteaPOS',JSON.stringify(state));
+}
+
+// Helper: merge {date: [array]} objects bidirectionally by unique key field
+function _mergeByDate(state, field, localData, keyField){
+  const remote=state[field]||{};
+  const allDates=new Set([...Object.keys(remote),...Object.keys(localData)]);
+  allDates.forEach(d=>{
+    const rArr=remote[d]||[];
+    const lArr=localData[d]||[];
+    const map=new Map();
+    rArr.forEach(item=>map.set(item[keyField], item));
+    lArr.forEach(item=>{if(!map.has(item[keyField]))map.set(item[keyField], item);});
+    remote[d]=[...map.values()];
+  });
+  state[field]=remote;
 }
 
 function initFirebase(){

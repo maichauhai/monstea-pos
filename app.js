@@ -10,7 +10,7 @@ const FIREBASE_CONFIG = {
     messagingSenderId: "742890598182",
     appId: "1:742890598182:web:ce67a7db065fe94b845be7"
 };
-const APP_PASSWORDS = {'T123123t':{role:'owner',name:'Chủ quán'}};
+const APP_PASSWORDS = {'060997':{role:'owner',name:'Chủ quán'}};
 let currentRole = null;
 let currentStaffId = null;
 let currentStaffName = '';
@@ -36,7 +36,7 @@ let state = {
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
     nextPurchaseId:1, nextExpenseId:1,
     shopName:'Monstea', password:'1234',
-    ownerPassword:'T123123t',
+    ownerPassword:'060997',
     weekSchedule:{},
     menuGuides:{},
     guideImages:{}
@@ -63,7 +63,7 @@ if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
 if(!state.weekSchedule)state.weekSchedule={};
-if(!state.ownerPassword)state.ownerPassword='T123123t';
+if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
 // Ensure all ingredients have sln/openStock/warnLevel

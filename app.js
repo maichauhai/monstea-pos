@@ -645,6 +645,7 @@ function renderInventory(){
     <th style="padding:6px 3px;">NL</th><th style="padding:6px 3px;">ĐV</th>
     <th style="padding:6px 3px;text-align:right;">Giá</th>
     <th style="padding:6px 3px;text-align:center;">SLN</th>
+    <th style="padding:6px 3px;text-align:right;">Giá TK</th>
     <th style="padding:6px 3px;text-align:right;">Tồn đầu</th>
     <th style="padding:6px 3px;text-align:right;">Nhập</th>
     <th style="padding:6px 3px;text-align:right;">Xuất</th>
@@ -659,6 +660,7 @@ function renderInventory(){
         <td style="padding:5px 3px;color:var(--text-muted);">${i.unit}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-warm);">${fmtP(i.unitPrice)}</td>
         <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.sln||1}" style="width:45px;text-align:center;font-size:0.72rem;padding:2px;" onchange="setSLN(${i.id},this.value)"></td>
+        <td style="padding:5px 3px;text-align:right;color:var(--accent);font-weight:600;" title="${fmtP(i.unitPrice)} × ${i.sln||1} = ${fmtP(i.unitPrice*(i.sln||1))}">${fmtP(i.unitPrice*(i.sln||1))}</td>
         <td style="padding:5px 3px;text-align:right;"><input type="number" value="${i.openStock||0}" style="width:55px;text-align:right;font-size:0.72rem;padding:2px 3px;" onchange="setOpenStock(${i.id},this.value)"></td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-green);">${s.purchased||0}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-red);">${s.totalUsed||0}</td>

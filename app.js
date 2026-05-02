@@ -68,7 +68,7 @@ if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
 if(!state.manualUsage)state.manualUsage={};
 // Ensure all ingredients have sln/openStock/warnLevel
-state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
+state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
 if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
 if(state.staff.length>0)state.nextStaffId=Math.max(state.nextStaffId||0,...state.staff.map(s=>s.id))+1;
@@ -180,7 +180,7 @@ function mergeFirebaseState(r){
   state.history=remoteHistory;
 
   // ── Migrate ingredients ──
-  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;});
+  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
 
   // ── Purge stale invoices ──
   const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
@@ -602,7 +602,7 @@ function renderInventory(){
     document.getElementById('ingCount').textContent=`(${state.ingredients.length} nguyên liệu)`;
     const sI={ok:'🟢',warning:'🟡',danger:'🔴'};
     // Need-to-buy card
-    const needList=state.ingredients.map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
+    const needList=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     const ntbEl=document.getElementById('needToBuyCard');
     if(ntbEl){
       if(!needList.length){ntbEl.innerHTML='';}
@@ -655,8 +655,9 @@ function renderInventory(){
     <th style="padding:6px 3px;"></th></tr></thead><tbody>`;
     list.forEach(i=>{
         const s=getStockInfo(i);
-        html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
-        <td style="padding:5px 3px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(i.name)}">${esc(i.name)}</td>
+        const hiddenStyle=i.hidden?'opacity:0.35;':'';const hiddenIcon=i.hidden?'👁️‍🗨️':'👁️';
+        html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${hiddenStyle}">
+        <td style="padding:5px 3px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(i.name)}${i.hidden?' (ẨN)':''}">${esc(i.name)}${i.hidden?' <span style="font-size:0.6rem;color:var(--text-muted);">(ẨN)</span>':''}</td>
         <td style="padding:5px 3px;color:var(--text-muted);">${i.unit}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-warm);">${fmtP(i.unitPrice)}</td>
         <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.sln||1}" style="width:45px;text-align:center;font-size:0.72rem;padding:2px;" onchange="setSLN(${i.id},this.value)"></td>
@@ -668,6 +669,7 @@ function renderInventory(){
         <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.warnLevel||''}" placeholder="—" style="width:45px;text-align:center;font-size:0.7rem;padding:2px;" onchange="setWarnLevel(${i.id},this.value)"></td>
         <td style="padding:5px 3px;text-align:center;" title="${s.avgDaily>0?'TB '+s.avgDaily+'/ngày, còn ~'+s.daysLeft+' ngày':'Chưa có dữ liệu'}">${sI[s.status]}</td>
         <td style="padding:5px 3px;text-align:center;white-space:nowrap;">
+            <button onclick="toggleHideIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;" title="${i.hidden?'Hiện lại':'Ẩn NL'}">${hiddenIcon}</button>
             <button onclick="editIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">✏️</button>
             <button onclick="deleteIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">🗑️</button></td></tr>`;
     });
@@ -703,8 +705,9 @@ const supplierLink=document.getElementById('editIngSupplierLink')?.value.trim()|
 if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
 i.name=n;i.unit=u;i.unitPrice=p;i.sln=sln;i.supplier=supplier;i.supplierLink=supplierLink;
 saveState();renderInventory();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
+function toggleHideIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;i.hidden=!i.hidden;saveState();renderInventory();toast(i.hidden?`👁️‍🗨️ Đã ẩn "${i.name}" khỏi danh sách cần mua`:`👁️ Đã hiện lại "${i.name}"`);}
 function deleteIngredient(id){if(!confirm('Xóa NL này?'))return;state.ingredients=state.ingredients.filter(i=>i.id!==id);saveState();renderInventory();toast('🗑️ Đã xóa');}
-function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0,supplier:i.supplier||'',supplierLink:i.supplierLink||''}));
+function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0,supplier:i.supplier||'',supplierLink:i.supplierLink||'',hidden:!!i.hidden}));
 const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
 a.href=URL.createObjectURL(b);a.download=`monstea-kho-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã xuất JSON!');}
 function importIngredientsJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
@@ -1103,7 +1106,7 @@ function printMonthlyReport(){
 // SMART RESTOCK (#13)
 // ═══════════════════════════════════════
 function copyNeedToBuyList(){
-    const items=state.ingredients.map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
+    const items=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     if(!items.length){toast('✅ Kho đầy đủ!');return;}
     const text=items.map(i=>{
         const emoji=i.s.status==='danger'?'🔴':'🟡';

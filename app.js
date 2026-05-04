@@ -737,13 +737,51 @@ function renderExpenseTab(){
     const expenses=(state.expenses||{})[dt]||[];
     document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
-    // Xuất kho thủ công
+    // Xuất kho thủ công — smart waste tracking
     const reasonIcons={used:'🔧',spoiled:'🗑️',loss:'📉',other:'📌'};
     const reasonLabels={used:'Sử dụng',spoiled:'Hư/Hết hạn',loss:'Hao hụt',other:'Khác'};
     const stockOuts=(state.manualUsage||{})[dt]||[];
     const soEl=document.getElementById('stockOutList');
     if(soEl){
-        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${reasonLabels[s.reason]||s.reason}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+        // Calculate today's recipe usage per ingredient
+        const todayRecipeUsage=calcDailyUsage(dt);
+        let wasteTotal=0;
+        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>{
+            const recipeUsed=Math.round((todayRecipeUsage[s.ingId]||0)*100)/100;
+            const waste=Math.max(0,Math.round((s.qty-recipeUsed)*100)/100);
+            const ing=state.ingredients.find(i=>i.id===s.ingId);
+            const wasteCost=Math.round(waste*(ing?ing.unitPrice:0));
+            wasteTotal+=wasteCost;
+            const pct=s.qty>0?Math.round(waste/s.qty*100):0;
+            return `<div class="setting-item" style="flex-wrap:wrap;">
+                <span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span>
+                <span style="font-size:0.72rem;color:var(--text-muted);">Xuất: ${s.qty} ${s.unit||''}</span>
+                <span style="font-size:0.72rem;color:var(--accent-green);">Bán CT: ${recipeUsed} ${s.unit||''}</span>
+                <span style="font-size:0.72rem;font-weight:700;color:${waste>0?'var(--accent-red)':'var(--accent-green)'};">
+                    ${waste>0?`🗑️ Hao: ${waste} ${s.unit||''} (${pct}%) ≈ ${fmtP(wasteCost)}`:'✅ Hết sạch'}
+                </span>
+                <span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span>
+                <button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button>
+            </div>`;
+        }).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+        // Auto-sync waste to expenses
+        if(wasteTotal>0){
+            if(!state.expenses)state.expenses={};
+            if(!state.expenses[dt])state.expenses[dt]=[];
+            const existWaste=state.expenses[dt].find(e=>e.name==='🗑️ Hao hụt NL (tự động)');
+            if(existWaste){
+                if(existWaste.amount!==wasteTotal){existWaste.amount=wasteTotal;saveState();}
+            }else{
+                state.expenses[dt].push({id:state.nextExpenseId++,name:'🗑️ Hao hụt NL (tự động)',amount:wasteTotal,time:'auto',isAutoWaste:true});
+                saveState();
+            }
+        }else{
+            // Hết hao hụt → xóa entry tự động nếu có
+            if(state.expenses&&state.expenses[dt]){
+                const idx=state.expenses[dt].findIndex(e=>e.name==='🗑️ Hao hụt NL (tự động)');
+                if(idx>=0){state.expenses[dt].splice(idx,1);saveState();}
+            }
+        }
     }
     const soTotal=document.getElementById('stockOutTotal');
     if(soTotal)soTotal.textContent=stockOuts.length?`Tổng xuất: ${stockOuts.length} mục`:'';

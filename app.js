@@ -67,6 +67,8 @@ if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
 if(!state.manualUsage)state.manualUsage={};
+if(!state.prepTracking)state.prepTracking={};
+if(!state.nextPrepId)state.nextPrepId=1;
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
@@ -584,8 +586,10 @@ function getStockInfo(ing){
     let totalUsed=0;Object.keys(state.history||{}).forEach(d=>{const u=calcDailyUsage(d);if(u[ing.id])totalUsed+=u[ing.id];});
     // Tính xuất kho thủ công
     let manualUsed=0;Object.values(state.manualUsage||{}).forEach(list=>{list.forEach(s=>{if(s.ingId===ing.id)manualUsed+=s.qty;});});
+    // Tính hao hụt từ prep tracking (phần chuẩn bị nhưng không bán được)
+    const prepWaste=calcTotalPrepWaste(ing.id);
     const openStock=ing.openStock||0;
-    const stock=Math.round((openStock+purchased-totalUsed-manualUsed)*100)/100;
+    const stock=Math.round((openStock+purchased-totalUsed-manualUsed-prepWaste)*100)/100;
     const warn=ing.warnLevel||0;
     const avgDaily=Math.round(calcAvgDailyUsage(ing.id)*10)/10;
     const daysLeft=avgDaily>0?Math.round(stock/avgDaily*10)/10:999;
@@ -594,7 +598,7 @@ function getStockInfo(ing){
     else if(warn>0&&stock<=warn*2)status='warning';
     else if(daysLeft<=2&&avgDaily>0)status='danger';
     else if(daysLeft<=5&&avgDaily>0)status='warning';
-    return{stock,purchased,totalUsed:Math.round((totalUsed+manualUsed)*100)/100,avgDaily,daysLeft,status};
+    return{stock,purchased,totalUsed:Math.round((totalUsed+manualUsed+prepWaste)*100)/100,avgDaily,daysLeft,status};
 }
 function renderInventory(){
     const search=(document.getElementById('ingSearch')?.value||'').toLowerCase();
@@ -737,54 +741,18 @@ function renderExpenseTab(){
     const expenses=(state.expenses||{})[dt]||[];
     document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
-    // Xuất kho thủ công — smart waste tracking
+    // Xuất kho thủ công (giữ nguyên)
     const reasonIcons={used:'🔧',spoiled:'🗑️',loss:'📉',other:'📌'};
     const reasonLabels={used:'Sử dụng',spoiled:'Hư/Hết hạn',loss:'Hao hụt',other:'Khác'};
     const stockOuts=(state.manualUsage||{})[dt]||[];
     const soEl=document.getElementById('stockOutList');
     if(soEl){
-        // Calculate today's recipe usage per ingredient
-        const todayRecipeUsage=calcDailyUsage(dt);
-        let wasteTotal=0;
-        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>{
-            const recipeUsed=Math.round((todayRecipeUsage[s.ingId]||0)*100)/100;
-            const waste=Math.max(0,Math.round((s.qty-recipeUsed)*100)/100);
-            const ing=state.ingredients.find(i=>i.id===s.ingId);
-            const wasteCost=Math.round(waste*(ing?ing.unitPrice:0));
-            wasteTotal+=wasteCost;
-            const pct=s.qty>0?Math.round(waste/s.qty*100):0;
-            return `<div class="setting-item" style="flex-wrap:wrap;">
-                <span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span>
-                <span style="font-size:0.72rem;color:var(--text-muted);">Xuất: ${s.qty} ${s.unit||''}</span>
-                <span style="font-size:0.72rem;color:var(--accent-green);">Bán CT: ${recipeUsed} ${s.unit||''}</span>
-                <span style="font-size:0.72rem;font-weight:700;color:${waste>0?'var(--accent-red)':'var(--accent-green)'};">
-                    ${waste>0?`🗑️ Hao: ${waste} ${s.unit||''} (${pct}%) ≈ ${fmtP(wasteCost)}`:'✅ Hết sạch'}
-                </span>
-                <span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span>
-                <button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button>
-            </div>`;
-        }).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
-        // Auto-sync waste to expenses
-        if(wasteTotal>0){
-            if(!state.expenses)state.expenses={};
-            if(!state.expenses[dt])state.expenses[dt]=[];
-            const existWaste=state.expenses[dt].find(e=>e.name==='🗑️ Hao hụt NL (tự động)');
-            if(existWaste){
-                if(existWaste.amount!==wasteTotal){existWaste.amount=wasteTotal;saveState();}
-            }else{
-                state.expenses[dt].push({id:state.nextExpenseId++,name:'🗑️ Hao hụt NL (tự động)',amount:wasteTotal,time:'auto',isAutoWaste:true});
-                saveState();
-            }
-        }else{
-            // Hết hao hụt → xóa entry tự động nếu có
-            if(state.expenses&&state.expenses[dt]){
-                const idx=state.expenses[dt].findIndex(e=>e.name==='🗑️ Hao hụt NL (tự động)');
-                if(idx>=0){state.expenses[dt].splice(idx,1);saveState();}
-            }
-        }
+        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${reasonLabels[s.reason]||s.reason}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     }
     const soTotal=document.getElementById('stockOutTotal');
     if(soTotal)soTotal.textContent=stockOuts.length?`Tổng xuất: ${stockOuts.length} mục`:'';
+    // Render prep waste tracking (tính năng riêng)
+    renderPrepTracking(dt);
     renderNotes();
 }
 function filterPurchaseIng(){
@@ -896,6 +864,147 @@ function deleteStockOut(dt,id){
     if(!confirm('Xóa mục xuất kho này?'))return;
     state.manualUsage[dt]=(state.manualUsage[dt]||[]).filter(s=>s.id!==id);
     saveState();renderExpenseTab();renderInventory();
+}
+
+// ═══════════════════════════════════════
+// THEO DÕI HAO HỤT (Prep Waste Tracking)
+// ═══════════════════════════════════════
+function filterPrepIng(){
+    const q=(document.getElementById('prepIngSearch').value||'').toLowerCase();
+    const dd=document.getElementById('prepIngDropdown');
+    const list=state.ingredients.filter(i=>!q||i.name.toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,15);
+    if(!list.length||!q){dd.style.display='none';return;}
+    dd.style.display='block';
+    dd.innerHTML=list.map(i=>`<div style="padding:8px 12px;cursor:pointer;font-size:0.82rem;border-bottom:1px solid rgba(255,255,255,0.04);" onmousedown="selectPrepIng(${i.id})" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='none'">${esc(i.name)} <span style="color:var(--text-muted);font-size:0.72rem;">(${i.unit})</span></div>`).join('');
+}
+function selectPrepIng(id){
+    const ing=state.ingredients.find(i=>i.id===id);if(!ing)return;
+    document.getElementById('prepIngSearch').value=ing.name;
+    document.getElementById('prepIngId').value=id;
+    document.getElementById('prepIngDropdown').style.display='none';
+    document.getElementById('prepQty').focus();
+}
+document.addEventListener('click',e=>{const dd=document.getElementById('prepIngDropdown');if(dd&&!e.target.closest('#prepIngSearch')&&!e.target.closest('#prepIngDropdown'))dd.style.display='none';});
+
+function addPrepTracking(){
+    const ingId=parseInt(document.getElementById('prepIngId').value);
+    const ing=state.ingredients.find(i=>i.id===ingId);
+    if(!ing){toast('⚠️ Chọn nguyên liệu');return;}
+    const qty=parseFloat(document.getElementById('prepQty').value)||0;
+    if(!qty){toast('⚠️ Nhập số lượng');return;}
+    const dt=getExpenseDate();
+    if(!state.prepTracking)state.prepTracking={};
+    if(!state.prepTracking[dt])state.prepTracking[dt]=[];
+    if(!state.nextPrepId)state.nextPrepId=1;
+    state.prepTracking[dt].push({
+        id:state.nextPrepId++, ingId, name:ing.name, unit:ing.unit,
+        qty, unitPrice:ing.unitPrice, time:nowTime()
+    });
+    document.getElementById('prepIngSearch').value='';
+    document.getElementById('prepIngId').value='';
+    document.getElementById('prepQty').value='';
+    saveState();renderExpenseTab();renderInventory();
+    toast(`📊 Ghi chuẩn bị ${qty} ${ing.unit} ${ing.name}`);
+}
+function deletePrepTracking(dt,id){
+    if(!confirm('Xóa mục theo dõi này?'))return;
+    state.prepTracking[dt]=(state.prepTracking[dt]||[]).filter(s=>s.id!==id);
+    // Xóa auto expense nếu có
+    syncPrepWasteExpense(dt);
+    saveState();renderExpenseTab();renderInventory();
+}
+
+function renderPrepTracking(dt){
+    const el=document.getElementById('prepTrackingList');
+    const totalEl=document.getElementById('prepWasteTotal');
+    if(!el)return;
+    const preps=(state.prepTracking||{})[dt]||[];
+    if(!preps.length){
+        el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+        if(totalEl)totalEl.textContent='';
+        return;
+    }
+    const todayUsage=calcDailyUsage(dt);
+    // Gộp các entry cùng nguyên liệu
+    const grouped={};
+    preps.forEach(p=>{
+        if(!grouped[p.ingId])grouped[p.ingId]={ingId:p.ingId,name:p.name,unit:p.unit,totalPrep:0,unitPrice:p.unitPrice||0,ids:[]};
+        grouped[p.ingId].totalPrep+=p.qty;
+        grouped[p.ingId].ids.push(p.id);
+    });
+    let totalWasteCost=0;
+    let html=Object.values(grouped).map(g=>{
+        const recipeSold=Math.round((todayUsage[g.ingId]||0)*100)/100;
+        const waste=Math.max(0,Math.round((g.totalPrep-recipeSold)*100)/100);
+        const wasteCost=Math.round(waste*g.unitPrice);
+        totalWasteCost+=wasteCost;
+        const pct=g.totalPrep>0?Math.round(waste/g.totalPrep*100):0;
+        const statusColor=waste>0?'var(--accent-red)':'var(--accent-green)';
+        const statusText=waste>0?`🗑️ Bỏ: ${waste} ${g.unit} (${pct}%) ≈ ${fmtP(wasteCost)}`:'✅ Dùng hết';
+        return `<div class="setting-item" style="flex-wrap:wrap;gap:4px;padding:8px 10px;">
+            <span class="si-name" style="min-width:120px;">📊 ${esc(g.name)}</span>
+            <span style="font-size:0.72rem;color:var(--accent-warm);font-weight:600;">CB: ${g.totalPrep} ${g.unit}</span>
+            <span style="font-size:0.72rem;color:var(--accent-green);">Bán: ${recipeSold} ${g.unit}</span>
+            <span style="font-size:0.72rem;font-weight:700;color:${statusColor};">${statusText}</span>
+        </div>`;
+    }).join('');
+    // Hiện từng entry riêng để xóa
+    html+=preps.map(p=>`<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.68rem;color:var(--text-muted);">
+        <span>↳ ${p.time}: ${p.qty} ${p.unit} ${esc(p.name)}</span>
+        <button onclick="deletePrepTracking('${dt}',${p.id})" style="font-size:0.65rem;background:none;border:none;cursor:pointer;color:var(--text-muted);">✕</button>
+    </div>`).join('');
+    el.innerHTML=html;
+    if(totalEl)totalEl.textContent=totalWasteCost>0?`Tổng hao hụt: ${fmtP(totalWasteCost)}`:'';
+    // Auto-sync waste cost to expenses
+    syncPrepWasteExpense(dt,totalWasteCost);
+}
+
+function syncPrepWasteExpense(dt,totalWasteCost){
+    if(typeof totalWasteCost==='undefined'){
+        // Recalculate
+        const preps=(state.prepTracking||{})[dt]||[];
+        const todayUsage=calcDailyUsage(dt);
+        totalWasteCost=0;
+        const grouped={};
+        preps.forEach(p=>{
+            if(!grouped[p.ingId])grouped[p.ingId]={totalPrep:0,unitPrice:p.unitPrice||0};
+            grouped[p.ingId].totalPrep+=p.qty;
+        });
+        Object.entries(grouped).forEach(([ingId,g])=>{
+            const recipeSold=todayUsage[parseInt(ingId)]||0;
+            const waste=Math.max(0,g.totalPrep-recipeSold);
+            totalWasteCost+=Math.round(waste*g.unitPrice);
+        });
+    }
+    if(!state.expenses)state.expenses={};
+    if(!state.expenses[dt])state.expenses[dt]=[];
+    const existIdx=state.expenses[dt].findIndex(e=>e.isAutoWaste);
+    if(totalWasteCost>0){
+        if(existIdx>=0){
+            if(state.expenses[dt][existIdx].amount!==totalWasteCost){
+                state.expenses[dt][existIdx].amount=totalWasteCost;
+            }
+        }else{
+            state.expenses[dt].push({id:state.nextExpenseId++,name:'🗑️ Hao hụt NL (tự động)',amount:totalWasteCost,time:'auto',isAutoWaste:true});
+        }
+    }else{
+        if(existIdx>=0)state.expenses[dt].splice(existIdx,1);
+    }
+}
+
+// Tính tổng prep waste cho nguyên liệu (dùng trong getStockInfo)
+function calcTotalPrepWaste(ingId){
+    let totalWaste=0;
+    Object.entries(state.prepTracking||{}).forEach(([date,entries])=>{
+        let prepForIng=0;
+        entries.forEach(e=>{if(e.ingId===ingId)prepForIng+=e.qty;});
+        if(prepForIng>0){
+            const dailyUsage=calcDailyUsage(date);
+            const recipeSold=dailyUsage[ingId]||0;
+            totalWaste+=Math.max(0,prepForIng-recipeSold);
+        }
+    });
+    return Math.round(totalWaste*100)/100;
 }
 
 // ═══════════════════════════════════════

@@ -599,7 +599,8 @@ function getStockInfo(ing){
 function renderInventory(){
     const search=(document.getElementById('ingSearch')?.value||'').toLowerCase();
     const list=state.ingredients.filter(i=>!search||i.name.toLowerCase().includes(search));
-    document.getElementById('ingCount').textContent=`(${state.ingredients.length} nguyên liệu)`;
+    const totalInvValue=state.ingredients.filter(i=>!i.hidden).reduce((sum,i)=>{const s=getStockInfo(i);return sum+s.stock*i.unitPrice;},0);
+    document.getElementById('ingCount').innerHTML=`(${state.ingredients.length} nguyên liệu) <span style="margin-left:8px;color:var(--accent);font-weight:700;">💰 ${fmtP(Math.round(totalInvValue))}</span>`;
     const sI={ok:'🟢',warning:'🟡',danger:'🔴'};
     // Need-to-buy card
     const needList=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');

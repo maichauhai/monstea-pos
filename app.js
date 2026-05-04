@@ -907,7 +907,6 @@ function addPrepTracking(){
     toast(`📊 Ghi chuẩn bị ${qty} ${ing.unit} ${ing.name}`);
 }
 function deletePrepTracking(dt,id){
-    if(!confirm('Xóa mục theo dõi này?'))return;
     state.prepTracking[dt]=(state.prepTracking[dt]||[]).filter(s=>s.id!==id);
     // Xóa auto expense nếu có
     syncPrepWasteExpense(dt);
@@ -949,9 +948,9 @@ function renderPrepTracking(dt){
         </div>`;
     }).join('');
     // Hiện từng entry riêng để xóa
-    html+=preps.map(p=>`<div style="display:flex;align-items:center;gap:6px;padding:2px 10px;font-size:0.68rem;color:var(--text-muted);">
-        <span>↳ ${p.time}: ${p.qty} ${p.unit} ${esc(p.name)}</span>
-        <button onclick="deletePrepTracking('${dt}',${p.id})" style="font-size:0.65rem;background:none;border:none;cursor:pointer;color:var(--text-muted);">✕</button>
+    html+=preps.map(p=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.72rem;color:var(--text-muted);">
+        <span style="flex:1;">↳ ${p.time}: ${p.qty} ${p.unit} ${esc(p.name)}</span>
+        <button onclick="deletePrepTracking('${dt}',${p.id})" style="font-size:0.8rem;background:none;border:none;cursor:pointer;color:var(--accent-red);padding:2px 6px;">🗑</button>
     </div>`).join('');
     el.innerHTML=html;
     if(totalEl)totalEl.textContent=totalWasteCost>0?`Tổng hao hụt: ${fmtP(totalWasteCost)}`:'';

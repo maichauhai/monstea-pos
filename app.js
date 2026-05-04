@@ -314,13 +314,13 @@ function renderPOSMenu(){
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
     const searchVal=(document.getElementById('menuSearch')?.value||'').trim().toLowerCase();
-    let items=state.menu.filter(m=>m.active&&(posCategory==='Tất cả'||m.category===posCategory));
+    let items=state.menu.filter(m=>m.active&&!m.isGuide&&(posCategory==='Tất cả'||m.category===posCategory));
     // Build global numbering (across all active items)
-    const allActive=state.menu.filter(m=>m.active);
+    const allActive=state.menu.filter(m=>m.active&&!m.isGuide);
     const numMap={};allActive.forEach((m,idx)=>{numMap[m.id]=idx+1;});
     // Search filter
     if(searchVal){
-        const allForSearch=state.menu.filter(m=>m.active);
+        const allForSearch=state.menu.filter(m=>m.active&&!m.isGuide);
         const isNum=/^\d+$/.test(searchVal);
         items=allForSearch.filter(m=>{
             if(isNum)return String(numMap[m.id])===searchVal;
@@ -1331,7 +1331,7 @@ c.innerHTML=l.map(c=>`<div class="cl-item ${c.checked?'checked':''}" onclick="to
 function renderSettings(){
     document.getElementById('menuList').innerHTML=state.menu.map(m=>`<div class="setting-item" style="${m.active?'':'opacity:0.4'}">
 <select onchange="changeMenuCat(${m.id},this.value)" style="width:auto;min-width:80px;padding:4px 8px;font-size:0.72rem;flex:0;">${state.categories.map(c=>`<option value="${c}" ${c===m.category?'selected':''}>${c}</option>`).join('')}</select>
-<span class="si-name">${esc(m.name)}</span><span class="si-price">${fmtP(m.price)}</span>
+<span class="si-name">${m.isGuide?'📖 ':''}${esc(m.name)}</span><span class="si-price">${m.isGuide?'(HD)':fmtP(m.price)}</span>
 <div class="si-actions"><button onclick="editMenuItem(${m.id})" title="Sửa món">✏️</button><button onclick="toggleMenuItem(${m.id})" title="${m.active?'Ẩn':'Hiện'}">${m.active?'👁️':'🚫'}</button><button onclick="deleteMenuItem(${m.id})" title="Xóa">🗑️</button></div></div>`).join('');
     document.getElementById('newMenuCat').innerHTML=state.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
     document.getElementById('staffList').innerHTML=state.staff.map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><span style="font-size:0.7rem;color:var(--accent);margin-left:auto;margin-right:8px;">💰${fmtP(s.wageRate||25000)}/h</span><span style="font-size:0.65rem;color:var(--text-muted);margin-right:8px;">🔑****</span><div class="si-actions"><button onclick="editStaff(${s.id})" title="Sửa">✏️</button><button onclick="deleteStaff(${s.id})">🗑️</button></div></div>`).join('');
@@ -1570,14 +1570,32 @@ function renderGuide(){
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===guideCategory?'active':''}" onclick="setGuideCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('guideMenuGrid');
     const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory));
-    g.innerHTML=items.map(m=>{
+    let html=items.map(m=>{
         const hasGuide=(state.menuGuides&&state.menuGuides[m.id])||((state.guideImages&&state.guideImages[m.id]&&state.guideImages[m.id].length));
         const vis=getMenuVisual(m);
         return `<div class="menu-item-btn" style="position:relative;${hasGuide?'border-color:rgba(74,222,128,0.4);':''}" onclick="showGuide(${m.id})">
         ${hasGuide?'<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;">✅</span>':''}
         ${vis}<div class="mi-name">${esc(m.name)}</div>
         <div style="font-size:0.65rem;color:${hasGuide?'var(--accent-green)':'var(--text-muted)'};">${hasGuide?'Đã có HD':'Chưa có'}</div></div>`;
-    }).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    }).join('');
+    if(!html) html='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    if(currentRole==='owner'){
+        html+=`<div class="menu-item-btn" style="border:2px dashed var(--border-subtle);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0.8;cursor:pointer;min-height:100px;box-shadow:none;" onclick="addCustomGuide()">
+        <div style="font-size:2rem;margin-bottom:4px;line-height:1;">➕</div>
+        <div style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);">Thêm HD mới</div></div>`;
+    }
+    g.innerHTML=html;
+}
+function addCustomGuide(){
+    const n=prompt('Tên hướng dẫn mới (VD: Cách ủ trà đen):');
+    if(!n)return;
+    const cat=guideCategory==='Tất cả'?(state.categories[0]||'Khác'):guideCategory;
+    const newId=state.nextMenuId++;
+    state.menu.push({id:newId,name:n,price:0,category:cat,active:true,isGuide:true});
+    saveState();
+    renderGuide();
+    showGuide(newId);
+    toast('✅ Đã tạo hướng dẫn mới');
 }
 function setGuideCategory(c){guideCategory=c;renderGuide();}
 function showGuide(id){

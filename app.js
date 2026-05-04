@@ -930,9 +930,9 @@ function renderAttHistory(){
     const sal=document.getElementById('attSalaryCard');
     if(!el)return;
     const dates=getAttDates(attViewMode);
-    const RATE=25000,OT_START=22*60,OT_MULT=1.3;
+    const OT_START=22*60,OT_MULT=1.3;
     const staffTotals={};
-    state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,wageRate:s.wageRate||25000});
+    state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,totalWage:0,wageRate:s.wageRate||25000});
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">Ngày</th>`;
@@ -951,7 +951,9 @@ function renderAttHistory(){
                 const inMin=iH*60+iM,outMin=oH*60+oM;
                 let normH=r.hours,otHr=0;
                 if(outMin>OT_START){normH=Math.max(0,(Math.min(outMin,OT_START)-inMin)/60);otHr=Math.max(0,(outMin-Math.max(inMin,OT_START))/60);}
+                const dayRate=r.wageRate||staffTotals[s.id].wageRate;
                 staffTotals[s.id].totalH+=r.hours;staffTotals[s.id].normalH+=normH;staffTotals[s.id].otH+=otHr;staffTotals[s.id].days++;
+                staffTotals[s.id].totalWage+=Math.round(normH*dayRate+otHr*dayRate*OT_MULT);
                 html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);"><div>${r.hours}h</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn||'?'}→${r.checkOut||'?'}</div></td>`;
             }else html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">—</td>`;
         });
@@ -964,7 +966,7 @@ function renderAttHistory(){
     <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">NV</th><th>Ngày</th><th>Tổng giờ</th><th>Thường</th><th>OT</th><th style="text-align:right;">Lương</th></tr></thead><tbody>
-    ${state.staff.map(s=>{const t=staffTotals[s.id];const rate=t.wageRate||25000;const salary=Math.round(t.normalH*rate+t.otH*rate*OT_MULT);
+    ${state.staff.map(s=>{const t=staffTotals[s.id];const salary=t.totalWage;
     return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
     <td style="padding:4px;font-weight:600;">${esc(t.name)}</td>
     <td style="padding:4px;text-align:center;">${t.days}</td>
@@ -973,7 +975,7 @@ function renderAttHistory(){
     <td style="padding:4px;text-align:center;color:${t.otH?'var(--accent-warm)':'var(--text-muted)'};">${Math.round(t.otH*10)/10}h</td>
     <td style="padding:4px;text-align:right;font-weight:700;color:var(--accent);">${fmtP(salary)}</td></tr>`;}).join('')}
     <tr style="border-top:2px solid var(--border-subtle);"><td colspan="5" style="padding:4px;font-weight:700;">TỔNG</td>
-    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];const rate=t.wageRate||25000;return s+Math.round(t.normalH*rate+t.otH*rate*OT_MULT);},0))}</td></tr>
+    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];return s+t.totalWage;},0))}</td></tr>
     </tbody></table>`;
 }
 
@@ -988,7 +990,7 @@ function renderMonthlyReport(){
     const now=new Date(),y=now.getFullYear(),m=now.getMonth();
     const daysInMonth=new Date(y,m+1,0).getDate();
     const firstDay=new Date(y,m,1).getDay(); // 0=Sun
-    const RATE=25000,OT_START=22*60,OT_MULT=1.3;
+    const OT_START=22*60,OT_MULT=1.3;
     // Collect daily data
     const dailyData=[];let totalRev=0,totalNL=0,totalNV=0,totalOther=0,totalInv=0;
     const monthItems={};
@@ -1013,7 +1015,7 @@ function renderMonthlyReport(){
             });
             // Labor cost
             const recs=(state.attendance||{})[dt]||[];
-            recs.forEach(r=>{if(!r.hours)return;const[iH,iM]=(r.checkIn||'0:0').split(':').map(Number);const outMin=(parseInt((r.checkOut||'0:0').split(':')[0]))*60+parseInt((r.checkOut||'0:0').split(':')[1]);const inMin=iH*60+iM;if(outMin<=OT_START)nvc+=r.hours*RATE;else if(inMin>=OT_START)nvc+=r.hours*RATE*OT_MULT;else{nvc+=((OT_START-inMin)/60)*RATE+((outMin-OT_START)/60)*RATE*OT_MULT;}});
+            recs.forEach(r=>{if(!r.hours)return;const rRate=r.wageRate||25000;const[iH,iM]=(r.checkIn||'0:0').split(':').map(Number);const outMin=(parseInt((r.checkOut||'0:0').split(':')[0]))*60+parseInt((r.checkOut||'0:0').split(':')[1]);const inMin=iH*60+iM;if(outMin<=OT_START)nvc+=r.hours*rRate;else if(inMin>=OT_START)nvc+=r.hours*rRate*OT_MULT;else{nvc+=((OT_START-inMin)/60)*rRate+((outMin-OT_START)/60)*rRate*OT_MULT;}});
         }
         // Other expenses
         ((state.expenses||{})[dt]||[]).forEach(e=>oexp+=e.amount);
@@ -1281,7 +1283,7 @@ function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'ou
 function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>x.staffId===id)||null;}
 function toggleAttendance(id){if(currentRole==='staff'&&currentStaffId!==id){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
 const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=state.staff.find(x=>x.id===id);
-if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null});toast(`✅ ${s.name} — Vào ca`);}
+if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000});toast(`✅ ${s.name} — Vào ca`);}
 else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
 else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
 function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';

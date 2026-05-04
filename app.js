@@ -952,7 +952,7 @@ function renderAttHistory(){
                 let normH=r.hours,otHr=0;
                 if(outMin>OT_START){normH=Math.max(0,(Math.min(outMin,OT_START)-inMin)/60);otHr=Math.max(0,(outMin-Math.max(inMin,OT_START))/60);}
                 staffTotals[s.id].totalH+=r.hours;staffTotals[s.id].normalH+=normH;staffTotals[s.id].otH+=otHr;staffTotals[s.id].days++;
-                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);">${r.hours}h</td>`;
+                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);"><div>${r.hours}h</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn||'?'}→${r.checkOut||'?'}</div></td>`;
             }else html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">—</td>`;
         });
         html+=`</tr>`;

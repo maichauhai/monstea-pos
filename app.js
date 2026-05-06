@@ -329,7 +329,7 @@ function renderPOSMenu(){
             return m.name.toLowerCase().includes(searchVal);
         });
     }
-    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=o.qty;});return s;},0);const vis=getMenuVisual(m);const num=numMap[m.id]||'';return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<span class="mi-number">${num}</span>${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Không tìm thấy</div>';
+    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=1;});return s;},0);const vis=getMenuVisual(m);const num=numMap[m.id]||'';return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<span class="mi-number">${num}</span>${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Không tìm thấy</div>';
 }
 function setPosCategory(c){posCategory=c;document.getElementById('menuSearch').value='';renderPOSMenu();}
 

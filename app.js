@@ -147,11 +147,14 @@ function mergeFirebaseState(r){
   // BIDIRECTIONAL MERGE — union by unique key
   // ══════════════════════════════════════
 
-  // ── 1. Invoices: key = id_date ──
+  // ── 1. Invoices: key = id_date, keep NEWER version ──
   const remoteInvoices=state.todayInvoices||[];
   const invMap=new Map();
   remoteInvoices.forEach(i=>invMap.set(i.id+'_'+i.date, i));
-  localInvoices.forEach(i=>{const k=i.id+'_'+i.date; if(!invMap.has(k))invMap.set(k, i);});
+  localInvoices.forEach(i=>{const k=i.id+'_'+i.date;
+    if(!invMap.has(k)){invMap.set(k, i);}
+    else{const rem=invMap.get(k);if((i._lastModified||0)>(rem._lastModified||0))invMap.set(k, i);}
+  });
   state.todayInvoices=[...invMap.values()];
 
   // ── 2. Grab orders: key = time_date ──
@@ -212,8 +215,8 @@ firebaseDb.ref('state').on('value',snap=>{
 const r=snap.val();
 if(firstLoad){
   firstLoad=false;
-  if(r){isRemoteUpdate=true;mergeFirebaseState(r);isRemoteUpdate=false;}
-  firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');return;}
+  if(r){isRemoteUpdate=true;mergeFirebaseState(r);}
+  firebaseReady=true;listenHelpAlert();init();isRemoteUpdate=false;updateSyncStatus('connected');return;}
 if(!r)return;
 isRemoteUpdate=true;mergeFirebaseState(r);
 renderAll();isRemoteUpdate=false;});}
@@ -417,7 +420,7 @@ const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
 if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
 if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
-inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;inv.discount=discount>0?discount:undefined;
+inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;inv.discount=discount>0?discount:undefined;inv._lastModified=Date.now();
 toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
 delete state._editingInvoiceId;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';

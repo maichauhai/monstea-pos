@@ -50,14 +50,16 @@ let unlockedTabs = {};
 // ═══════════════════════════════════════
 // CUSTOM CONFIRM (thay confirm() bị chặn)
 // ═══════════════════════════════════════
-function confirmAction(msg, onYes){
+function confirmAction(msg, onYes, btnLabel){
+    const lbl=btnLabel||'Xóa';
+    const btnColor=lbl==='Xóa'||lbl==='Hủy đơn'?'var(--accent-red,#ff6b6b)':'var(--accent-green,#4ade80)';
     const overlay=document.createElement('div');
     overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
     overlay.innerHTML=`<div style="background:var(--surface-card,#1e1a2e);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
         <div style="font-size:0.95rem;margin-bottom:20px;color:var(--text-primary,#f0ece4);line-height:1.5;">${msg}</div>
         <div style="display:flex;gap:10px;justify-content:center;">
             <button id="cfmNo" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text-primary,#f0ece4);cursor:pointer;font-size:0.85rem;">Hủy</button>
-            <button id="cfmYes" style="flex:1;padding:10px;border-radius:8px;border:none;background:var(--accent-red,#ff6b6b);color:white;cursor:pointer;font-weight:700;font-size:0.85rem;">Xóa</button>
+            <button id="cfmYes" style="flex:1;padding:10px;border-radius:8px;border:none;background:${btnColor};color:white;cursor:pointer;font-weight:700;font-size:0.85rem;">${lbl}</button>
         </div>
     </div>`;
     document.body.appendChild(overlay);
@@ -330,8 +332,10 @@ const subtotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduc
 const discount=getDiscountAmount();
 const isStaff=method==='staff';
 const total=isStaff?0:Math.max(0,subtotal-discount);
-if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?${discount>0?' (giảm '+fmtP(discount)+')':''}`))return;
-if(isStaff&&!confirm(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(subtotal)})? Giá sẽ = 0đ`))return;
+if(!isStaff&&window.innerWidth<=768){confirmAction(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?${discount>0?' (giảm '+fmtP(discount)+')':''}`,()=>_doPayOrder(method,total,subtotal,discount,isStaff),'Xác nhận');return;}
+if(isStaff){confirmAction(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(subtotal)})? Giá sẽ = 0đ`,()=>_doPayOrder(method,total,subtotal,discount,true),'Xác nhận');return;}
+_doPayOrder(method,total,subtotal,discount,false);}
+function _doPayOrder(method,total,subtotal,discount,isStaff){
 const note=document.getElementById('orderNote').value.trim();
 const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.price,qty:o.qty,toppings:(o.toppings||[]).map(t=>({menuId:t.menuId,name:t.name,price:t.price}))}));
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
@@ -346,6 +350,7 @@ if(discount>0)inv.discount=discount;
 if(isStaff)inv.staffOriginalTotal=subtotal;
 state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${inv.id} — ${fmtP(total)}${discount>0?' (giảm '+fmtP(discount)+')':''}`);}
 playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
+
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
 const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
@@ -541,8 +546,8 @@ function renderInventory(){
         <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.warnLevel||''}" placeholder="—" style="width:45px;text-align:center;font-size:0.7rem;padding:2px;" onchange="setWarnLevel(${i.id},this.value)"></td>
         <td style="padding:5px 3px;text-align:center;" title="${s.avgDaily>0?'TB '+s.avgDaily+'/ngày, còn ~'+s.daysLeft+' ngày':'Chưa có dữ liệu'}">${sI[s.status]}</td>
         <td style="padding:5px 3px;text-align:center;white-space:nowrap;">
-            <button onclick="editIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">✏️</button>
-            <button onclick="deleteIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">🗑️</button></td></tr>`;
+            <button onclick="editIngredient(${i.id})" style="font-size:0.85rem;background:none;border:none;cursor:pointer;padding:6px 8px;min-width:32px;min-height:32px;">✏️</button>
+            <button onclick="deleteIngredient(${i.id})" style="font-size:0.85rem;background:none;border:none;cursor:pointer;padding:6px 8px;min-width:32px;min-height:32px;">🗑️</button></td></tr>`;
     });
     html+='</tbody></table>';
     document.getElementById('inventoryTable').innerHTML=html;
@@ -592,10 +597,10 @@ function renderExpenseTab(){
     const dt=getExpenseDate();
     document.getElementById('ctDateLabel').textContent=dt===today()?'(Hôm nay)':'('+dt+')';
     const purchases=(state.purchases||{})[dt]||[];
-    document.getElementById('purchaseList').innerHTML=purchases.length?purchases.map(p=>`<div class="setting-item"><span class="si-name">${esc(p.name||'?')}</span><span style="font-size:0.72rem;color:var(--text-muted);">${p.qty}×${p.sln}=${p.totalQty} ${p.unit||''}</span><span class="si-price">${fmtP(p.totalCost)}</span><span style="font-size:0.72rem;color:var(--accent-warm);">${fmtP(p.unitPrice)}/${p.unit||''}</span><button onclick="deletePurchase('${dt}',${p.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+    document.getElementById('purchaseList').innerHTML=purchases.length?purchases.map(p=>`<div class="setting-item"><span class="si-name">${esc(p.name||'?')}</span><span style="font-size:0.72rem;color:var(--text-muted);">${p.qty}×${p.sln}=${p.totalQty} ${p.unit||''}</span><span class="si-price">${fmtP(p.totalCost)}</span><span style="font-size:0.72rem;color:var(--accent-warm);">${fmtP(p.unitPrice)}/${p.unit||''}</span><button onclick="deletePurchase('${dt}',${p.id})" style="font-size:0.85rem;background:none;border:none;cursor:pointer;padding:6px 8px;min-width:32px;min-height:32px;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('purchaseTotal').textContent=purchases.reduce((s,p)=>s+p.totalCost,0)?'Tổng nhập NL: '+fmtP(purchases.reduce((s,p)=>s+p.totalCost,0)):'';
     const expenses=(state.expenses||{})[dt]||[];
-    document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+    document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.85rem;background:none;border:none;cursor:pointer;padding:6px 8px;min-width:32px;min-height:32px;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
     renderNotes();
 }
@@ -692,7 +697,7 @@ function renderNotes(){
         html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;${n.done?'opacity:0.45;':''}">
         <span style="flex:1;font-size:0.82rem;${n.done?'text-decoration:line-through;color:var(--text-muted);':''}">${esc(n.text)}</span>
         <span style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;">${n.time}</span>
-        <button onclick="toggleNote(${n.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;" title="${n.done?'Hoàn tác':'Xong'}">${n.done?'↩️':'✔️'}</button>
+        <button onclick="toggleNote(${n.id})" style="font-size:0.85rem;background:none;border:none;cursor:pointer;padding:6px 8px;min-width:32px;min-height:32px;" title="${n.done?'Hoàn tác':'Xong'}">${n.done?'↩️':'✔️'}</button>
         </div>`;
     });
     el.innerHTML=html;

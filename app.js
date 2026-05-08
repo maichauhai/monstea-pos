@@ -229,6 +229,8 @@ function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!
 const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};
 el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}`;}
 function checkNewDay(){const td=today();
+// ONE-TIME CLEANUP: xóa ghost data ngày nghỉ (2/5 & 3/5/2026) — remove after 2026-05-15
+['2026-05-02','2026-05-03'].forEach(d=>{if(state.history&&state.history[d]){delete state.history[d];console.log('[POS] Cleaned ghost history: '+d);}});
 // ALWAYS purge stale invoices from other dates (root cause of ghost data)
 const before=state.todayInvoices.length;
 state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);

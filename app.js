@@ -1723,7 +1723,9 @@ function renderGuide(){
     const ct=document.getElementById('guideCatTabs');if(!ct)return;
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===guideCategory?'active':''}" onclick="setGuideCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('guideMenuGrid');
-    const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory));
+    const searchEl=document.getElementById('guideSearchInput');
+    const query=(searchEl?searchEl.value:'').toLowerCase().trim();
+    const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory)&&(!query||m.name.toLowerCase().includes(query)));
     let html=items.map(m=>{
         const hasGuide=(state.menuGuides&&state.menuGuides[m.id])||((state.guideImages&&state.guideImages[m.id]&&state.guideImages[m.id].length));
         const vis=getMenuVisual(m);

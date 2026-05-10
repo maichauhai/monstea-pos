@@ -1,6 +1,6 @@
-// ═══════════════════════════════════════
+﻿// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // FIREBASE CONFIG & AUTH
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyBpGeAlMcZtGTkt8JfuPSofArtTkx_XlJE",
     authDomain: "monstea-pos.firebaseapp.com",
@@ -10,7 +10,7 @@ const FIREBASE_CONFIG = {
     messagingSenderId: "742890598182",
     appId: "1:742890598182:web:ce67a7db065fe94b845be7"
 };
-const APP_PASSWORDS = {'060997':{role:'owner',name:'Chủ quán'}};
+const APP_PASSWORDS = {'060997':{role:'owner',name:'Chß╗º qu├ín'}};
 let currentRole = null;
 let currentStaffId = null;
 let currentStaffName = '';
@@ -20,12 +20,12 @@ let isRemoteUpdate = false;
 let firebaseReady = false;
 let lastHelpTs = 0;
 
-// ═══════════════════════════════════════
-// DEFAULT DATA — moved to data.js
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// DEFAULT DATA ΓÇö moved to data.js
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
 let state = {
-    menu:[...DEFAULT_MENU], categories:['Trà sữa','Trà trái cây','Đồ chiên','Ăn vặt','Khác'],
+    menu:[...DEFAULT_MENU], categories:['Tr├á sß╗»a','Tr├á tr├íi c├óy','─Éß╗ô chi├¬n','─én vß║╖t','Kh├íc'],
     staff:[...DEFAULT_STAFF], ingredients:[...DEFAULT_INGREDIENTS],
     recipes:{},
     recipeTemplates:[],
@@ -42,37 +42,16 @@ let state = {
     guideImages:{}
 };
 
-let posCategory='Tất cả', dashFilter='today';
+let posCategory='Tß║Ñt cß║ú', dashFilter='today';
 let scheduleWeekOffset = 0;
 let grabCurrentItems = [];
 let expenseViewDate = null;
 const lockedTabs = ['settings','inventory','recipes'];
 let unlockedTabs = {};
 
-// ═══════════════════════════════════════
-// CUSTOM CONFIRM MODAL
-// ═══════════════════════════════════════
-function confirmAction(msg, onYes, btnLabel){
-    const lbl=btnLabel||'Xóa';
-    const btnColor=lbl==='Xóa'||lbl==='Hủy đơn'?'var(--accent-red,#ff6b6b)':'var(--accent-green,#4ade80)';
-    const overlay=document.createElement('div');
-    overlay.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center;';
-    overlay.innerHTML=`<div style="background:var(--surface-card,#1e1a2e);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;max-width:320px;width:90%;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.5);">
-        <div style="font-size:0.95rem;margin-bottom:20px;color:var(--text-primary,#f0ece4);line-height:1.5;">${msg}</div>
-        <div style="display:flex;gap:10px;justify-content:center;">
-            <button id="cfmNo" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.05);color:var(--text-primary,#f0ece4);cursor:pointer;font-size:0.85rem;">Hủy</button>
-            <button id="cfmYes" style="flex:1;padding:10px;border-radius:8px;border:none;background:${btnColor};color:white;cursor:pointer;font-weight:700;font-size:0.85rem;">${lbl}</button>
-        </div>
-    </div>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector('#cfmNo').onclick=()=>overlay.remove();
-    overlay.querySelector('#cfmYes').onclick=()=>{overlay.remove();onYes();};
-    overlay.addEventListener('click',e=>{if(e.target===overlay)overlay.remove();});
-}
-
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // PERSISTENCE
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function today(){return new Date().toISOString().slice(0,10)}
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function nowHour(){return new Date().getHours()}
@@ -117,23 +96,23 @@ for(let i=state.menu.length-1;i>=0;i--){
 if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
 }}catch(e){}}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // LOGIN & ROLE
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function attemptLogin(){const p=document.getElementById('loginPwd').value;
-if(p===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chủ quán';
+if(p===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chß╗º qu├ín';
 sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
 applyRole();initFirebase();return;}
 const staffMatch=state.staff.find(s=>s.password===p);
 if(staffMatch){currentRole='staff';currentStaffId=staffMatch.id;currentStaffName=staffMatch.name;
 sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
 applyRole();initFirebase();return;}
-document.getElementById('loginError').textContent='❌ Sai mật khẩu';document.getElementById('loginPwd').value='';}
+document.getElementById('loginError').textContent='Γ¥î Sai mß║¡t khß║⌐u';document.getElementById('loginPwd').value='';}
 
 function applyRole(){
 document.querySelectorAll('.tab-btn').forEach(b=>{const t=b.getAttribute('data-tab');b.style.display=(currentRole==='staff'&&!['pos','attendance','checklist','chitieu','guide'].includes(t))?'none':'';});
 const rb=document.getElementById('roleBar'),badge=document.getElementById('roleBadge');
-if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'👑 Chủ quán':`👤 ${currentStaffName}`;
+if(rb){rb.style.display='flex';badge.textContent=currentRole==='owner'?'≡ƒææ Chß╗º qu├ín':`≡ƒæñ ${currentStaffName}`;
 badge.style.background=currentRole==='owner'?'rgba(232,166,53,0.15)':'rgba(96,165,250,0.1)';
 badge.style.color=currentRole==='owner'?'var(--accent)':'var(--accent-blue)';}
 const ahc=document.getElementById('attHistoryCard');if(ahc){ahc.style.display=currentRole==='owner'?'block':'none';if(currentRole==='owner')renderAttHistory();}
@@ -148,11 +127,11 @@ function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderG
 
 
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // FIREBASE SYNC
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function mergeFirebaseState(r){
-  // ── Snapshot local data BEFORE overwrite ──
+  // ΓöÇΓöÇ Snapshot local data BEFORE overwrite ΓöÇΓöÇ
   const localInvoices=state.todayInvoices||[];
   const localGrab=state.grabOrders||[];
   const localAttendance=JSON.parse(JSON.stringify(state.attendance||{}));
@@ -164,11 +143,11 @@ function mergeFirebaseState(r){
   // Overwrite state with Firebase (shallow)
   state={...state,...r};
 
-  // ══════════════════════════════════════
-  // BIDIRECTIONAL MERGE — union by unique key
-  // ══════════════════════════════════════
+  // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+  // BIDIRECTIONAL MERGE ΓÇö union by unique key
+  // ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 
-  // ── 1. Invoices: key = id_date, keep NEWER version ──
+  // ΓöÇΓöÇ 1. Invoices: key = id_date, keep NEWER version ΓöÇΓöÇ
   const remoteInvoices=state.todayInvoices||[];
   const invMap=new Map();
   remoteInvoices.forEach(i=>invMap.set(i.id+'_'+i.date, i));
@@ -178,26 +157,26 @@ function mergeFirebaseState(r){
   });
   state.todayInvoices=[...invMap.values()];
 
-  // ── 2. Grab orders: key = time_date ──
+  // ΓöÇΓöÇ 2. Grab orders: key = time_date ΓöÇΓöÇ
   const remoteGrab=state.grabOrders||[];
   const grabMap=new Map();
   remoteGrab.forEach(g=>grabMap.set(g.time+'_'+g.date, g));
   localGrab.forEach(g=>{const k=g.time+'_'+g.date; if(!grabMap.has(k))grabMap.set(k, g);});
   state.grabOrders=[...grabMap.values()];
 
-  // ── 3. Attendance: key = staffId per date ──
+  // ΓöÇΓöÇ 3. Attendance: key = staffId per date ΓöÇΓöÇ
   _mergeByDate(state, 'attendance', localAttendance, 'staffId');
 
-  // ── 4. Purchases: key = id per date ──
+  // ΓöÇΓöÇ 4. Purchases: key = id per date ΓöÇΓöÇ
   _mergeByDate(state, 'purchases', localPurchases, 'id');
 
-  // ── 5. Expenses: key = id per date ──
+  // ΓöÇΓöÇ 5. Expenses: key = id per date ΓöÇΓöÇ
   _mergeByDate(state, 'expenses', localExpenses, 'id');
 
-  // ── 5b. Manual Usage (xuất kho): key = id per date ──
+  // ΓöÇΓöÇ 5b. Manual Usage (xuß║Ñt kho): key = id per date ΓöÇΓöÇ
   _mergeByDate(state, 'manualUsage', localManualUsage, 'id');
 
-  // ── 6. History: keep richer version per date ──
+  // ΓöÇΓöÇ 6. History: keep richer version per date ΓöÇΓöÇ
   const remoteHistory=state.history||{};
   Object.keys(localHistory).forEach(d=>{
     if(!remoteHistory[d])remoteHistory[d]=localHistory[d];
@@ -205,10 +184,10 @@ function mergeFirebaseState(r){
   });
   state.history=remoteHistory;
 
-  // ── Migrate ingredients ──
+  // ΓöÇΓöÇ Migrate ingredients ΓöÇΓöÇ
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
 
-  // ── Purge stale invoices ──
+  // ΓöÇΓöÇ Purge stale invoices ΓöÇΓöÇ
   const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   localStorage.setItem('monsteaPOS',JSON.stringify(state));
 }
@@ -247,10 +226,10 @@ syncTimeout=setTimeout(()=>{updateSyncStatus('syncing');
 firebaseDb.ref('state').set(state).then(()=>updateSyncStatus('connected')).catch(()=>updateSyncStatus('offline'));},500);}
 
 function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;
-const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};
+const t={connected:'─É├ú kß║┐t nß╗æi',offline:'Mß║Ñt kß║┐t nß╗æi',syncing:'─Éang ─æß╗ông bß╗Ö...'};
 el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}`;}
 function checkNewDay(){const td=today();
-// ONE-TIME CLEANUP: xóa ghost data ngày nghỉ (2/5 & 3/5/2026) — remove after 2026-05-15
+// ONE-TIME CLEANUP: x├│a ghost data ng├áy nghß╗ë (2/5 & 3/5/2026) ΓÇö remove after 2026-05-15
 ['2026-05-02','2026-05-03'].forEach(d=>{if(state.history&&state.history[d]){delete state.history[d];console.log('[POS] Cleaned ghost history: '+d);}});
 // ALWAYS purge stale invoices from other dates (root cause of ghost data)
 const before=state.todayInvoices.length;
@@ -269,11 +248,11 @@ inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty
 (i.toppings||[]).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=i.qty;if(inv.method!=='staff'){is[t.name].revenue+=t.price*i.qty;}});});});
 state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,hourlyRevenue:hr,grabTotal:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.grabPrice,0),grabNet:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.netAmount,0)};}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // PASSWORD & TAB SWITCHING
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function switchTab(tab){
-    if(currentRole==='staff'&&!['pos','attendance','checklist','chitieu','guide'].includes(tab)){toast('⚠️ Bạn không có quyền truy cập');return;}
+    if(currentRole==='staff'&&!['pos','attendance','checklist','chitieu','guide'].includes(tab)){toast('ΓÜá∩╕Å Bß║ín kh├┤ng c├│ quyß╗ün truy cß║¡p');return;}
     if(lockedTabs.includes(tab)&&!unlockedTabs[tab]){
         document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
@@ -304,33 +283,33 @@ function unlockTab(tab){
         if(tab==='settings')renderSettings();
         if(tab==='inventory')renderInventory();
         if(tab==='recipes')renderRecipes();
-        toast('🔓 Đã mở khóa!');
-    } else { toast('❌ Sai mật khẩu'); }
+        toast('≡ƒöô ─É├ú mß╗ƒ kh├│a!');
+    } else { toast('Γ¥î Sai mß║¡t khß║⌐u'); }
 }
 
 function changePassword(){
     const np=document.getElementById('newPwd').value.trim();
-    if(!np||np.length<4){toast('⚠️ Mật khẩu tối thiểu 4 ký tự');return;}
-    state.password=np;saveState();document.getElementById('newPwd').value='';toast('✅ Đã đổi mật khẩu tab');
+    if(!np||np.length<4){toast('ΓÜá∩╕Å Mß║¡t khß║⌐u tß╗æi thiß╗âu 4 k├╜ tß╗▒');return;}
+    state.password=np;saveState();document.getElementById('newPwd').value='';toast('Γ£à ─É├ú ─æß╗òi mß║¡t khß║⌐u tab');
 }
 function changeOwnerPassword(){
     const np=document.getElementById('ownerPwdInput').value.trim();
-    if(!np||np.length<4){toast('⚠️ Mật khẩu tối thiểu 4 ký tự');return;}
+    if(!np||np.length<4){toast('ΓÜá∩╕Å Mß║¡t khß║⌐u tß╗æi thiß╗âu 4 k├╜ tß╗▒');return;}
     const dup=state.staff.find(s=>s.password===np);
-    if(dup){toast(`⚠️ Trùng pass NV "${dup.name}"`);return;}
+    if(dup){toast(`ΓÜá∩╕Å Tr├╣ng pass NV "${dup.name}"`);return;}
     state.ownerPassword=np;saveState();
     sessionStorage.setItem('monsteaPwd',np);
     document.getElementById('ownerPwdInput').value='';
-    toast('✅ Đã đổi mật khẩu chủ quán');
+    toast('Γ£à ─É├ú ─æß╗òi mß║¡t khß║⌐u chß╗º qu├ín');
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // POS
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function getMenuVisual(m){
     const img=MENU_IMAGES[m.name];
     if(img){
-        const isL=m.name.endsWith(' L')||m.name.includes('(đặc biệt)')||m.price>=50000;
+        const isL=m.name.endsWith(' L')||m.name.includes('(─æß║╖c biß╗çt)')||m.price>=50000;
         return `<img class="mi-img${isL?' mi-img-l':''}" src="${IMG_BASE}${img}" alt="" loading="lazy" onerror="this.style.display='none'">`;
     }
     const emoji=TOPPING_EMOJI[m.name];
@@ -339,10 +318,10 @@ function getMenuVisual(m){
 }
 function renderPOSMenu(){
     const ct=document.getElementById('posCatTabs');
-    ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
+    ct.innerHTML=['Tß║Ñt cß║ú',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
     const searchVal=(document.getElementById('menuSearch')?.value||'').trim().toLowerCase();
-    let items=state.menu.filter(m=>m.active&&!m.isGuide&&(posCategory==='Tất cả'||m.category===posCategory));
+    let items=state.menu.filter(m=>m.active&&!m.isGuide&&(posCategory==='Tß║Ñt cß║ú'||m.category===posCategory));
     // Build global numbering (across all active items)
     const allActive=state.menu.filter(m=>m.active&&!m.isGuide);
     const numMap={};allActive.forEach((m,idx)=>{numMap[m.id]=idx+1;});
@@ -355,7 +334,7 @@ function renderPOSMenu(){
             return m.name.toLowerCase().includes(searchVal);
         });
     }
-    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=1;});return s;},0);const vis=getMenuVisual(m);const num=numMap[m.id]||'';return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<span class="mi-number">${num}</span>${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Không tìm thấy</div>';
+    g.innerHTML=items.map(m=>{const qty=state.currentOrder.reduce((s,o)=>{if(o.menuId===m.id)s+=o.qty;(o.toppings||[]).forEach(t=>{if(t.menuId===m.id)s+=1;});return s;},0);const vis=getMenuVisual(m);const num=numMap[m.id]||'';return `<div class="menu-item-btn ${qty?'mi-badge-active':''}" style="position:relative;" onclick="addToOrder(${m.id})">${qty?`<span class="mi-badge">${qty}</span>`:''}<span class="mi-number">${num}</span>${vis}<div class="mi-name">${esc(m.name)}</div><div class="mi-price">${fmtP(m.price)}</div></div>`;}).join('')||'<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Kh├┤ng t├¼m thß║Ñy</div>';
 }
 function setPosCategory(c){posCategory=c;document.getElementById('menuSearch').value='';renderPOSMenu();}
 
@@ -365,7 +344,7 @@ function setPosCategory(c){posCategory=c;document.getElementById('menuSearch').v
     function handleSwipe(){
         const diff=touchStartX-touchEndX;
         if(Math.abs(diff)<50)return;
-        const cats=['Tất cả',...(state?.categories||[])];
+        const cats=['Tß║Ñt cß║ú',...(state?.categories||[])];
         const idx=cats.indexOf(posCategory);
         if(diff>0&&idx<cats.length-1)setPosCategory(cats[idx+1]);
         else if(diff<0&&idx>0)setPosCategory(cats[idx-1]);
@@ -391,17 +370,17 @@ function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
 function changeQty(idx,d){const i=state.currentOrder[idx];if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
 function removeFromOrder(idx){state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
 function removeTopping(orderIdx,tIdx){state.currentOrder[orderIdx].toppings.splice(tIdx,1);renderOrder();renderPOSMenu();}
-function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
+function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='H├ôA ─É╞áN Mß╗ÜI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
 function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
-if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';updateMobileBar();return;}
+if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chß╗ìn m├│n tß╗½ menu b├¬n tr├íi</div>';t.textContent='0─æ';n.textContent='0 m├│n';updateMobileBar();return;}
 const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0);
 const ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,tt)=>st+tt.price,0);return s+(o.price+tp)*o.qty;},0);
 c.innerHTML=state.currentOrder.map((o,idx)=>{
     const tp=o.toppings||[];const tpTotal=tp.reduce((s,tt)=>s+tt.price,0);const lineTotal=(o.price+tpTotal)*o.qty;
-    const tpHtml=tp.length?`<div style="padding-left:12px;font-size:0.72rem;color:var(--accent-warm);">${tp.map((tt,ti)=>`+ ${esc(tt.name)} <span style="color:var(--text-muted);cursor:pointer;font-size:0.65rem;" onclick="event.stopPropagation();removeTopping(${idx},${ti})">✕</span>`).join('<br>')}</div>`:'';
-    return `<div class="order-item" style="flex-wrap:wrap;"><div class="oi-name">${esc(o.name)}${tp.length?` <span style="color:var(--accent-warm);font-size:0.72rem;">(+${tp.length})</span>`:''}</div><div class="oi-qty"><button onclick="changeQty(${idx},-1)">−</button><span>${o.qty}</span><button onclick="changeQty(${idx},1)">+</button></div><div class="oi-price">${fmtP(lineTotal)}</div><span class="oi-del" onclick="removeFromOrder(${idx})">✕</span>${tpHtml}</div>`;
+    const tpHtml=tp.length?`<div style="padding-left:12px;font-size:0.72rem;color:var(--accent-warm);">${tp.map((tt,ti)=>`+ ${esc(tt.name)} <span style="color:var(--text-muted);cursor:pointer;font-size:0.65rem;" onclick="event.stopPropagation();removeTopping(${idx},${ti})">Γ£ò</span>`).join('<br>')}</div>`:'';
+    return `<div class="order-item" style="flex-wrap:wrap;"><div class="oi-name">${esc(o.name)}${tp.length?` <span style="color:var(--accent-warm);font-size:0.72rem;">(+${tp.length})</span>`:''}</div><div class="oi-qty"><button onclick="changeQty(${idx},-1)">ΓêÆ</button><span>${o.qty}</span><button onclick="changeQty(${idx},1)">+</button></div><div class="oi-price">${fmtP(lineTotal)}</div><span class="oi-del" onclick="removeFromOrder(${idx})">Γ£ò</span>${tpHtml}</div>`;
 }).join('');
-t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();updateMobileBar();}
+t.textContent=fmtP(ta);n.textContent=tq+' m├│n';calcChange();updateMobileBar();}
 
 function getDiscountAmount(){
 const raw=parseInt(document.getElementById('discountInput')?.value)||0;
@@ -428,81 +407,81 @@ const el=document.getElementById('changeResult');
 const mobEl=document.getElementById('mobChangeResult');
 if(!raw||!total){el.textContent='';if(mobEl)mobEl.textContent='';return;}
 const change=given-total;
-if(change>=0){const t='Thối: '+fmtP(change);el.textContent=t;el.style.color='var(--accent-green)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-green)';}}
-else{const t='Thiếu: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
+if(change>=0){const t='Thß╗æi: '+fmtP(change);el.textContent=t;el.style.color='var(--accent-green)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-green)';}}
+else{const t='Thiß║┐u: '+fmtP(Math.abs(change));el.textContent=t;el.style.color='var(--accent-red)';if(mobEl){mobEl.textContent=t;mobEl.style.color='var(--accent-red)';}}}
 
-function payOrder(method){if(!state.currentOrder.length){toast('⚠️ Chưa có món');return;}
+function payOrder(method){if(!state.currentOrder.length){toast('ΓÜá∩╕Å Ch╞░a c├│ m├│n');return;}
 const subtotal=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);
 const discount=getDiscountAmount();
 const isStaff=method==='staff';
 const total=isStaff?0:Math.max(0,subtotal-discount);
-if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng ${method==='cash'?'tiền mặt':'chuyển khoản'}?${discount>0?' (giảm '+fmtP(discount)+')':''}`))return;
-if(isStaff&&!confirm(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(subtotal)})? Giá sẽ = 0đ`))return;
+if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh to├ín ${fmtP(total)} bß║▒ng ${method==='cash'?'tiß╗ün mß║╖t':'chuyß╗ân khoß║ún'}?${discount>0?' (giß║úm '+fmtP(discount)+')':''}`))return;
+if(isStaff&&!confirm(`≡ƒÅá X├íc nhß║¡n ─æ╞ín nß╗Öi bß╗Ö (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} m├│n ΓÇö gi├í gß╗æc ${fmtP(subtotal)})? Gi├í sß║╜ = 0─æ`))return;
 const note=document.getElementById('orderNote').value.trim();
 const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.price,qty:o.qty,toppings:(o.toppings||[]).map(t=>({menuId:t.menuId,name:t.name,price:t.price}))}));
 if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
-if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
-if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
+if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}├ù${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
+if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'Sß╗¼A ─É╞áN',time:`${today()} ${nowTime()}`,before:os,after:ns});
 inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;inv.discount=discount>0?discount:undefined;inv._lastModified=Date.now();
-toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
+toast(`Γ£à ─É├ú cß║¡p nhß║¡t #${String(eid).padStart(3,'0')}`);}
 delete state._editingInvoiceId;delete state._editingOldSummary;
-document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
+document.getElementById('orderTitle').textContent='H├ôA ─É╞áN Mß╗ÜI';document.getElementById('orderTitle').style.color='';
 }else{const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
 if(discount>0)inv.discount=discount;
 if(isStaff)inv.staffOriginalTotal=subtotal;
-state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${inv.id} — ${fmtP(total)}${discount>0?' (giảm '+fmtP(discount)+')':''}`);}
+state.todayInvoices.push(inv);toast(isStaff?`≡ƒÅá Nß╗Öi bß╗Ö #${inv.id} ΓÇö ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} m├│n (0─æ)`:`Γ£à Thanh to├ín #${inv.id} ΓÇö ${fmtP(total)}${discount>0?' (giß║úm '+fmtP(discount)+')':''}`);}
 playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
 const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
-ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn${sc?' ('+sc+' nội bộ)':''} — ${fmtP(tt)})`;
-if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có hóa đơn</div>';return;}
-c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
-return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
+ce.textContent=`(${ti.filter(i=>!i.cancelled).length} ─æ╞ín${sc?' ('+sc+' nß╗Öi bß╗Ö)':''} ΓÇö ${fmtP(tt)})`;
+if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Ch╞░a c├│ h├│a ─æ╞ín</div>';return;}
+c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}├ù${i.qty}`;}).join(', ');
+return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">─É├â Hß╗ªY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">─É├â Sß╗¼A</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">Nß╗ÿI Bß╗ÿ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'≡ƒÆ╡':inv.method==='grab'?'≡ƒÅì∩╕Å':inv.method==='staff'?'≡ƒÅá':'≡ƒô▒'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
 function showInvoiceDetail(id){const td=today();
 // Use reverse search to get the LATEST matching invoice (today's, not stale)
 const inv=[...state.todayInvoices].reverse().find(i=>i.id===id&&i.date===td);if(!inv)return;
 const logs=(state.editLog||[]).filter(l=>l.invoiceId===id&&l.time&&l.time.startsWith(td));
-const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">📝 Lịch sử (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} — ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Trước: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
+const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">≡ƒô¥ Lß╗ïch sß╗¡ (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} ΓÇö ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Tr╞░ß╗¢c: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
 const invSubTotal=inv.items.reduce((s,i)=>{const tp=(i.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(i.price+tp)*i.qty;},0);
-const discLine=inv.discount?`<div style="display:flex;justify-content:space-between;margin-top:6px;padding:6px 0;"><span style="font-size:0.85rem;color:var(--text-muted);">Tạm tính</span><span style="font-size:0.85rem;color:var(--text-muted);">${fmtP(invSubTotal)}</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:0.88rem;color:var(--accent-purple);">🎁 Giảm giá</span><span style="color:var(--accent-purple);font-weight:700;font-size:0.88rem;">-${fmtP(inv.discount)}</span></div>`:'';
-const body=`${inv.cancelled?'<div style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:8px;padding:10px;margin-bottom:12px;color:var(--accent-red);font-weight:600;">🚫 Đã hủy</div>':''}
-<div style="margin-bottom:12px;font-size:0.82rem;color:var(--text-muted);">${inv.date} — ${inv.time}</div>
-<table style="width:100%;border-collapse:collapse;"><tr style="border-bottom:1px solid var(--border-subtle);"><th style="text-align:left;padding:6px;font-size:0.78rem;color:var(--text-muted);">Món</th><th style="text-align:center;padding:6px;font-size:0.78rem;color:var(--text-muted);">SL</th><th style="text-align:right;padding:6px;font-size:0.78rem;color:var(--text-muted);">Thành tiền</th></tr>
+const discLine=inv.discount?`<div style="display:flex;justify-content:space-between;margin-top:6px;padding:6px 0;"><span style="font-size:0.85rem;color:var(--text-muted);">Tß║ím t├¡nh</span><span style="font-size:0.85rem;color:var(--text-muted);">${fmtP(invSubTotal)}</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:0.88rem;color:var(--accent-purple);">≡ƒÄü Giß║úm gi├í</span><span style="color:var(--accent-purple);font-weight:700;font-size:0.88rem;">-${fmtP(inv.discount)}</span></div>`:'';
+const body=`${inv.cancelled?'<div style="background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:8px;padding:10px;margin-bottom:12px;color:var(--accent-red);font-weight:600;">≡ƒÜ½ ─É├ú hß╗ºy</div>':''}
+<div style="margin-bottom:12px;font-size:0.82rem;color:var(--text-muted);">${inv.date} ΓÇö ${inv.time}</div>
+<table style="width:100%;border-collapse:collapse;"><tr style="border-bottom:1px solid var(--border-subtle);"><th style="text-align:left;padding:6px;font-size:0.78rem;color:var(--text-muted);">M├│n</th><th style="text-align:center;padding:6px;font-size:0.78rem;color:var(--text-muted);">SL</th><th style="text-align:right;padding:6px;font-size:0.78rem;color:var(--text-muted);">Th├ánh tiß╗ün</th></tr>
 ${inv.items.map(i=>{const tpText=(i.toppings||[]).length?' <span style="color:var(--accent-warm);font-size:0.78rem;">+ '+(i.toppings||[]).map(t=>esc(t.name)).join(' + ')+'</span>':'';const tpTotal=(i.toppings||[]).reduce((s,t)=>s+t.price,0);return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${inv.cancelled?'text-decoration:line-through;opacity:0.5;':''}"><td style="padding:8px 6px;">${esc(i.name)}${tpText}</td><td style="text-align:center;">${i.qty}</td><td style="text-align:right;color:var(--accent-warm);">${fmtP((i.price+tpTotal)*i.qty)}</td></tr>`;}).join('')}</table>
 <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border-subtle);">
 ${discLine}
-<div style="display:flex;justify-content:space-between;${inv.discount?'margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-subtle);':''}"><span style="font-weight:600;">${inv.discount?'THÀNH TIỀN':'Tổng'}</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0đ':fmtP(inv.total)}</span></div>
+<div style="display:flex;justify-content:space-between;${inv.discount?'margin-top:8px;padding-top:8px;border-top:1px dashed var(--border-subtle);':''}"><span style="font-weight:600;">${inv.discount?'TH├ÇNH TIß╗ÇN':'Tß╗òng'}</span><span style="font-family:var(--font-display);font-weight:800;font-size:1.2rem;color:${inv.cancelled?'var(--accent-red)':'var(--accent)'};">${inv.cancelled?'0─æ':fmtP(inv.total)}</span></div>
 </div>
-${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">📝 ${esc(inv.note)}</div>`:''}
-<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':inv.method==='staff'?'🏠 Nội bộ (NV/Người nhà)':'CK'}</div>
-${inv.method==='staff'&&inv.staffOriginalTotal?'<div style="margin-top:4px;font-size:0.78rem;color:var(--accent-purple);">💡 Giá gốc: '+fmtP(inv.staffOriginalTotal)+' → Giảm 100%</div>':''}
+${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">≡ƒô¥ ${esc(inv.note)}</div>`:''}
+<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">≡ƒÆ│ ${inv.method==='cash'?'Tiß╗ün mß║╖t':inv.method==='staff'?'≡ƒÅá Nß╗Öi bß╗Ö (NV/Ng╞░ß╗¥i nh├á)':'CK'}</div>
+${inv.method==='staff'&&inv.staffOriginalTotal?'<div style="margin-top:4px;font-size:0.78rem;color:var(--accent-purple);">≡ƒÆí Gi├í gß╗æc: '+fmtP(inv.staffOriginalTotal)+' ΓåÆ Giß║úm 100%</div>':''}
 ${logS}
-${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
-openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}
+${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">Γ£Å∩╕Å Sß╗¡a ─æ╞ín</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">≡ƒÜ½ Hß╗ºy ─æ╞ín</button></div>`:''}`;
+openModal('H├│a ─æ╞ín #'+String(inv.id).padStart(3,'0'),body);}
 
 function editInvoice(id){const td=today();const inv=[...state.todayInvoices].reverse().find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;closeModal();
-state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=id;state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
-document.getElementById('orderTitle').textContent=`✏️ SỬA #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
-document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${String(id).padStart(3,'0')}`);}
+state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=id;state._editingOldSummary=inv.items.map(i=>`${i.name}├ù${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
+document.getElementById('orderTitle').textContent=`Γ£Å∩╕Å Sß╗¼A #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
+document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`Γ£Å∩╕Å ─Éang sß╗¡a #${String(id).padStart(3,'0')}`);}
 
 function cancelInvoice(id){const td=today();
 // Find the actual invoice object in the array (not a copy) using index
 const idx=state.todayInvoices.findIndex(i=>i.id===id&&i.date===td&&!i.cancelled);
-if(idx===-1){toast(`⚠️ Không tìm thấy đơn #${String(id).padStart(3,'0')} hôm nay hoặc đã hủy rồi`);return;}
+if(idx===-1){toast(`ΓÜá∩╕Å Kh├┤ng t├¼m thß║Ñy ─æ╞ín #${String(id).padStart(3,'0')} h├┤m nay hoß║╖c ─æ├ú hß╗ºy rß╗ôi`);return;}
 const inv=state.todayInvoices[idx];
-confirmAction(`Hủy đơn #${String(id).padStart(3,'0')}?`,()=>{
+if(!confirm(`Hß╗ºy ─æ╞ín #${String(id).padStart(3,'0')}?`))return;
 inv.cancelled=true;if(!state.editLog)state.editLog=[];
-state.editLog.push({invoiceId:id,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
-archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${String(id).padStart(3,'0')}`);}, 'Hủy đơn');}
+state.editLog.push({invoiceId:id,action:'Hß╗ªY ─É╞áN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}├ù${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'─É├ú hß╗ºy'});
+archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`≡ƒÜ½ ─É├ú hß╗ºy #${String(id).padStart(3,'0')}`);}
 
-function showEditLog(){const td=today();const logs=(state.editLog||[]).filter(l=>l.time&&l.time.startsWith(td));if(!logs.length){openModal('📝 Nhật ký','<div style="text-align:center;padding:20px;color:var(--text-muted);">Hôm nay chưa có thay đổi</div>');return;}
-openModal(`📝 Nhật ký hôm nay (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">🕒 ${l.time} — #${String(l.invoiceId).padStart(3,'0')} — <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">❌ ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">✅ ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
+function showEditLog(){const td=today();const logs=(state.editLog||[]).filter(l=>l.time&&l.time.startsWith(td));if(!logs.length){openModal('≡ƒô¥ Nhß║¡t k├╜','<div style="text-align:center;padding:20px;color:var(--text-muted);">H├┤m nay ch╞░a c├│ thay ─æß╗òi</div>');return;}
+openModal(`≡ƒô¥ Nhß║¡t k├╜ h├┤m nay (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">≡ƒòÆ ${l.time} ΓÇö #${String(l.invoiceId).padStart(3,'0')} ΓÇö <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">Γ¥î ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Γ£à ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // DASHBOARD
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function setDashFilter(f){dashFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));if(f!=='custom')document.querySelector(`.filter-btn[onclick*="${f}"]`)?.classList.add('active');renderDashboard();}
 
 function getDashData(){const td=today();let dates=[];
@@ -563,18 +542,18 @@ function renderDashboard(){
     let otherExp=0; d.dates.forEach(dt=>{((state.expenses||{})[dt]||[]).forEach(e=>otherExp+=e.amount);});
     document.getElementById('dashStats').innerHTML = [
         statCard('Doanh thu', fmtP(d.totalRevenue), 'var(--accent)'),
-        statCard('Hóa đơn', d.totalInvoices, 'var(--accent-blue)'),
-        statCard('TB/đơn', fmtP(avg), 'var(--accent-warm)'),
-        statCard('Tiền mặt', fmtP(d.cashTotal), 'var(--accent-green)'),
+        statCard('H├│a ─æ╞ín', d.totalInvoices, 'var(--accent-blue)'),
+        statCard('TB/─æ╞ín', fmtP(avg), 'var(--accent-warm)'),
+        statCard('Tiß╗ün mß║╖t', fmtP(d.cashTotal), 'var(--accent-green)'),
         statCard('CK', fmtP(d.transferTotal), 'var(--accent-purple)'),
-        statCard('💰 Chi phí NL', fmtP(nlCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
-        statCard('👤 Chi phí NV', fmtP(nvCost), 'var(--accent-blue)', ' style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"'),
-        statCard('🧾 CP khác', fmtP(otherExp), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
-        statCard('📊 Lãi gộp', fmtP(gross), gross>=0?'var(--accent-green)':'var(--accent-red)', ' style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"'),
+        statCard('≡ƒÆ░ Chi ph├¡ NL', fmtP(nlCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
+        statCard('≡ƒæñ Chi ph├¡ NV', fmtP(nvCost), 'var(--accent-blue)', ' style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"'),
+        statCard('≡ƒº╛ CP kh├íc', fmtP(otherExp), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
+        statCard('≡ƒôè L├úi gß╗Öp', fmtP(gross), gross>=0?'var(--accent-green)':'var(--accent-red)', ' style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"'),
     ].join('');
     renderRevenueChart(); renderHourlyChart(d.hourlyRevenue); renderMonthlyReport();
     const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty), tq=ti.reduce((s,i)=>s+i.qty,0);
-    document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';}
+    document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'≡ƒÅå ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Ch╞░a c├│ dß╗» liß╗çu</td></tr>';}
 
 function renderRevenueChart(){const c=document.getElementById('revenueChart'),days=[];
 for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toISOString().slice(0,10),dn=['CN','T2','T3','T4','T5','T6','T7'];
@@ -587,9 +566,9 @@ for(let h=6;h<=23;h++)hours.push({h,rev:hr?.[h]||0});
 const mx=Math.max(...hours.map(h=>h.rev),1),pk=hours.reduce((m,h)=>h.rev>m.rev?h:m,hours[0]);
 c.innerHTML=hours.map(h=>`<div class="hourly-bar ${h.h===pk.h&&h.rev>0?'peak':''}" style="height:${Math.max(2,h.rev/mx*90)}px" title="${h.h}h: ${fmtP(h.rev)}"></div>`).join('');}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // INVENTORY (Kho NL)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function calcDailyUsage(date){
     const usage={};const dd=state.history[date];if(!dd||!dd.itemsSold)return usage;
     Object.entries(dd.itemsSold).forEach(([name,data])=>{
@@ -610,9 +589,9 @@ function calcAvgDailyUsage(ingId){
 function getStockInfo(ing){
     const purchased=calcTotalPurchased(ing.id);
     let totalUsed=0;Object.keys(state.history||{}).forEach(d=>{const u=calcDailyUsage(d);if(u[ing.id])totalUsed+=u[ing.id];});
-    // Tính xuất kho thủ công
+    // T├¡nh xuß║Ñt kho thß╗º c├┤ng
     let manualUsed=0;Object.values(state.manualUsage||{}).forEach(list=>{list.forEach(s=>{if(s.ingId===ing.id)manualUsed+=s.qty;});});
-    // Tính hao hụt từ prep tracking (phần chuẩn bị nhưng không bán được)
+    // T├¡nh hao hß╗Ñt tß╗½ prep tracking (phß║ºn chuß║⌐n bß╗ï nh╞░ng kh├┤ng b├ín ─æ╞░ß╗úc)
     const prepWaste=calcTotalPrepWaste(ing.id);
     const openStock=ing.openStock||0;
     const stock=Math.round((openStock+purchased-totalUsed-manualUsed-prepWaste)*100)/100;
@@ -630,8 +609,8 @@ function renderInventory(){
     const search=(document.getElementById('ingSearch')?.value||'').toLowerCase();
     const list=state.ingredients.filter(i=>!search||i.name.toLowerCase().includes(search));
     const totalInvValue=state.ingredients.filter(i=>!i.hidden).reduce((sum,i)=>{const s=getStockInfo(i);return sum+s.stock*i.unitPrice;},0);
-    document.getElementById('ingCount').innerHTML=`(${state.ingredients.length} nguyên liệu) <span style="margin-left:8px;color:var(--accent);font-weight:700;">💰 ${fmtP(Math.round(totalInvValue))}</span>`;
-    const sI={ok:'🟢',warning:'🟡',danger:'🔴'};
+    document.getElementById('ingCount').innerHTML=`(${state.ingredients.length} nguy├¬n liß╗çu) <span style="margin-left:8px;color:var(--accent);font-weight:700;">≡ƒÆ░ ${fmtP(Math.round(totalInvValue))}</span>`;
+    const sI={ok:'≡ƒƒó',warning:'≡ƒƒí',danger:'≡ƒö┤'};
     // Need-to-buy card
     const needList=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     const ntbEl=document.getElementById('needToBuyCard');
@@ -641,27 +620,27 @@ function renderInventory(){
         // Group by supplier
         const groups={};
         needList.forEach(i=>{
-          const sup=i.supplier||'Chưa gán NCC';
+          const sup=i.supplier||'Ch╞░a g├ín NCC';
           if(!groups[sup])groups[sup]=[];
           groups[sup].push(i);
         });
-        const groupKeys=Object.keys(groups).sort((a,b)=>a==='Chưa gán NCC'?1:b==='Chưa gán NCC'?-1:a.localeCompare(b));
+        const groupKeys=Object.keys(groups).sort((a,b)=>a==='Ch╞░a g├ín NCC'?1:b==='Ch╞░a g├ín NCC'?-1:a.localeCompare(b));
         let html=`<div style="background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:var(--radius-md);padding:14px;">`;
-        html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:700;font-size:0.85rem;">🛒 Gợi ý nhập hàng (${needList.length})</span><button class="btn btn-secondary btn-sm" onclick="copyNeedToBuyList()" style="font-size:0.68rem;padding:3px 8px;">📋 Copy</button></div>`;
+        html+=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;"><span style="font-weight:700;font-size:0.85rem;">≡ƒ¢Æ Gß╗úi ├╜ nhß║¡p h├áng (${needList.length})</span><button class="btn btn-secondary btn-sm" onclick="copyNeedToBuyList()" style="font-size:0.68rem;padding:3px 8px;">≡ƒôï Copy</button></div>`;
         groupKeys.forEach(sup=>{
           const items=groups[sup];
-          const supColor=sup==='Chưa gán NCC'?'var(--text-muted)':'var(--accent-blue)';
-          html+=`<div style="margin-bottom:8px;"><div style="font-size:0.75rem;font-weight:700;color:${supColor};margin-bottom:4px;padding:2px 6px;background:rgba(96,165,250,0.08);border-radius:4px;display:inline-block;">📦 ${esc(sup)} (${items.length})</div>`;
+          const supColor=sup==='Ch╞░a g├ín NCC'?'var(--text-muted)':'var(--accent-blue)';
+          html+=`<div style="margin-bottom:8px;"><div style="font-size:0.75rem;font-weight:700;color:${supColor};margin-bottom:4px;padding:2px 6px;background:rgba(96,165,250,0.08);border-radius:4px;display:inline-block;">≡ƒôª ${esc(sup)} (${items.length})</div>`;
           html+=`<div style="display:flex;flex-direction:column;gap:4px;">`;
           items.forEach(i=>{
             const need=Math.max(0,Math.ceil(i.s.avgDaily*7-i.s.stock));const packs=i.sln>1?Math.ceil(need/i.sln):need;
-            const packText=i.sln>1?`${packs} gói (×${i.sln})`:`${need} ${i.unit}`;
-            const linkHtml=i.supplierLink?`<a href="${esc(i.supplierLink)}" target="_blank" style="font-size:0.68rem;text-decoration:none;">🔗</a>`:'';
+            const packText=i.sln>1?`${packs} g├│i (├ù${i.sln})`:`${need} ${i.unit}`;
+            const linkHtml=i.supplierLink?`<a href="${esc(i.supplierLink)}" target="_blank" style="font-size:0.68rem;text-decoration:none;">≡ƒöù</a>`:'';
             html+=`<div style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:8px;background:${i.s.status==='danger'?'rgba(255,107,107,0.12)':'rgba(245,158,11,0.08)'}">`;
             html+=`<span style="font-size:0.82rem;">${sI[i.s.status]}</span>`;
             html+=`<span style="flex:1;font-size:0.78rem;font-weight:600;">${esc(i.name)} ${linkHtml}</span>`;
-            html+=`<span style="font-size:0.7rem;color:var(--text-muted);">${i.s.stock} ${i.unit}${i.s.daysLeft<999?' (≈'+i.s.daysLeft+'d)':''}</span>`;
-            html+=need>0?`<span style="font-size:0.7rem;color:var(--accent-green);font-weight:600;">→ ${packText}</span>`:'';
+            html+=`<span style="font-size:0.7rem;color:var(--text-muted);">${i.s.stock} ${i.unit}${i.s.daysLeft<999?' (Γëê'+i.s.daysLeft+'d)':''}</span>`;
+            html+=need>0?`<span style="font-size:0.7rem;color:var(--accent-green);font-weight:600;">ΓåÆ ${packText}</span>`:'';
             html+=`</div>`;
           });
           html+=`</div></div>`;
@@ -673,36 +652,36 @@ function renderInventory(){
     // Table with SLN
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);text-align:left;">
-    <th style="padding:6px 3px;">NL</th><th style="padding:6px 3px;">ĐV</th>
-    <th style="padding:6px 3px;text-align:right;">Giá</th>
+    <th style="padding:6px 3px;">NL</th><th style="padding:6px 3px;">─ÉV</th>
+    <th style="padding:6px 3px;text-align:right;">Gi├í</th>
     <th style="padding:6px 3px;text-align:center;">SLN</th>
-    <th style="padding:6px 3px;text-align:right;">Giá TK</th>
-    <th style="padding:6px 3px;text-align:right;">Tồn đầu</th>
-    <th style="padding:6px 3px;text-align:right;">Nhập</th>
-    <th style="padding:6px 3px;text-align:right;">Xuất</th>
-    <th style="padding:6px 3px;text-align:right;font-weight:700;">Tồn</th>
+    <th style="padding:6px 3px;text-align:right;">Gi├í TK</th>
+    <th style="padding:6px 3px;text-align:right;">Tß╗ôn ─æß║ºu</th>
+    <th style="padding:6px 3px;text-align:right;">Nhß║¡p</th>
+    <th style="padding:6px 3px;text-align:right;">Xuß║Ñt</th>
+    <th style="padding:6px 3px;text-align:right;font-weight:700;">Tß╗ôn</th>
     <th style="padding:6px 3px;text-align:center;">CB</th>
     <th style="padding:6px 3px;text-align:center;">TT</th>
     <th style="padding:6px 3px;"></th></tr></thead><tbody>`;
     list.forEach(i=>{
         const s=getStockInfo(i);
-        const hiddenStyle=i.hidden?'opacity:0.35;':'';const hiddenIcon=i.hidden?'👁️‍🗨️':'👁️';
+        const hiddenStyle=i.hidden?'opacity:0.35;':'';const hiddenIcon=i.hidden?'≡ƒæü∩╕ÅΓÇì≡ƒù¿∩╕Å':'≡ƒæü∩╕Å';
         html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${hiddenStyle}">
-        <td style="padding:5px 3px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(i.name)}${i.hidden?' (ẨN)':''}">${esc(i.name)}${i.hidden?' <span style="font-size:0.6rem;color:var(--text-muted);">(ẨN)</span>':''}</td>
+        <td style="padding:5px 3px;font-weight:600;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(i.name)}${i.hidden?' (ß║¿N)':''}">${esc(i.name)}${i.hidden?' <span style="font-size:0.6rem;color:var(--text-muted);">(ß║¿N)</span>':''}</td>
         <td style="padding:5px 3px;color:var(--text-muted);">${i.unit}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-warm);">${fmtP(i.unitPrice)}</td>
         <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.sln||1}" style="width:45px;text-align:center;font-size:0.72rem;padding:2px;" onchange="setSLN(${i.id},this.value)"></td>
-        <td style="padding:5px 3px;text-align:right;color:var(--accent);font-weight:600;" title="${fmtP(i.unitPrice)} × ${i.sln||1} = ${fmtP(i.unitPrice*(i.sln||1))}">${fmtP(i.unitPrice*(i.sln||1))}</td>
+        <td style="padding:5px 3px;text-align:right;color:var(--accent);font-weight:600;" title="${fmtP(i.unitPrice)} ├ù ${i.sln||1} = ${fmtP(i.unitPrice*(i.sln||1))}">${fmtP(i.unitPrice*(i.sln||1))}</td>
         <td style="padding:5px 3px;text-align:right;"><input type="number" value="${i.openStock||0}" style="width:55px;text-align:right;font-size:0.72rem;padding:2px 3px;" onchange="setOpenStock(${i.id},this.value)"></td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-green);">${s.purchased||0}</td>
         <td style="padding:5px 3px;text-align:right;color:var(--accent-red);">${s.totalUsed||0}</td>
         <td style="padding:5px 3px;text-align:right;font-weight:700;color:${s.status==='danger'?'var(--accent-red)':s.status==='warning'?'#f59e0b':'var(--text-primary)'};">${s.stock}</td>
-        <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.warnLevel||''}" placeholder="—" style="width:45px;text-align:center;font-size:0.7rem;padding:2px;" onchange="setWarnLevel(${i.id},this.value)"></td>
-        <td style="padding:5px 3px;text-align:center;" title="${s.avgDaily>0?'TB '+s.avgDaily+'/ngày, còn ~'+s.daysLeft+' ngày':'Chưa có dữ liệu'}">${sI[s.status]}</td>
+        <td style="padding:5px 3px;text-align:center;"><input type="number" value="${i.warnLevel||''}" placeholder="ΓÇö" style="width:45px;text-align:center;font-size:0.7rem;padding:2px;" onchange="setWarnLevel(${i.id},this.value)"></td>
+        <td style="padding:5px 3px;text-align:center;" title="${s.avgDaily>0?'TB '+s.avgDaily+'/ng├áy, c├▓n ~'+s.daysLeft+' ng├áy':'Ch╞░a c├│ dß╗» liß╗çu'}">${sI[s.status]}</td>
         <td style="padding:5px 3px;text-align:center;white-space:nowrap;">
-            <button onclick="toggleHideIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;" title="${i.hidden?'Hiện lại':'Ẩn NL'}">${hiddenIcon}</button>
-            <button onclick="editIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">✏️</button>
-            <button onclick="deleteIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">🗑️</button></td></tr>`;
+            <button onclick="toggleHideIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;" title="${i.hidden?'Hiß╗çn lß║íi':'ß║¿n NL'}">${hiddenIcon}</button>
+            <button onclick="editIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">Γ£Å∩╕Å</button>
+            <button onclick="deleteIngredient(${i.id})" style="font-size:0.68rem;background:none;border:none;cursor:pointer;">≡ƒùæ∩╕Å</button></td></tr>`;
     });
     html+='</tbody></table>';
     document.getElementById('inventoryTable').innerHTML=html;
@@ -711,47 +690,47 @@ function setOpenStock(id,val){const i=state.ingredients.find(x=>x.id===id);if(i)
 function setWarnLevel(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.warnLevel=parseFloat(val)||0;saveState();}}
 function setSLN(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.sln=parseFloat(val)||1;saveState();}}
 function addIngredient(){const n=document.getElementById('newIngName').value.trim(),u=document.getElementById('newIngUnit').value.trim(),p=parseInt(document.getElementById('newIngPrice').value);
-if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
+if(!n||!u||!p){toast('ΓÜá∩╕Å Nhß║¡p ─æß╗º th├┤ng tin');return;}
 state.ingredients.push({id:state.nextIngId++,name:n,unit:u,unitPrice:p,sln:1,openStock:0,warnLevel:0});
 document.getElementById('newIngName').value='';document.getElementById('newIngUnit').value='';document.getElementById('newIngPrice').value='';
-saveState();renderInventory();toast(`✅ Đã thêm "${n}"`);}
+saveState();renderInventory();toast(`Γ£à ─É├ú th├¬m "${n}"`);}
 function editIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;
 const body=`<div style="display:flex;flex-direction:column;gap:12px;">
-<label style="font-size:0.78rem;color:var(--text-muted)">Tên NL</label><input type="text" id="editIngName" value="${esc(i.name)}">
-<label style="font-size:0.78rem;color:var(--text-muted)">Đơn vị</label><input type="text" id="editIngUnit" value="${i.unit}">
-<label style="font-size:0.78rem;color:var(--text-muted)">Đơn giá (đ/${i.unit})</label><input type="number" id="editIngPrice" value="${i.unitPrice}">
-<label style="font-size:0.78rem;color:var(--text-muted)">SLN (số lượng/gói khi mua)</label><input type="number" id="editIngSLN" value="${i.sln||1}">
+<label style="font-size:0.78rem;color:var(--text-muted)">T├¬n NL</label><input type="text" id="editIngName" value="${esc(i.name)}">
+<label style="font-size:0.78rem;color:var(--text-muted)">─É╞ín vß╗ï</label><input type="text" id="editIngUnit" value="${i.unit}">
+<label style="font-size:0.78rem;color:var(--text-muted)">─É╞ín gi├í (─æ/${i.unit})</label><input type="number" id="editIngPrice" value="${i.unitPrice}">
+<label style="font-size:0.78rem;color:var(--text-muted)">SLN (sß╗æ l╞░ß╗úng/g├│i khi mua)</label><input type="number" id="editIngSLN" value="${i.sln||1}">
 <div style="border-top:1px solid var(--border-subtle);padding-top:10px;margin-top:4px;">
-<label style="font-size:0.78rem;color:var(--accent-blue);font-weight:600;">📦 Nhà cung cấp</label>
-<input type="text" id="editIngSupplier" value="${esc(i.supplier||'')}" placeholder="VD: Shopee - ABC Store, Chợ Thủ Đức, Metro...">
-<label style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">🔗 Link mua hàng (tuỳ chọn)</label>
+<label style="font-size:0.78rem;color:var(--accent-blue);font-weight:600;">≡ƒôª Nh├á cung cß║Ñp</label>
+<input type="text" id="editIngSupplier" value="${esc(i.supplier||'')}" placeholder="VD: Shopee - ABC Store, Chß╗ú Thß╗º ─Éß╗⌐c, Metro...">
+<label style="font-size:0.78rem;color:var(--text-muted);margin-top:6px;">≡ƒöù Link mua h├áng (tuß╗│ chß╗ìn)</label>
 <input type="url" id="editIngSupplierLink" value="${esc(i.supplierLink||'')}" placeholder="https://shopee.vn/...">
 </div>
-<button class="btn btn-primary" onclick="saveEditIngredient(${i.id})">💾 Lưu</button></div>`;
-openModal(`✏️ Sửa: ${i.name}`,body);}
+<button class="btn btn-primary" onclick="saveEditIngredient(${i.id})">≡ƒÆ╛ L╞░u</button></div>`;
+openModal(`Γ£Å∩╕Å Sß╗¡a: ${i.name}`,body);}
 function saveEditIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;
 const n=document.getElementById('editIngName').value.trim(),u=document.getElementById('editIngUnit').value.trim(),p=parseInt(document.getElementById('editIngPrice').value),sln=parseInt(document.getElementById('editIngSLN')?.value)||1;
 const supplier=document.getElementById('editIngSupplier')?.value.trim()||'';
 const supplierLink=document.getElementById('editIngSupplierLink')?.value.trim()||'';
-if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
+if(!n||!u||!p){toast('ΓÜá∩╕Å Nhß║¡p ─æß╗º th├┤ng tin');return;}
 i.name=n;i.unit=u;i.unitPrice=p;i.sln=sln;i.supplier=supplier;i.supplierLink=supplierLink;
-saveState();renderInventory();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
-function toggleHideIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;i.hidden=!i.hidden;saveState();renderInventory();toast(i.hidden?`👁️‍🗨️ Đã ẩn "${i.name}" khỏi danh sách cần mua`:`👁️ Đã hiện lại "${i.name}"`);}
-function deleteIngredient(id){confirmAction('Xóa NL này?',()=>{state.ingredients=state.ingredients.filter(i=>i.id!==id);saveState();renderInventory();toast('🗑️ Đã xóa');});}
+saveState();renderInventory();renderRecipes();closeModal();toast(`Γ£à ─É├ú cß║¡p nhß║¡t "${n}"`);}
+function toggleHideIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;i.hidden=!i.hidden;saveState();renderInventory();toast(i.hidden?`≡ƒæü∩╕ÅΓÇì≡ƒù¿∩╕Å ─É├ú ß║⌐n "${i.name}" khß╗Åi danh s├ích cß║ºn mua`:`≡ƒæü∩╕Å ─É├ú hiß╗çn lß║íi "${i.name}"`);}
+function deleteIngredient(id){if(!confirm('X├│a NL n├áy?'))return;state.ingredients=state.ingredients.filter(i=>i.id!==id);saveState();renderInventory();toast('≡ƒùæ∩╕Å ─É├ú x├│a');}
 function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0,supplier:i.supplier||'',supplierLink:i.supplierLink||'',hidden:!!i.hidden}));
 const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
-a.href=URL.createObjectURL(b);a.download=`monstea-kho-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã xuất JSON!');}
+a.href=URL.createObjectURL(b);a.download=`monstea-kho-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('≡ƒôÑ ─É├ú xuß║Ñt JSON!');}
 function importIngredientsJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
-r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);if(!Array.isArray(data)){toast('❌ File không hợp lệ');return;}
+r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);if(!Array.isArray(data)){toast('Γ¥î File kh├┤ng hß╗úp lß╗ç');return;}
 let updated=0,added=0;data.forEach(d=>{if(!d.name)return;const existing=state.ingredients.find(i=>i.name===d.name);
 if(existing){if(d.unitPrice)existing.unitPrice=d.unitPrice;if(d.unit)existing.unit=d.unit;if(d.sln)existing.sln=d.sln;if(d.openStock!==undefined)existing.openStock=d.openStock;if(d.warnLevel!==undefined)existing.warnLevel=d.warnLevel;updated++;}
 else{state.ingredients.push({id:state.nextIngId++,name:d.name,unit:d.unit||'g',unitPrice:d.unitPrice||0,sln:d.sln||1,openStock:d.openStock||0,warnLevel:d.warnLevel||0});added++;}});
-saveState();renderInventory();renderRecipes();toast(`✅ Cập nhật ${updated}, thêm ${added} NL`);
-}catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}
+saveState();renderInventory();renderRecipes();toast(`Γ£à Cß║¡p nhß║¡t ${updated}, th├¬m ${added} NL`);
+}catch(err){toast('Γ¥î Lß╗ùi: '+err.message);}};r.readAsText(f);e.target.value='';}
 
-// ═══════════════════════════════════════
-// CHI TIÊU
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// CHI TI├èU
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function getExpenseDate(){return expenseViewDate||today();}
 function changeExpenseDate(dir){
     if(dir===0){expenseViewDate=null;}
@@ -760,24 +739,24 @@ function changeExpenseDate(dir){
 }
 function renderExpenseTab(){
     const dt=getExpenseDate();
-    document.getElementById('ctDateLabel').textContent=dt===today()?'(Hôm nay)':'('+dt+')';
+    document.getElementById('ctDateLabel').textContent=dt===today()?'(H├┤m nay)':'('+dt+')';
     const purchases=(state.purchases||{})[dt]||[];
-    document.getElementById('purchaseList').innerHTML=purchases.length?purchases.map(p=>`<div class="setting-item"><span class="si-name">${esc(p.name||'?')}</span><span style="font-size:0.72rem;color:var(--text-muted);">${p.qty}×${p.sln}=${p.totalQty} ${p.unit||''}</span><span class="si-price">${fmtP(p.totalCost)}</span><span style="font-size:0.72rem;color:var(--accent-warm);">${fmtP(p.unitPrice)}/${p.unit||''}</span><button onclick="deletePurchase('${dt}',${p.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
-    document.getElementById('purchaseTotal').textContent=purchases.reduce((s,p)=>s+p.totalCost,0)?'Tổng nhập NL: '+fmtP(purchases.reduce((s,p)=>s+p.totalCost,0)):'';
+    document.getElementById('purchaseList').innerHTML=purchases.length?purchases.map(p=>`<div class="setting-item"><span class="si-name">${esc(p.name||'?')}</span><span style="font-size:0.72rem;color:var(--text-muted);">${p.qty}├ù${p.sln}=${p.totalQty} ${p.unit||''}</span><span class="si-price">${fmtP(p.totalCost)}</span><span style="font-size:0.72rem;color:var(--accent-warm);">${fmtP(p.unitPrice)}/${p.unit||''}</span><button onclick="deletePurchase('${dt}',${p.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">≡ƒùæ∩╕Å</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Ch╞░a c├│</div>';
+    document.getElementById('purchaseTotal').textContent=purchases.reduce((s,p)=>s+p.totalCost,0)?'Tß╗òng nhß║¡p NL: '+fmtP(purchases.reduce((s,p)=>s+p.totalCost,0)):'';
     const expenses=(state.expenses||{})[dt]||[];
-    document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
-    document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tổng chi phí khác: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
-    // Xuất kho thủ công (giữ nguyên)
-    const reasonIcons={used:'🔧',spoiled:'🗑️',loss:'📉',other:'📌'};
-    const reasonLabels={used:'Sử dụng',spoiled:'Hư/Hết hạn',loss:'Hao hụt',other:'Khác'};
+    document.getElementById('expenseList').innerHTML=expenses.length?expenses.map(e=>`<div class="setting-item"><span class="si-name">${esc(e.name)}</span><span class="si-price">${fmtP(e.amount)}</span><button onclick="deleteExpense('${dt}',${e.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">≡ƒùæ∩╕Å</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Ch╞░a c├│</div>';
+    document.getElementById('expenseTotal').textContent=expenses.reduce((s,e)=>s+e.amount,0)?'Tß╗òng chi ph├¡ kh├íc: '+fmtP(expenses.reduce((s,e)=>s+e.amount,0)):'';
+    // Xuß║Ñt kho thß╗º c├┤ng (giß╗» nguy├¬n)
+    const reasonIcons={used:'≡ƒöº',spoiled:'≡ƒùæ∩╕Å',loss:'≡ƒôë',other:'≡ƒôî'};
+    const reasonLabels={used:'Sß╗¡ dß╗Ñng',spoiled:'H╞░/Hß║┐t hß║ín',loss:'Hao hß╗Ñt',other:'Kh├íc'};
     const stockOuts=(state.manualUsage||{})[dt]||[];
     const soEl=document.getElementById('stockOutList');
     if(soEl){
-        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${reasonLabels[s.reason]||s.reason}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${reasonIcons[s.reason]||'≡ƒôñ'} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${reasonLabels[s.reason]||s.reason}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}',${s.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">≡ƒùæ∩╕Å</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Ch╞░a c├│</div>';
     }
     const soTotal=document.getElementById('stockOutTotal');
-    if(soTotal)soTotal.textContent=stockOuts.length?`Tổng xuất: ${stockOuts.length} mục`:'';
-    // Render prep waste tracking (tính năng riêng)
+    if(soTotal)soTotal.textContent=stockOuts.length?`Tß╗òng xuß║Ñt: ${stockOuts.length} mß╗Ñc`:'';
+    // Render prep waste tracking (t├¡nh n─âng ri├¬ng)
     renderPrepTracking(dt);
     renderNotes();
 }
@@ -805,22 +784,22 @@ function calcPurchasePreview(){
     const cost=(parseFloat(document.getElementById('purchaseCost').value)||0)*1000;
     const el=document.getElementById('purchasePreview');
     if(sln&&sl&&cost){const tq=sl*sln,up=Math.round(cost/tq);el.style.display='block';
-    el.innerHTML=`→ Tổng: <b>${tq}</b> | Đơn giá: <b style="color:var(--accent)">${fmtP(up)}</b> | Thành tiền: <b>${fmtP(cost)}</b>`;}
+    el.innerHTML=`ΓåÆ Tß╗òng: <b>${tq}</b> | ─É╞ín gi├í: <b style="color:var(--accent)">${fmtP(up)}</b> | Th├ánh tiß╗ün: <b>${fmtP(cost)}</b>`;}
     else{el.style.display='none';}
 }
 function addPurchase(){
     const ingId=parseInt(document.getElementById('purchaseIngId').value);
-    const ing=state.ingredients.find(i=>i.id===ingId);if(!ing){toast('⚠️ Chọn nguyên liệu từ danh sách');return;}
+    const ing=state.ingredients.find(i=>i.id===ingId);if(!ing){toast('ΓÜá∩╕Å Chß╗ìn nguy├¬n liß╗çu tß╗½ danh s├ích');return;}
     const sln=parseFloat(document.getElementById('purchaseSLN').value)||0;
     const sl=parseFloat(document.getElementById('purchaseSL').value)||0;
     const cost=(parseFloat(document.getElementById('purchaseCost').value)||0)*1000;
-    if(!sln||!sl||!cost){toast('⚠️ Nhập đủ SLN, SL, Tổng tiền');return;}
+    if(!sln||!sl||!cost){toast('ΓÜá∩╕Å Nhß║¡p ─æß╗º SLN, SL, Tß╗òng tiß╗ün');return;}
     const totalQty=sl*sln,unitPrice=Math.round(cost/totalQty);
     const dt=getExpenseDate();if(!state.purchases)state.purchases={};if(!state.purchases[dt])state.purchases[dt]=[];
     state.purchases[dt].push({id:state.nextPurchaseId++,ingId,name:ing.name,unit:ing.unit,totalCost:cost,qty:sl,sln,totalQty,unitPrice,time:nowTime()});
-    // Tính giá trung bình 3 lần nhập gần nhất cho nguyên liệu này
+    // T├¡nh gi├í trung b├¼nh 3 lß║ºn nhß║¡p gß║ºn nhß║Ñt cho nguy├¬n liß╗çu n├áy
     const allPurchases=Object.entries(state.purchases)
-        .sort((a,b)=>a[0]<b[0]?1:-1) // sort ngày mới nhất trước
+        .sort((a,b)=>a[0]<b[0]?1:-1) // sort ng├áy mß╗¢i nhß║Ñt tr╞░ß╗¢c
         .flatMap(([,ps])=>ps)
         .filter(p=>p.ingId===ingId && p.unitPrice>0);
     const last3=allPurchases.slice(0,3);
@@ -829,24 +808,24 @@ function addPurchase(){
     document.getElementById('purchaseIngSearch').value='';document.getElementById('purchaseIngId').value='';
     document.getElementById('purchaseSLN').value='';document.getElementById('purchaseSL').value='';document.getElementById('purchaseCost').value='';
     document.getElementById('purchasePreview').style.display='none';
-    const noteAvg=last3.length>1?` (TB ${last3.length} lần: ${fmtP(avgPrice)}/${ing.unit})`:'';
-    saveState();renderExpenseTab();toast(`✅ Nhập ${ing.name}: ${fmtP(unitPrice)}/${ing.unit}${noteAvg}`);
+    const noteAvg=last3.length>1?` (TB ${last3.length} lß║ºn: ${fmtP(avgPrice)}/${ing.unit})`:'';
+    saveState();renderExpenseTab();toast(`Γ£à Nhß║¡p ${ing.name}: ${fmtP(unitPrice)}/${ing.unit}${noteAvg}`);
 }
-function deletePurchase(dt,id){confirmAction('Xóa mục nhập NL này?',()=>{state.purchases[dt]=(state.purchases[dt]||[]).filter(p=>p.id!==id);saveState();renderExpenseTab();});}
+function deletePurchase(dt,id){if(!confirm('X├│a?'))return;state.purchases[dt]=(state.purchases[dt]||[]).filter(p=>p.id!==id);saveState();renderExpenseTab();}
 function addExpense(){
     const name=document.getElementById('expenseName').value.trim();
     const amount=(parseFloat(document.getElementById('expenseAmount').value)||0)*1000;
-    if(!name||!amount){toast('⚠️ Nhập tên và số tiền');return;}
+    if(!name||!amount){toast('ΓÜá∩╕Å Nhß║¡p t├¬n v├á sß╗æ tiß╗ün');return;}
     const dt=getExpenseDate();if(!state.expenses)state.expenses={};if(!state.expenses[dt])state.expenses[dt]=[];
     state.expenses[dt].push({id:state.nextExpenseId++,name,amount,time:nowTime()});
     document.getElementById('expenseName').value='';document.getElementById('expenseAmount').value='';
-    saveState();renderExpenseTab();toast(`✅ ${name}: ${fmtP(amount)}`);
+    saveState();renderExpenseTab();toast(`Γ£à ${name}: ${fmtP(amount)}`);
 }
-function deleteExpense(dt,id){confirmAction('Xóa khoản chi này?',()=>{state.expenses[dt]=(state.expenses[dt]||[]).filter(e=>e.id!==id);saveState();renderExpenseTab();});}
+function deleteExpense(dt,id){if(!confirm('X├│a?'))return;state.expenses[dt]=(state.expenses[dt]||[]).filter(e=>e.id!==id);saveState();renderExpenseTab();}
 
-// ═══════════════════════════════════════
-// XUẤT KHO THỦ CÔNG
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// XUß║ñT KHO THß╗ª C├öNG
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function filterStockOutIng(){
     const q=(document.getElementById('stockOutIngSearch').value||'').toLowerCase();
     const dd=document.getElementById('stockOutIngDropdown');
@@ -867,11 +846,11 @@ document.addEventListener('click',e=>{const dd=document.getElementById('stockOut
 function addStockOut(){
     const ingId=parseInt(document.getElementById('stockOutIngId').value);
     const ing=state.ingredients.find(i=>i.id===ingId);
-    if(!ing){toast('⚠️ Chọn nguyên liệu');return;}
+    if(!ing){toast('ΓÜá∩╕Å Chß╗ìn nguy├¬n liß╗çu');return;}
     const qty=parseFloat(document.getElementById('stockOutQty').value)||0;
-    if(!qty){toast('⚠️ Nhập số lượng');return;}
+    if(!qty){toast('ΓÜá∩╕Å Nhß║¡p sß╗æ l╞░ß╗úng');return;}
     const reason=document.getElementById('stockOutReason').value;
-    const reasonLabels={used:'Sử dụng',spoiled:'Hư/Hết hạn',loss:'Hao hụt',other:'Khác'};
+    const reasonLabels={used:'Sß╗¡ dß╗Ñng',spoiled:'H╞░/Hß║┐t hß║ín',loss:'Hao hß╗Ñt',other:'Kh├íc'};
     const dt=getExpenseDate();
     if(!state.manualUsage)state.manualUsage={};
     if(!state.manualUsage[dt])state.manualUsage[dt]=[];
@@ -884,18 +863,17 @@ function addStockOut(){
     document.getElementById('stockOutIngId').value='';
     document.getElementById('stockOutQty').value='';
     saveState();renderExpenseTab();renderInventory();
-    toast(`📤 Xuất ${qty} ${ing.unit} ${ing.name} — ${reasonLabels[reason]}`);
+    toast(`≡ƒôñ Xuß║Ñt ${qty} ${ing.unit} ${ing.name} ΓÇö ${reasonLabels[reason]}`);
 }
 function deleteStockOut(dt,id){
-    confirmAction('Xóa mục xuất kho này?',()=>{
-        state.manualUsage[dt]=(state.manualUsage[dt]||[]).filter(s=>s.id!==id);
-        saveState();renderExpenseTab();renderInventory();
-    });
+    if(!confirm('X├│a mß╗Ñc xuß║Ñt kho n├áy?'))return;
+    state.manualUsage[dt]=(state.manualUsage[dt]||[]).filter(s=>s.id!==id);
+    saveState();renderExpenseTab();renderInventory();
 }
 
-// ═══════════════════════════════════════
-// THEO DÕI HAO HỤT (Prep Waste Tracking)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// THEO D├òI HAO Hß╗ñT (Prep Waste Tracking)
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function filterPrepIng(){
     const q=(document.getElementById('prepIngSearch').value||'').toLowerCase();
     const dd=document.getElementById('prepIngDropdown');
@@ -916,9 +894,9 @@ document.addEventListener('click',e=>{const dd=document.getElementById('prepIngD
 function addPrepTracking(){
     const ingId=parseInt(document.getElementById('prepIngId').value);
     const ing=state.ingredients.find(i=>i.id===ingId);
-    if(!ing){toast('⚠️ Chọn nguyên liệu');return;}
+    if(!ing){toast('ΓÜá∩╕Å Chß╗ìn nguy├¬n liß╗çu');return;}
     const qty=parseFloat(document.getElementById('prepQty').value)||0;
-    if(!qty){toast('⚠️ Nhập số lượng');return;}
+    if(!qty){toast('ΓÜá∩╕Å Nhß║¡p sß╗æ l╞░ß╗úng');return;}
     const dt=getExpenseDate();
     if(!state.prepTracking)state.prepTracking={};
     if(!state.prepTracking[dt])state.prepTracking[dt]=[];
@@ -931,11 +909,11 @@ function addPrepTracking(){
     document.getElementById('prepIngId').value='';
     document.getElementById('prepQty').value='';
     saveState();renderExpenseTab();renderInventory();
-    toast(`📊 Ghi chuẩn bị ${qty} ${ing.unit} ${ing.name}`);
+    toast(`≡ƒôè Ghi chuß║⌐n bß╗ï ${qty} ${ing.unit} ${ing.name}`);
 }
 function deletePrepTracking(dt,id){
     state.prepTracking[dt]=(state.prepTracking[dt]||[]).filter(s=>s.id!==id);
-    // Xóa auto expense nếu có
+    // X├│a auto expense nß║┐u c├│
     syncPrepWasteExpense(dt);
     saveState();renderExpenseTab();renderInventory();
 }
@@ -946,12 +924,12 @@ function renderPrepTracking(dt){
     if(!el)return;
     const preps=(state.prepTracking||{})[dt]||[];
     if(!preps.length){
-        el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+        el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Ch╞░a c├│</div>';
         if(totalEl)totalEl.textContent='';
         return;
     }
     const todayUsage=calcDailyUsage(dt);
-    // Gộp các entry cùng nguyên liệu
+    // Gß╗Öp c├íc entry c├╣ng nguy├¬n liß╗çu
     const grouped={};
     preps.forEach(p=>{
         if(!grouped[p.ingId])grouped[p.ingId]={ingId:p.ingId,name:p.name,unit:p.unit,totalPrep:0,unitPrice:p.unitPrice||0,ids:[]};
@@ -966,21 +944,21 @@ function renderPrepTracking(dt){
         totalWasteCost+=wasteCost;
         const pct=g.totalPrep>0?Math.round(waste/g.totalPrep*100):0;
         const statusColor=waste>0?'var(--accent-red)':'var(--accent-green)';
-        const statusText=waste>0?`🗑️ Bỏ: ${waste} ${g.unit} (${pct}%) ≈ ${fmtP(wasteCost)}`:'✅ Dùng hết';
+        const statusText=waste>0?`≡ƒùæ∩╕Å Bß╗Å: ${waste} ${g.unit} (${pct}%) Γëê ${fmtP(wasteCost)}`:'Γ£à D├╣ng hß║┐t';
         return `<div class="setting-item" style="flex-wrap:wrap;gap:4px;padding:8px 10px;">
-            <span class="si-name" style="min-width:120px;">📊 ${esc(g.name)}</span>
+            <span class="si-name" style="min-width:120px;">≡ƒôè ${esc(g.name)}</span>
             <span style="font-size:0.72rem;color:var(--accent-warm);font-weight:600;">CB: ${g.totalPrep} ${g.unit}</span>
-            <span style="font-size:0.72rem;color:var(--accent-green);">Bán: ${recipeSold} ${g.unit}</span>
+            <span style="font-size:0.72rem;color:var(--accent-green);">B├ín: ${recipeSold} ${g.unit}</span>
             <span style="font-size:0.72rem;font-weight:700;color:${statusColor};">${statusText}</span>
         </div>`;
     }).join('');
-    // Hiện từng entry riêng để xóa
+    // Hiß╗çn tß╗½ng entry ri├¬ng ─æß╗â x├│a
     html+=preps.map(p=>`<div style="display:flex;align-items:center;gap:6px;padding:4px 10px;font-size:0.72rem;color:var(--text-muted);">
-        <span style="flex:1;">↳ ${p.time}: ${p.qty} ${p.unit} ${esc(p.name)}</span>
-        <button onclick="deletePrepTracking('${dt}',${p.id})" style="font-size:0.8rem;background:none;border:none;cursor:pointer;color:var(--accent-red);padding:2px 6px;">🗑</button>
+        <span style="flex:1;">Γå│ ${p.time}: ${p.qty} ${p.unit} ${esc(p.name)}</span>
+        <button onclick="deletePrepTracking('${dt}',${p.id})" style="font-size:0.8rem;background:none;border:none;cursor:pointer;color:var(--accent-red);padding:2px 6px;">≡ƒùæ</button>
     </div>`).join('');
     el.innerHTML=html;
-    if(totalEl)totalEl.textContent=totalWasteCost>0?`Tổng hao hụt: ${fmtP(totalWasteCost)}`:'';
+    if(totalEl)totalEl.textContent=totalWasteCost>0?`Tß╗òng hao hß╗Ñt: ${fmtP(totalWasteCost)}`:'';
     // Auto-sync waste cost to expenses
     syncPrepWasteExpense(dt,totalWasteCost);
 }
@@ -1011,14 +989,14 @@ function syncPrepWasteExpense(dt,totalWasteCost){
                 state.expenses[dt][existIdx].amount=totalWasteCost;
             }
         }else{
-            state.expenses[dt].push({id:state.nextExpenseId++,name:'🗑️ Hao hụt NL (tự động)',amount:totalWasteCost,time:'auto',isAutoWaste:true});
+            state.expenses[dt].push({id:state.nextExpenseId++,name:'≡ƒùæ∩╕Å Hao hß╗Ñt NL (tß╗▒ ─æß╗Öng)',amount:totalWasteCost,time:'auto',isAutoWaste:true});
         }
     }else{
         if(existIdx>=0)state.expenses[dt].splice(existIdx,1);
     }
 }
 
-// Tính tổng prep waste cho nguyên liệu (dùng trong getStockInfo)
+// T├¡nh tß╗òng prep waste cho nguy├¬n liß╗çu (d├╣ng trong getStockInfo)
 function calcTotalPrepWaste(ingId){
     let totalWaste=0;
     Object.entries(state.prepTracking||{}).forEach(([date,entries])=>{
@@ -1033,9 +1011,9 @@ function calcTotalPrepWaste(ingId){
     return Math.round(totalWaste*100)/100;
 }
 
-// ═══════════════════════════════════════
-// NOTES (Ghi chú)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// NOTES (Ghi ch├║)
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function cleanOldNotes(){
     if(!state.dailyNotes)state.dailyNotes=[];
     const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
@@ -1044,7 +1022,7 @@ function cleanOldNotes(){
 }
 function addNote(){
     const text=document.getElementById('noteText').value.trim();
-    if(!text){toast('⚠️ Nhập ghi chú');return;}
+    if(!text){toast('ΓÜá∩╕Å Nhß║¡p ghi ch├║');return;}
     if(!state.dailyNotes)state.dailyNotes=[];
     if(!state.nextNoteId)state.nextNoteId=1;
     state.dailyNotes.push({id:state.nextNoteId++,text,date:today(),time:nowTime(),done:false,doneDate:null});
@@ -1062,24 +1040,24 @@ function renderNotes(){
     cleanOldNotes();
     const el=document.getElementById('notesList');if(!el)return;
     const notes=(state.dailyNotes||[]).slice().reverse();
-    if(!notes.length){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có ghi chú</div>';return;}
+    if(!notes.length){el.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Ch╞░a c├│ ghi ch├║</div>';return;}
     let lastDate='',html='';
     notes.forEach(n=>{
         if(n.date!==lastDate){lastDate=n.date;
-        const label=n.date===today()?'Hôm nay':n.date;
+        const label=n.date===today()?'H├┤m nay':n.date;
         html+=`<div style="font-size:0.7rem;color:var(--text-muted);padding:6px 0 2px;border-top:1px solid rgba(255,255,255,0.04);margin-top:4px;">${label}</div>`;}
         html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;${n.done?'opacity:0.45;':''}">
         <span style="flex:1;font-size:0.82rem;${n.done?'text-decoration:line-through;color:var(--text-muted);':''}">${esc(n.text)}</span>
         <span style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;">${n.time}</span>
-        <button onclick="toggleNote(${n.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;" title="${n.done?'Hoàn tác':'Xong'}">${n.done?'↩️':'✔️'}</button>
+        <button onclick="toggleNote(${n.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;" title="${n.done?'Ho├án t├íc':'Xong'}">${n.done?'Γå⌐∩╕Å':'Γ£ö∩╕Å'}</button>
         </div>`;
     });
     el.innerHTML=html;
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // ATTENDANCE HISTORY (#8)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 let attViewMode='month';
 function setAttView(mode,val){
     attViewMode=mode;
@@ -1109,13 +1087,13 @@ function renderAttHistory(){
     state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,totalWage:0,wageRate:s.wageRate||25000});
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
-    <th style="padding:4px;text-align:left;">Ngày</th>`;
+    <th style="padding:4px;text-align:left;">Ng├áy</th>`;
     state.staff.forEach(s=>html+=`<th style="padding:4px;text-align:center;">${esc(s.name)}</th>`);
     html+=`</tr></thead><tbody>`;
     dates.forEach(dt=>{
         const recs=(state.attendance||{})[dt]||[];
         html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${dt===today()?'background:rgba(232,166,53,0.06);':''}">`;
-        const label=dt===today()?'Hôm nay':dt.slice(5);
+        const label=dt===today()?'H├┤m nay':dt.slice(5);
         html+=`<td style="padding:4px;color:var(--text-muted);white-space:nowrap;">${label}</td>`;
         state.staff.forEach(s=>{
             const r=recs.find(x=>x.staffId===s.id);
@@ -1128,18 +1106,18 @@ function renderAttHistory(){
                 const dayRate=r.wageRate||staffTotals[s.id].wageRate;
                 staffTotals[s.id].totalH+=r.hours;staffTotals[s.id].normalH+=normH;staffTotals[s.id].otH+=otHr;staffTotals[s.id].days++;
                 staffTotals[s.id].totalWage+=Math.round(normH*dayRate+otHr*dayRate*OT_MULT);
-                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);"><div>${r.hours}h</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn||'?'}→${r.checkOut||'?'}</div></td>`;
-            }else html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">—</td>`;
+                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);"><div>${r.hours}h</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn||'?'}ΓåÆ${r.checkOut||'?'}</div></td>`;
+            }else html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">ΓÇö</td>`;
         });
         html+=`</tr>`;
     });
     html+=`</tbody></table>`;
     el.innerHTML=html;
     // Salary summary
-    sal.innerHTML=`<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;">💰 Tính lương</div>
+    sal.innerHTML=`<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;">≡ƒÆ░ T├¡nh l╞░╞íng</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
-    <th style="padding:4px;text-align:left;">NV</th><th>Ngày</th><th>Tổng giờ</th><th>Thường</th><th>OT</th><th style="text-align:right;">Lương</th></tr></thead><tbody>
+    <th style="padding:4px;text-align:left;">NV</th><th>Ng├áy</th><th>Tß╗òng giß╗¥</th><th>Th╞░ß╗¥ng</th><th>OT</th><th style="text-align:right;">L╞░╞íng</th></tr></thead><tbody>
     ${state.staff.map(s=>{const t=staffTotals[s.id];const salary=t.totalWage;
     return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
     <td style="padding:4px;font-weight:600;">${esc(t.name)}</td>
@@ -1148,14 +1126,14 @@ function renderAttHistory(){
     <td style="padding:4px;text-align:center;">${Math.round(t.normalH*10)/10}h</td>
     <td style="padding:4px;text-align:center;color:${t.otH?'var(--accent-warm)':'var(--text-muted)'};">${Math.round(t.otH*10)/10}h</td>
     <td style="padding:4px;text-align:right;font-weight:700;color:var(--accent);">${fmtP(salary)}</td></tr>`;}).join('')}
-    <tr style="border-top:2px solid var(--border-subtle);"><td colspan="5" style="padding:4px;font-weight:700;">TỔNG</td>
+    <tr style="border-top:2px solid var(--border-subtle);"><td colspan="5" style="padding:4px;font-weight:700;">Tß╗öNG</td>
     <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];return s+t.totalWage;},0))}</td></tr>
     </tbody></table>`;
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // MONTHLY REPORT (#10)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function renderMonthlyReport(){
     const sec=document.getElementById('monthlyReportSection');
     if(!sec)return;
@@ -1215,19 +1193,19 @@ function renderMonthlyReport(){
             else{bg='rgba(255,107,107,0.15)';color='var(--accent-red)';}
         }
         const isToday=d.dt===today()?'border:2px solid var(--accent);':'';
-        cal+=`<div style="padding:6px 2px;border-radius:6px;background:${bg};${isToday}${glow}cursor:default;" title="${d.dt}: DT ${fmtP(d.rev)}, Lãi gộp ${fmtP(d.grossProfit)}">
+        cal+=`<div style="padding:6px 2px;border-radius:6px;background:${bg};${isToday}${glow}cursor:default;" title="${d.dt}: DT ${fmtP(d.rev)}, L├úi gß╗Öp ${fmtP(d.grossProfit)}">
         <div style="font-weight:700;color:${color};">${d.day}</div>
         ${d.rev?`<div style="font-size:0.6rem;color:${color};opacity:0.8;">${Math.round(d.grossProfit/1000)}k</div>`:''}
         </div>`;
     });
     cal+=`</div>`;
     cal+=`<div style="display:flex;gap:12px;justify-content:center;margin-top:8px;font-size:0.65rem;color:var(--text-muted);">
-    <span>⬜ Chưa bán</span><span style="color:rgba(74,222,128,0.7);">🟩 &lt;500k</span><span style="color:#4ade80;">🟩 500k-1tr</span><span style="color:#4ade80;text-shadow:0 0 4px rgba(74,222,128,0.5);">✨ &gt;1tr</span><span style="color:var(--accent-red);">🟥 Lỗ</span>
+    <span>Γ¼£ Ch╞░a b├ín</span><span style="color:rgba(74,222,128,0.7);">≡ƒƒ⌐ &lt;500k</span><span style="color:#4ade80;">≡ƒƒ⌐ 500k-1tr</span><span style="color:#4ade80;text-shadow:0 0 4px rgba(74,222,128,0.5);">Γ£¿ &gt;1tr</span><span style="color:var(--accent-red);">≡ƒƒÑ Lß╗ù</span>
     </div>`;
     document.getElementById('monthlyCalendar').innerHTML=cal;
     // Summary
     const prevCmp=pmRev?Math.round((totalRev-pmRev)/pmRev*100):0;
-    const cmpText=pmRev?`(${prevCmp>=0?'↑':'↓'}${Math.abs(prevCmp)}% vs tháng trước)`:'';
+    const cmpText=pmRev?`(${prevCmp>=0?'Γåæ':'Γåô'}${Math.abs(prevCmp)}% vs th├íng tr╞░ß╗¢c)`:'';
     const cmpColor=prevCmp>=0?'var(--accent-green)':'var(--accent-red)';
     document.getElementById('monthlySummary').innerHTML=`
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;">
@@ -1242,27 +1220,27 @@ function renderMonthlyReport(){
         <div style="font-size:0.68rem;color:var(--text-muted);">CP NV</div>
         <div style="font-weight:700;color:var(--accent-blue);">${fmtP(totalNV)}</div></div>
     <div style="text-align:center;padding:8px;background:rgba(251,191,36,0.04);border-radius:8px;">
-        <div style="font-size:0.68rem;color:var(--text-muted);">CP khác</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);">CP kh├íc</div>
         <div style="font-weight:700;color:#fbbf24;">${fmtP(totalOther)}</div></div>
     <div style="text-align:center;padding:8px;background:rgba(74,222,128,0.06);border-radius:8px;">
-        <div style="font-size:0.68rem;color:var(--text-muted);">Lãi gộp</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);">L├úi gß╗Öp</div>
         <div style="font-weight:800;color:${totalGross>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(totalGross)}</div></div>
     <div style="text-align:center;padding:8px;background:rgba(192,132,252,0.06);border-radius:8px;">
-        <div style="font-size:0.68rem;color:var(--text-muted);">💎 Lãi ròng</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);">≡ƒÆÄ L├úi r├▓ng</div>
         <div style="font-weight:800;color:${totalNet>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(totalNet)}</div></div>
     <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;">
-        <div style="font-size:0.68rem;color:var(--text-muted);">Hóa đơn</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);">H├│a ─æ╞ín</div>
         <div style="font-weight:700;color:var(--accent-blue);">${totalInv}</div></div>
     <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px;">
-        <div style="font-size:0.68rem;color:var(--text-muted);">TB/ngày</div>
+        <div style="font-size:0.68rem;color:var(--text-muted);">TB/ng├áy</div>
         <div style="font-weight:700;color:var(--accent-warm);">${fmtP(dailyData.filter(d=>d.rev>0).length?Math.round(totalRev/dailyData.filter(d=>d.rev>0).length):0)}</div></div>
     </div>`;
     // Top items
     const ti=Object.entries(monthItems).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty).slice(0,10);
-    document.getElementById('monthlyTopItems').innerHTML=ti.length?`<div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;">🏆 Top 10 món tháng này</div>
+    document.getElementById('monthlyTopItems').innerHTML=ti.length?`<div style="font-weight:700;font-size:0.82rem;margin-bottom:6px;">≡ƒÅå Top 10 m├│n th├íng n├áy</div>
     ${ti.map((i,x)=>`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.03);font-size:0.78rem;">
     <span style="width:20px;color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400};">${x+1}</span>
-    <span style="flex:1;">${x===0?'🏆 ':''}${esc(i.name)}</span>
+    <span style="flex:1;">${x===0?'≡ƒÅå ':''}${esc(i.name)}</span>
     <span style="font-weight:600;">${i.qty}</span>
     <span style="color:var(--accent-warm);min-width:70px;text-align:right;">${fmtP(i.revenue)}</span></div>`).join('')}`:'';
 }
@@ -1270,35 +1248,35 @@ function printMonthlyReport(){
     const sec=document.getElementById('monthlyReportSection');
     if(!sec)return;
     const w=window.open('','','width=800,height=600');
-    w.document.write(`<html><head><title>Monstea - Báo cáo tháng</title>
+    w.document.write(`<html><head><title>Monstea - B├ío c├ío th├íng</title>
     <style>body{font-family:Arial,sans-serif;padding:20px;background:#1a1520;color:#f0ece4;}
     table{width:100%;border-collapse:collapse;}th,td{padding:6px;border:1px solid rgba(255,255,255,0.1);font-size:12px;}
     @media print{body{background:white;color:black;}}</style></head>
-    <body><h2>📊 Monstea — Báo cáo tháng</h2>${sec.querySelector('.card').innerHTML}</body></html>`);
+    <body><h2>≡ƒôè Monstea ΓÇö B├ío c├ío th├íng</h2>${sec.querySelector('.card').innerHTML}</body></html>`);
     w.document.close();w.print();
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // SMART RESTOCK (#13)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function copyNeedToBuyList(){
     const items=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
-    if(!items.length){toast('✅ Kho đầy đủ!');return;}
+    if(!items.length){toast('Γ£à Kho ─æß║ºy ─æß╗º!');return;}
     const text=items.map(i=>{
-        const emoji=i.s.status==='danger'?'🔴':'🟡';
-        const daysText=i.s.daysLeft<999?`≈${i.s.daysLeft} ngày`:'';
+        const emoji=i.s.status==='danger'?'≡ƒö┤':'≡ƒƒí';
+        const daysText=i.s.daysLeft<999?`Γëê${i.s.daysLeft} ng├áy`:'';
         const targetDays=7;
         const need=Math.max(0,Math.ceil(i.s.avgDaily*targetDays-i.s.stock));
         const packs=i.sln>1?Math.ceil(need/i.sln):need;
-        const packText=i.sln>1?` (${packs} gói×${i.sln})`:` ${need} ${i.unit}`;
-        return `${emoji} ${i.name}: còn ${i.s.stock} ${i.unit} ${daysText}\n   → Nhập${packText}`;
+        const packText=i.sln>1?` (${packs} g├│i├ù${i.sln})`:` ${need} ${i.unit}`;
+        return `${emoji} ${i.name}: c├▓n ${i.s.stock} ${i.unit} ${daysText}\n   ΓåÆ Nhß║¡p${packText}`;
     }).join('\n');
-    navigator.clipboard.writeText(text).then(()=>toast('📋 Đã copy danh sách cần mua!')).catch(()=>toast('❌ Không copy được'));
+    navigator.clipboard.writeText(text).then(()=>toast('≡ƒôï ─É├ú copy danh s├ích cß║ºn mua!')).catch(()=>toast('Γ¥î Kh├┤ng copy ─æ╞░ß╗úc'));
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // RECIPES
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function renderRecipes(){
     const c=document.getElementById('recipesList');if(!c)return;
     // Render templates
@@ -1308,37 +1286,37 @@ function renderRecipes(){
         const recipe=state.recipes[m.id]||[];
         const cogs=recipe.reduce((s,r)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
         const pct=m.price>0?Math.round(cogs/m.price*100):0;
-        const isFood=['Đồ chiên','Ăn vặt'].includes(m.category);
+        const isFood=['─Éß╗ô chi├¬n','─én vß║╖t'].includes(m.category);
         const ideal=isFood?'35-40%':'25-30%';
         const badge=pct===0?'':pct<=(isFood?40:30)?'good':pct<=(isFood?50:40)?'warn':'bad';
         const ings=recipe.map(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
 
         return `<div class="recipe-item"><div class="recipe-header"><span class="rh-name">${esc(m.name)}</span>
-        <span>${cogs>0?`<span style="font-size:0.8rem;color:var(--accent-warm)">COGS: ${fmtP(cogs)}</span> <span class="cogs-badge ${badge}">${pct}%</span> <span style="font-size:0.68rem;color:var(--text-muted)">Gợi ý: ${ideal}</span>`:'<span style="font-size:0.78rem;color:var(--text-muted)">Chưa có công thức</span>'}</span></div>
+        <span>${cogs>0?`<span style="font-size:0.8rem;color:var(--accent-warm)">COGS: ${fmtP(cogs)}</span> <span class="cogs-badge ${badge}">${pct}%</span> <span style="font-size:0.68rem;color:var(--text-muted)">Gß╗úi ├╜: ${ideal}</span>`:'<span style="font-size:0.78rem;color:var(--text-muted)">Ch╞░a c├│ c├┤ng thß╗⌐c</span>'}</span></div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;background:rgba(232,166,53,0.05);border:1px solid rgba(232,166,53,0.12);border-radius:8px;">
-          <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">💰 Giá bán:</span>
+          <span style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap;">≡ƒÆ░ Gi├í b├ín:</span>
           <input type="number" id="price-${m.id}" value="${m.price}" style="flex:1;max-width:140px;padding:5px 10px;font-family:var(--font-display);font-weight:700;font-size:0.9rem;color:var(--accent);" oninput="previewPrice(${m.id})">
           <span id="price-preview-${m.id}" style="font-family:var(--font-display);font-size:0.85rem;font-weight:700;color:var(--accent-warm);min-width:70px;"></span>
-          <button class="btn btn-primary btn-sm" onclick="saveMenuPrice(${m.id})" style="font-size:0.72rem;padding:5px 12px;">💾 Lưu giá</button>
+          <button class="btn btn-primary btn-sm" onclick="saveMenuPrice(${m.id})" style="font-size:0.72rem;padding:5px 12px;">≡ƒÆ╛ L╞░u gi├í</button>
         </div>
         ${ings.length?`<div class="recipe-ing">${ings.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
-        <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editRecipe(${m.id})" style="font-size:0.72rem;">✏️ Sửa công thức</button></div></div>`;
+        <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editRecipe(${m.id})" style="font-size:0.72rem;">Γ£Å∩╕Å Sß╗¡a c├┤ng thß╗⌐c</button></div></div>`;
     }).join('');}
 
 function renderTemplates(){
     const c=document.getElementById('templatesList');if(!c)return;
     const tpls=state.recipeTemplates||[];
-    if(!tpls.length){c.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.82rem;">Chưa có mẫu — Bấm "Tạo mẫu mới" để bắt đầu</div>';return;}
+    if(!tpls.length){c.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.82rem;">Ch╞░a c├│ mß║½u ΓÇö Bß║Ñm "Tß║ío mß║½u mß╗¢i" ─æß╗â bß║»t ─æß║ºu</div>';return;}
     c.innerHTML=tpls.map(t=>{
         const ings=t.items.map(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
         const cost=t.items.reduce((s,r)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
-        return `<div class="recipe-item" style="border-left:3px solid var(--accent);"><div class="recipe-header"><span class="rh-name" style="color:var(--accent)">📋 ${esc(t.name)}</span><span style="font-size:0.8rem;color:var(--accent-warm)">Chi phí: ${fmtP(cost)}</span></div>
+        return `<div class="recipe-item" style="border-left:3px solid var(--accent);"><div class="recipe-header"><span class="rh-name" style="color:var(--accent)">≡ƒôï ${esc(t.name)}</span><span style="font-size:0.8rem;color:var(--accent-warm)">Chi ph├¡: ${fmtP(cost)}</span></div>
         ${ings.length?`<div class="recipe-ing">${ings.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
-        <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})" style="font-size:0.72rem;">✏️ Sửa</button><button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})" style="font-size:0.72rem;">🗑️ Xóa</button></div></div>`;
+        <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})" style="font-size:0.72rem;">Γ£Å∩╕Å Sß╗¡a</button><button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})" style="font-size:0.72rem;">≡ƒùæ∩╕Å X├│a</button></div></div>`;
     }).join('');}
 
 function createTemplate(){
-    const name=prompt('Tên bộ công thức mẫu (VD: Trà sữa cơ bản, Trà trái cây cơ bản):');
+    const name=prompt('T├¬n bß╗Ö c├┤ng thß╗⌐c mß║½u (VD: Tr├á sß╗»a c╞í bß║ún, Tr├á tr├íi c├óy c╞í bß║ún):');
     if(!name)return;
     const tpl={id:state.nextTplId++,name,items:[]};
     state.recipeTemplates.push(tpl);saveState();
@@ -1346,18 +1324,18 @@ function createTemplate(){
 
 function editTemplate(tplId){
     const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
-    let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Mẫu: <strong>${esc(t.name)}</strong></p>`;
+    let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Mß║½u: <strong>${esc(t.name)}</strong></p>`;
     body+=`<div id="tplEditList">${t.items.map((r,idx)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
-    return `<div class="setting-item" id="te-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="teQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
-    body+=`<div class="add-form" style="margin-top:12px;"><select id="tplIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="tplIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addTplRow()">➕</button></div>`;
-    body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveTemplate(${tplId})">💾 Lưu mẫu</button></div>`;
-    openModal(`📋 Mẫu: ${t.name}`,body);}
+    return `<div class="setting-item" id="te-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="teQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">Γ£ò</button></div>`;}).join('')}</div>`;
+    body+=`<div class="add-form" style="margin-top:12px;"><select id="tplIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} ΓÇö ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="tplIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addTplRow()">Γ₧ò</button></div>`;
+    body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveTemplate(${tplId})">≡ƒÆ╛ L╞░u mß║½u</button></div>`;
+    openModal(`≡ƒôï Mß║½u: ${t.name}`,body);}
 
 function addTplRow(){const sel=document.getElementById('tplIngSelect'),qty=document.getElementById('tplIngQty').value;
-if(!qty||qty<=0){toast('⚠️ Nhập số lượng');return;}
+if(!qty||qty<=0){toast('ΓÜá∩╕Å Nhß║¡p sß╗æ l╞░ß╗úng');return;}
 const ing=state.ingredients.find(i=>i.id===parseInt(sel.value));if(!ing)return;
 const list=document.getElementById('tplEditList'),idx=list.children.length;
-list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="te-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="teQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`);
+list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="te-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="teQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">Γ£ò</button></div>`);
 document.getElementById('tplIngQty').value='';}
 
 function saveTemplate(tplId){const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
@@ -1365,45 +1343,45 @@ const list=document.getElementById('tplEditList');t.items=[];
 list.querySelectorAll('.setting-item').forEach(el=>{const qI=el.querySelector('input[type="number"]');const iA=qI.getAttribute('data-ing');
 if(iA)t.items.push({ingId:parseInt(iA),qty:parseFloat(qI.value)});
 else{const nm=el.querySelector('.si-name').textContent;const ig=state.ingredients.find(i=>i.name===nm);if(ig)t.items.push({ingId:ig.id,qty:parseFloat(qI.value)});}});
-saveState();renderRecipes();closeModal();toast('✅ Đã lưu mẫu');}
+saveState();renderRecipes();closeModal();toast('Γ£à ─É├ú l╞░u mß║½u');}
 
-function deleteTemplate(tplId){if(!confirm('Xóa mẫu này?'))return;state.recipeTemplates=state.recipeTemplates.filter(t=>t.id!==tplId);saveState();renderRecipes();toast('🗑️ Đã xóa mẫu');}
+function deleteTemplate(tplId){if(!confirm('X├│a mß║½u n├áy?'))return;state.recipeTemplates=state.recipeTemplates.filter(t=>t.id!==tplId);saveState();renderRecipes();toast('≡ƒùæ∩╕Å ─É├ú x├│a mß║½u');}
 
 function applyTemplate(menuId){
     const sel=document.getElementById('tplApplySelect');if(!sel)return;
-    const tpl=(state.recipeTemplates||[]).find(t=>t.id===parseInt(sel.value));if(!tpl){toast('⚠️ Chọn mẫu');return;}
+    const tpl=(state.recipeTemplates||[]).find(t=>t.id===parseInt(sel.value));if(!tpl){toast('ΓÜá∩╕Å Chß╗ìn mß║½u');return;}
     const list=document.getElementById('recipeEditList');
     tpl.items.forEach(r=>{
         const ing=state.ingredients.find(i=>i.id===r.ingId);if(!ing)return;
         const idx=list.children.length;
-        list.innerHTML+=`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;
+        list.innerHTML+=`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">Γ£ò</button></div>`;
     });
-    toast(`✅ Đã áp dụng mẫu "${tpl.name}" — chỉnh thêm bớt rồi Lưu`);}
+    toast(`Γ£à ─É├ú ├íp dß╗Ñng mß║½u "${tpl.name}" ΓÇö chß╗ënh th├¬m bß╗¢t rß╗ôi L╞░u`);}
 
 function editRecipe(menuId){
     const m=state.menu.find(x=>x.id===menuId);if(!m)return;
     const recipe=state.recipes[menuId]||[];
     const tpls=state.recipeTemplates||[];
 
-    let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Công thức cho: <strong>${esc(m.name)}</strong></p>`;
+    let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">C├┤ng thß╗⌐c cho: <strong>${esc(m.name)}</strong></p>`;
 
     // Template apply section
     if(tpls.length>0){
-        body+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(232,166,53,0.06);border:1px solid rgba(232,166,53,0.15);border-radius:var(--radius-sm);"><span style="font-size:0.78rem;color:var(--accent);white-space:nowrap;">📋 Áp dụng mẫu:</span><select id="tplApplySelect" style="flex:1;">${tpls.map(t=>`<option value="${t.id}">${t.name} (${t.items.length} NL)</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="applyTemplate(${menuId})" style="white-space:nowrap;">Áp dụng</button></div>`;
+        body+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(232,166,53,0.06);border:1px solid rgba(232,166,53,0.15);border-radius:var(--radius-sm);"><span style="font-size:0.78rem;color:var(--accent);white-space:nowrap;">≡ƒôï ├üp dß╗Ñng mß║½u:</span><select id="tplApplySelect" style="flex:1;">${tpls.map(t=>`<option value="${t.id}">${t.name} (${t.items.length} NL)</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="applyTemplate(${menuId})" style="white-space:nowrap;">├üp dß╗Ñng</button></div>`;
     }
 
     body+=`<div id="recipeEditList">${recipe.map((r,idx)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
-    return `<div class="setting-item" id="re-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
-    body+=`<div class="add-form" style="margin-top:12px;"><select id="recipeIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="recipeIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addRecipeRow()">➕</button></div>`;
-    body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveRecipe(${menuId})">💾 Lưu công thức</button></div>`;
-    openModal(`📋 Công thức: ${m.name}`,body);
+    return `<div class="setting-item" id="re-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">Γ£ò</button></div>`;}).join('')}</div>`;
+    body+=`<div class="add-form" style="margin-top:12px;"><select id="recipeIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} ΓÇö ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="recipeIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addRecipeRow()">Γ₧ò</button></div>`;
+    body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveRecipe(${menuId})">≡ƒÆ╛ L╞░u c├┤ng thß╗⌐c</button></div>`;
+    openModal(`≡ƒôï C├┤ng thß╗⌐c: ${m.name}`,body);
 }
 
 function addRecipeRow(){const sel=document.getElementById('recipeIngSelect'),qty=document.getElementById('recipeIngQty').value;
-if(!qty||qty<=0){toast('⚠️ Nhập số lượng');return;}
+if(!qty||qty<=0){toast('ΓÜá∩╕Å Nhß║¡p sß╗æ l╞░ß╗úng');return;}
 const ing=state.ingredients.find(i=>i.id===parseInt(sel.value));if(!ing)return;
 const list=document.getElementById('recipeEditList'),idx=list.children.length;
-list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`);
+list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">Γ£ò</button></div>`);
 document.getElementById('recipeIngQty').value='';}
 
 function saveRecipe(menuId){const list=document.getElementById('recipeEditList');
@@ -1413,14 +1391,14 @@ const ingIdAttr=qtyInput.getAttribute('data-ing');
 if(ingIdAttr){recipe.push({ingId:parseInt(ingIdAttr),qty:parseFloat(qtyInput.value)});}
 else{const name=el.querySelector('.si-name').textContent;const ing=state.ingredients.find(i=>i.name===name);
 if(ing)recipe.push({ingId:ing.id,qty:parseFloat(qtyInput.value)});}});
-state.recipes[menuId]=recipe;saveState();renderRecipes();closeModal();toast('✅ Đã lưu công thức');}
+state.recipes[menuId]=recipe;saveState();renderRecipes();closeModal();toast('Γ£à ─É├ú l╞░u c├┤ng thß╗⌐c');}
 
 function saveMenuPrice(menuId){
     const m=state.menu.find(x=>x.id===menuId);if(!m)return;
     const val=parseInt(document.getElementById('price-'+menuId).value);
-    if(!val||val<=0){toast('⚠️ Giá không hợp lệ');return;}
+    if(!val||val<=0){toast('ΓÜá∩╕Å Gi├í kh├┤ng hß╗úp lß╗ç');return;}
     m.price=val;saveState();renderPOSMenu();renderRecipes();
-    toast(`✅ ${m.name} — Giá: ${fmtP(val)}`);}
+    toast(`Γ£à ${m.name} ΓÇö Gi├í: ${fmtP(val)}`);}
 
 function previewPrice(menuId){
     const val=parseInt(document.getElementById('price-'+menuId)?.value)||0;
@@ -1428,9 +1406,9 @@ function previewPrice(menuId){
     if(el)el.textContent=val>0?fmtP(val):'';}
 
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // EXPORT INGREDIENTS USED
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function exportIngredientsUsed(){
     const d=getDashData();const usage={};
     Object.entries(d.itemsSold).forEach(([name,data])=>{
@@ -1441,31 +1419,31 @@ function exportIngredientsUsed(){
         if(!ing)return;if(!usage[ing.name])usage[ing.name]={unit:ing.unit,qty:0,cost:0};
         usage[ing.name].qty+=r.qty*data.qty;usage[ing.name].cost+=r.qty*data.qty*ing.unitPrice;});
     });
-    if(!Object.keys(usage).length){toast('⚠️ Chưa có công thức hoặc chưa có doanh số');return;}
-    let csv='Nguyên liệu,Đơn vị,Số lượng dùng,Chi phí\n';
+    if(!Object.keys(usage).length){toast('ΓÜá∩╕Å Ch╞░a c├│ c├┤ng thß╗⌐c hoß║╖c ch╞░a c├│ doanh sß╗æ');return;}
+    let csv='Nguy├¬n liß╗çu,─É╞ín vß╗ï,Sß╗æ l╞░ß╗úng d├╣ng,Chi ph├¡\n';
     let totalCost=0;
     Object.entries(usage).sort((a,b)=>b[1].cost-a[1].cost).forEach(([n,u])=>{csv+=`"${n}","${u.unit}",${Math.round(u.qty*100)/100},${Math.round(u.cost)}\n`;totalCost+=u.cost;});
-    csv+=`\nTổng chi phí NL,,,"${Math.round(totalCost)}"\n`;
-    navigator.clipboard.writeText(csv).then(()=>toast('📦 Đã copy NL đã dùng — Paste vào Google Sheet!'));
+    csv+=`\nTß╗òng chi ph├¡ NL,,,"${Math.round(totalCost)}"\n`;
+    navigator.clipboard.writeText(csv).then(()=>toast('≡ƒôª ─É├ú copy NL ─æ├ú d├╣ng ΓÇö Paste v├áo Google Sheet!'));
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // ATTENDANCE
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function startClock(){function u(){const n=new Date(),e=document.getElementById('liveClock'),d=document.getElementById('liveDate');if(e)e.textContent=n.toLocaleTimeString('vi-VN');if(d)d.textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}u();setInterval(u,1000);}
 function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>x.staffId===id);if(!r)return 'out';return r.checkOut?'done':'in';}
 function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>x.staffId===id)||null;}
-function toggleAttendance(id){if(currentRole==='staff'&&currentStaffId!==id){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
+function toggleAttendance(id){if(currentRole==='staff'&&currentStaffId!==id){toast('ΓÜá∩╕Å Chß╗ë c├│ thß╗â chß║Ñm c├┤ng cho m├¼nh');return;}
 const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=state.staff.find(x=>x.id===id);
-if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000});toast(`✅ ${s.name} — Vào ca`);}
-else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
-else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
-function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
+if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000});toast(`Γ£à ${s.name} ΓÇö V├áo ca`);}
+else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;toast(`Γ£à ${s.name} ΓÇö Ra ca (${r.hours}h)`);}
+else{toast(`Γä╣∩╕Å ${s.name} ─æ├ú ra ca`);return;}saveState();renderAttendance();}
+function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Ch╞░a v├áo ca',in:'≡ƒƒó ─Éang l├ám',done:'Γ£à ─É├ú ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' ΓåÆ '+r.checkOut+` (${r.hours}h)`:' ΓåÆ ...'}` :'';
 const isLocked=currentRole==='staff'&&currentStaffId!==s.id;
 return `<div class="staff-card status-${st}${isLocked?' locked':''}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
 const td=today(),recs=state.attendance[td]||[];
 const isOwner=currentRole==='owner';
-document.getElementById('attBody').innerHTML=recs.length?recs.map((r,idx)=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'—'}</td>${isOwner?`<td style="text-align:center"><button onclick="editAttendance(${idx})" style="background:none;border:none;cursor:pointer;font-size:0.72rem;" title="Sửa giờ">✏️</button></td>`:''}</tr>`).join(''):'<tr><td colspan="'+(isOwner?5:4)+'" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';
+document.getElementById('attBody').innerHTML=recs.length?recs.map((r,idx)=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'ΓÇö'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'ΓÇö'}</td>${isOwner?`<td style="text-align:center"><button onclick="editAttendance(${idx})" style="background:none;border:none;cursor:pointer;font-size:0.72rem;" title="Sß╗¡a giß╗¥">Γ£Å∩╕Å</button></td>`:''}</tr>`).join(''):'<tr><td colspan="'+(isOwner?5:4)+'" style="text-align:center;color:var(--text-muted);padding:16px">Ch╞░a c├│</td></tr>';
 // Update table header for owner
 const thead=document.querySelector('#tab-attendance .att-table thead tr');
 if(thead&&isOwner&&!thead.querySelector('.att-edit-th')){const th=document.createElement('th');th.className='att-edit-th';th.textContent='';thead.appendChild(th);}
@@ -1474,98 +1452,98 @@ function editAttendance(idx){
     const td=today(),recs=state.attendance[td];if(!recs||!recs[idx])return;
     const r=recs[idx];
     const body=`<div style="display:flex;flex-direction:column;gap:12px;">
-    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">👤 ${esc(r.name)}</label></div>
-    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">Vào ca</label>
+    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">≡ƒæñ ${esc(r.name)}</label></div>
+    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">V├áo ca</label>
     <input type="time" id="editAttIn" value="${r.checkIn||''}" style="width:100%;padding:8px;"></div>
     <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">Ra ca</label>
     <input type="time" id="editAttOut" value="${r.checkOut||''}" style="width:100%;padding:8px;"></div>
-    <button class="btn btn-primary" onclick="saveEditAttendance(${idx})">💾 Lưu</button></div>`;
-    openModal('✏️ Sửa giờ chấm công',body);
+    <button class="btn btn-primary" onclick="saveEditAttendance(${idx})">≡ƒÆ╛ L╞░u</button></div>`;
+    openModal('Γ£Å∩╕Å Sß╗¡a giß╗¥ chß║Ñm c├┤ng',body);
 }
 function saveEditAttendance(idx){
     const td=today(),r=state.attendance[td][idx];if(!r)return;
     const newIn=document.getElementById('editAttIn').value;
     const newOut=document.getElementById('editAttOut').value;
-    if(!newIn){toast('⚠️ Phải có giờ vào ca');return;}
+    if(!newIn){toast('ΓÜá∩╕Å Phß║úi c├│ giß╗¥ v├áo ca');return;}
     r.checkIn=newIn;
     if(newOut){r.checkOut=newOut;const[iH,iM]=newIn.split(':').map(Number),[oH,oM]=newOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;}
     else{r.checkOut=null;r.hours=null;}
-    saveState();renderAttendance();closeModal();toast(`✅ Đã cập nhật giờ ${r.name}`);
+    saveState();renderAttendance();closeModal();toast(`Γ£à ─É├ú cß║¡p nhß║¡t giß╗¥ ${r.name}`);
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // CHECKLIST
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function toggleChecklist(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const i=l.find(c=>c.id===id);if(i)i.checked=!i.checked;saveState();renderChecklist();}
 function renderChecklist(){['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist,c=document.getElementById(t+'Checklist'),p=document.getElementById(t+'Progress');
 const tot=l.length,done=l.filter(c=>c.checked).length;p.style.width=tot?(done/tot*100)+'%':'0%';
-c.innerHTML=l.map(c=>`<div class="cl-item ${c.checked?'checked':''}" onclick="toggleChecklist('${t}',${c.id})"><input type="checkbox" ${c.checked?'checked':''} onclick="event.stopPropagation();toggleChecklist('${t}',${c.id})"><span class="cl-text">${esc(c.text)}</span></div>`).join('')||'<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có</div>';});}
+c.innerHTML=l.map(c=>`<div class="cl-item ${c.checked?'checked':''}" onclick="toggleChecklist('${t}',${c.id})"><input type="checkbox" ${c.checked?'checked':''} onclick="event.stopPropagation();toggleChecklist('${t}',${c.id})"><span class="cl-text">${esc(c.text)}</span></div>`).join('')||'<div style="text-align:center;padding:20px;color:var(--text-muted)">Ch╞░a c├│</div>';});}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // SETTINGS
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function renderSettings(){
     document.getElementById('menuList').innerHTML=state.menu.map(m=>`<div class="setting-item" style="${m.active?'':'opacity:0.4'}">
 <select onchange="changeMenuCat(${m.id},this.value)" style="width:auto;min-width:80px;padding:4px 8px;font-size:0.72rem;flex:0;">${state.categories.map(c=>`<option value="${c}" ${c===m.category?'selected':''}>${c}</option>`).join('')}</select>
-<span class="si-name">${m.isGuide?'📖 ':''}${esc(m.name)}</span><span class="si-price">${m.isGuide?'(HD)':fmtP(m.price)}</span>
-<div class="si-actions"><button onclick="editMenuItem(${m.id})" title="Sửa món">✏️</button><button onclick="toggleMenuItem(${m.id})" title="${m.active?'Ẩn':'Hiện'}">${m.active?'👁️':'🚫'}</button><button onclick="deleteMenuItem(${m.id})" title="Xóa">🗑️</button></div></div>`).join('');
+<span class="si-name">${m.isGuide?'≡ƒôû ':''}${esc(m.name)}</span><span class="si-price">${m.isGuide?'(HD)':fmtP(m.price)}</span>
+<div class="si-actions"><button onclick="editMenuItem(${m.id})" title="Sß╗¡a m├│n">Γ£Å∩╕Å</button><button onclick="toggleMenuItem(${m.id})" title="${m.active?'ß║¿n':'Hiß╗çn'}">${m.active?'≡ƒæü∩╕Å':'≡ƒÜ½'}</button><button onclick="deleteMenuItem(${m.id})" title="X├│a">≡ƒùæ∩╕Å</button></div></div>`).join('');
     document.getElementById('newMenuCat').innerHTML=state.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
-    document.getElementById('staffList').innerHTML=state.staff.map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><span style="font-size:0.7rem;color:var(--accent);margin-left:auto;margin-right:8px;">💰${fmtP(s.wageRate||25000)}/h</span><span style="font-size:0.65rem;color:var(--text-muted);margin-right:8px;">🔑****</span><div class="si-actions"><button onclick="editStaff(${s.id})" title="Sửa">✏️</button><button onclick="deleteStaff(${s.id})">🗑️</button></div></div>`).join('');
+    document.getElementById('staffList').innerHTML=state.staff.map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><span style="font-size:0.7rem;color:var(--accent);margin-left:auto;margin-right:8px;">≡ƒÆ░${fmtP(s.wageRate||25000)}/h</span><span style="font-size:0.65rem;color:var(--text-muted);margin-right:8px;">≡ƒöæ****</span><div class="si-actions"><button onclick="editStaff(${s.id})" title="Sß╗¡a">Γ£Å∩╕Å</button><button onclick="deleteStaff(${s.id})">≡ƒùæ∩╕Å</button></div></div>`).join('');
     ['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist;
-    document.getElementById(t+'ClSettings').innerHTML=l.map(c=>`<div class="setting-item"><span class="si-name">${esc(c.text)}</span><div class="si-actions"><button onclick="deleteChecklistItem('${t}',${c.id})">🗑️</button></div></div>`).join('');});
+    document.getElementById(t+'ClSettings').innerHTML=l.map(c=>`<div class="setting-item"><span class="si-name">${esc(c.text)}</span><div class="si-actions"><button onclick="deleteChecklistItem('${t}',${c.id})">≡ƒùæ∩╕Å</button></div></div>`).join('');});
 }
 
-function changeMenuCat(id,cat){const m=state.menu.find(x=>x.id===id);if(!m)return;m.category=cat;saveState();renderPOSMenu();toast(`✅ ${m.name} → ${cat}`);}
+function changeMenuCat(id,cat){const m=state.menu.find(x=>x.id===id);if(!m)return;m.category=cat;saveState();renderPOSMenu();toast(`Γ£à ${m.name} ΓåÆ ${cat}`);}
 
 function editMenuItem(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
 const body=`<div style="display:flex;flex-direction:column;gap:12px;">
-<label style="font-size:0.78rem;color:var(--text-muted)">Tên món</label>
+<label style="font-size:0.78rem;color:var(--text-muted)">T├¬n m├│n</label>
 <input type="text" id="editMiName" value="${esc(m.name)}">
-<label style="font-size:0.78rem;color:var(--text-muted)">Giá bán (đ)</label>
+<label style="font-size:0.78rem;color:var(--text-muted)">Gi├í b├ín (─æ)</label>
 <input type="number" id="editMiPrice" value="${m.price}">
-<label style="font-size:0.78rem;color:var(--text-muted)">Danh mục</label>
+<label style="font-size:0.78rem;color:var(--text-muted)">Danh mß╗Ñc</label>
 <select id="editMiCat">${state.categories.map(c=>`<option value="${c}" ${c===m.category?'selected':''}>${c}</option>`).join('')}</select>
-<button class="btn btn-primary" onclick="saveEditMenuItem(${m.id})">💾 Lưu</button>
+<button class="btn btn-primary" onclick="saveEditMenuItem(${m.id})">≡ƒÆ╛ L╞░u</button>
 </div>`;
-openModal(`✏️ Sửa: ${m.name}`,body);}
+openModal(`Γ£Å∩╕Å Sß╗¡a: ${m.name}`,body);}
 
 function saveEditMenuItem(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
 const n=document.getElementById('editMiName').value.trim(),p=parseInt(document.getElementById('editMiPrice').value),c=document.getElementById('editMiCat').value;
-if(!n||!p){toast('⚠️ Nhập đủ thông tin');return;}
-m.name=n;m.price=p;m.category=c;saveState();renderSettings();renderPOSMenu();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
+if(!n||!p){toast('ΓÜá∩╕Å Nhß║¡p ─æß╗º th├┤ng tin');return;}
+m.name=n;m.price=p;m.category=c;saveState();renderSettings();renderPOSMenu();renderRecipes();closeModal();toast(`Γ£à ─É├ú cß║¡p nhß║¡t "${n}"`);}
 
-function addMenuItem(){const n=document.getElementById('newMenuName').value.trim(),p=parseInt(document.getElementById('newMenuPrice').value),c=document.getElementById('newMenuCat').value;if(!n||!p){toast('⚠️ Nhập tên và giá');return;}state.menu.push({id:state.nextMenuId++,name:n,price:p,category:c,active:true});document.getElementById('newMenuName').value='';document.getElementById('newMenuPrice').value='';saveState();renderSettings();renderPOSMenu();toast(`✅ Đã thêm "${n}"`);}
-function addCategory(){const n=document.getElementById('newCatName').value.trim();if(!n)return;if(state.categories.includes(n)){toast('⚠️ Đã tồn tại');return;}state.categories.push(n);document.getElementById('newCatName').value='';saveState();renderSettings();renderPOSMenu();toast(`✅ Đã thêm "${n}"`);}
+function addMenuItem(){const n=document.getElementById('newMenuName').value.trim(),p=parseInt(document.getElementById('newMenuPrice').value),c=document.getElementById('newMenuCat').value;if(!n||!p){toast('ΓÜá∩╕Å Nhß║¡p t├¬n v├á gi├í');return;}state.menu.push({id:state.nextMenuId++,name:n,price:p,category:c,active:true});document.getElementById('newMenuName').value='';document.getElementById('newMenuPrice').value='';saveState();renderSettings();renderPOSMenu();toast(`Γ£à ─É├ú th├¬m "${n}"`);}
+function addCategory(){const n=document.getElementById('newCatName').value.trim();if(!n)return;if(state.categories.includes(n)){toast('ΓÜá∩╕Å ─É├ú tß╗ôn tß║íi');return;}state.categories.push(n);document.getElementById('newCatName').value='';saveState();renderSettings();renderPOSMenu();toast(`Γ£à ─É├ú th├¬m "${n}"`);}
 function toggleMenuItem(id){const m=state.menu.find(x=>x.id===id);if(m)m.active=!m.active;saveState();renderSettings();renderPOSMenu();}
-function deleteMenuItem(id){if(!confirm('Xóa món này khỏi menu?'))return;state.menu=state.menu.filter(m=>m.id!==id);saveState();renderSettings();renderPOSMenu();toast('🗑️ Đã xóa');}
-function addStaff(){const n=document.getElementById('newStaffName').value.trim();if(!n)return;const pwd=String(state.nextStaffId)+'000';state.staff.push({id:state.nextStaffId++,name:n,password:pwd,wageRate:25000});document.getElementById('newStaffName').value='';saveState();renderSettings();renderAttendance();toast(`✅ Đã thêm "${n}" (pass: ${pwd})`);}
+function deleteMenuItem(id){if(!confirm('X├│a m├│n n├áy khß╗Åi menu?'))return;state.menu=state.menu.filter(m=>m.id!==id);saveState();renderSettings();renderPOSMenu();toast('≡ƒùæ∩╕Å ─É├ú x├│a');}
+function addStaff(){const n=document.getElementById('newStaffName').value.trim();if(!n)return;const pwd=String(state.nextStaffId)+'000';state.staff.push({id:state.nextStaffId++,name:n,password:pwd,wageRate:25000});document.getElementById('newStaffName').value='';saveState();renderSettings();renderAttendance();toast(`Γ£à ─É├ú th├¬m "${n}" (pass: ${pwd})`);}
 function editStaff(id){const s=state.staff.find(x=>x.id===id);if(!s)return;
 const body=`<div style="display:flex;flex-direction:column;gap:12px;">
-<label style="font-size:0.78rem;color:var(--text-muted)">Tên</label>
+<label style="font-size:0.78rem;color:var(--text-muted)">T├¬n</label>
 <input type="text" id="editStaffName" value="${esc(s.name)}">
-<label style="font-size:0.78rem;color:var(--text-muted)">Mật khẩu</label>
+<label style="font-size:0.78rem;color:var(--text-muted)">Mß║¡t khß║⌐u</label>
 <input type="text" id="editStaffPwd" value="${esc(s.password||'')}">
-<label style="font-size:0.78rem;color:var(--text-muted)">Lương/giờ (đ)</label>
+<label style="font-size:0.78rem;color:var(--text-muted)">L╞░╞íng/giß╗¥ (─æ)</label>
 <input type="number" id="editStaffWage" value="${s.wageRate||25000}">
-<button class="btn btn-primary" onclick="saveEditStaff(${s.id})">💾 Lưu</button>
-</div>`;openModal(`✏️ Sửa NV: ${s.name}`,body);}
+<button class="btn btn-primary" onclick="saveEditStaff(${s.id})">≡ƒÆ╛ L╞░u</button>
+</div>`;openModal(`Γ£Å∩╕Å Sß╗¡a NV: ${s.name}`,body);}
 function saveEditStaff(id){const s=state.staff.find(x=>x.id===id);if(!s)return;
 const n=document.getElementById('editStaffName').value.trim();
 const p=document.getElementById('editStaffPwd').value.trim();
 const w=parseInt(document.getElementById('editStaffWage').value)||25000;
-if(!n||!p){toast('⚠️ Nhập đủ thông tin');return;}
+if(!n||!p){toast('ΓÜá∩╕Å Nhß║¡p ─æß╗º th├┤ng tin');return;}
 // Check duplicate password
 const dup=state.staff.find(x=>x.id!==id&&x.password===p);
-if(dup){toast(`⚠️ Pass "${p}" đã dùng cho ${dup.name}`);return;}
-if(APP_PASSWORDS[p]){toast('⚠️ Pass trùng với chủ quán');return;}
-s.name=n;s.password=p;s.wageRate=w;saveState();renderSettings();renderAttendance();closeModal();toast(`✅ Đã cập nhật ${n}`);}
-function deleteStaff(id){state.staff=state.staff.filter(s=>s.id!==id);saveState();renderSettings();renderAttendance();toast('🗑️ Đã xóa');}
-function addChecklistItem(t){const iid=t==='open'?'newOpenCl':'newCloseCl';const txt=document.getElementById(iid).value.trim();if(!txt)return;(t==='open'?state.openChecklist:state.closeChecklist).push({id:state.nextClId++,text:txt,checked:false});document.getElementById(iid).value='';saveState();renderSettings();renderChecklist();toast('✅ Đã thêm');}
+if(dup){toast(`ΓÜá∩╕Å Pass "${p}" ─æ├ú d├╣ng cho ${dup.name}`);return;}
+if(APP_PASSWORDS[p]){toast('ΓÜá∩╕Å Pass tr├╣ng vß╗¢i chß╗º qu├ín');return;}
+s.name=n;s.password=p;s.wageRate=w;saveState();renderSettings();renderAttendance();closeModal();toast(`Γ£à ─É├ú cß║¡p nhß║¡t ${n}`);}
+function deleteStaff(id){state.staff=state.staff.filter(s=>s.id!==id);saveState();renderSettings();renderAttendance();toast('≡ƒùæ∩╕Å ─É├ú x├│a');}
+function addChecklistItem(t){const iid=t==='open'?'newOpenCl':'newCloseCl';const txt=document.getElementById(iid).value.trim();if(!txt)return;(t==='open'?state.openChecklist:state.closeChecklist).push({id:state.nextClId++,text:txt,checked:false});document.getElementById(iid).value='';saveState();renderSettings();renderChecklist();toast('Γ£à ─É├ú th├¬m');}
 function deleteChecklistItem(t,id){if(t==='open')state.openChecklist=state.openChecklist.filter(c=>c.id!==id);else state.closeChecklist=state.closeChecklist.filter(c=>c.id!==id);saveState();renderSettings();renderChecklist();}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // GRAB ORDERS
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 const GRAB_FEE_RATE = 0.48;
 
 function renderGrabSection(){
@@ -1583,8 +1561,8 @@ if(searchVal){activeMenu=activeMenu.filter(m=>m.name.toLowerCase().includes(sear
 picker.innerHTML=activeMenu.map(m=>{
     const sel=grabCurrentItems.find(g=>g.menuId===m.id);
     const qty=sel?sel.qty:0;
-    return `<div class="grab-menu-btn ${qty>0?'selected':''}" onclick="toggleGrabItem(${m.id})">${m.name}${qty>1?' ×'+qty:''}</div>`;
-}).join('')||'<div style="padding:10px;color:var(--text-muted);font-size:0.78rem;">Không tìm thấy</div>';
+    return `<div class="grab-menu-btn ${qty>0?'selected':''}" onclick="toggleGrabItem(${m.id})">${m.name}${qty>1?' ├ù'+qty:''}</div>`;
+}).join('')||'<div style="padding:10px;color:var(--text-muted);font-size:0.78rem;">Kh├┤ng t├¼m thß║Ñy</div>';
 updateGrabSelected();
 }
 
@@ -1601,9 +1579,9 @@ function updateGrabSelected(){
 const el=document.getElementById('grabSelectedItems');
 const mt=document.getElementById('grabMenuTotal');
 if(!el||!mt)return;
-if(!grabCurrentItems.length){el.innerHTML='Chưa chọn món';mt.textContent='0đ';return;}
+if(!grabCurrentItems.length){el.innerHTML='Ch╞░a chß╗ìn m├│n';mt.textContent='0─æ';return;}
 const total=grabCurrentItems.reduce((s,i)=>s+i.price*i.qty,0);
-el.innerHTML=grabCurrentItems.map(i=>`<span style="display:inline-block;padding:2px 8px;background:rgba(232,166,53,0.1);border-radius:6px;margin:2px;font-size:0.78rem;">${i.name}×${i.qty} <span style="cursor:pointer;color:var(--accent-red);margin-left:4px;" onclick="removeGrabItem(${i.menuId})">✕</span> <span style="cursor:pointer;color:var(--accent-green);margin-left:2px;" onclick="decGrabItem(${i.menuId})">−</span></span>`).join(' ');
+el.innerHTML=grabCurrentItems.map(i=>`<span style="display:inline-block;padding:2px 8px;background:rgba(232,166,53,0.1);border-radius:6px;margin:2px;font-size:0.78rem;">${i.name}├ù${i.qty} <span style="cursor:pointer;color:var(--accent-red);margin-left:4px;" onclick="removeGrabItem(${i.menuId})">Γ£ò</span> <span style="cursor:pointer;color:var(--accent-green);margin-left:2px;" onclick="decGrabItem(${i.menuId})">ΓêÆ</span></span>`).join(' ');
 mt.textContent=fmtP(total);
 calcGrabDiff();
 }
@@ -1622,14 +1600,14 @@ if(diffEl){
     if(grabPrice>0){diffEl.textContent=(diff>=0?'+':'')+fmtP(diff);diffEl.className='grab-diff '+(diff>=0?'positive':'negative');}
     else{diffEl.textContent='';diffEl.className='grab-diff';}
 }
-if(feeEl)feeEl.textContent=grabPrice>0?'-'+fmtP(Math.round(grabPrice*GRAB_FEE_RATE)):'0đ';
-if(netEl)netEl.textContent=grabPrice>0?fmtP(Math.round(grabPrice*(1-GRAB_FEE_RATE))):'0đ';
+if(feeEl)feeEl.textContent=grabPrice>0?'-'+fmtP(Math.round(grabPrice*GRAB_FEE_RATE)):'0─æ';
+if(netEl)netEl.textContent=grabPrice>0?fmtP(Math.round(grabPrice*(1-GRAB_FEE_RATE))):'0─æ';
 }
 
 function addGrabOrder(){
-if(!grabCurrentItems.length){toast('⚠️ Chưa chọn món');return;}
+if(!grabCurrentItems.length){toast('ΓÜá∩╕Å Ch╞░a chß╗ìn m├│n');return;}
 const grabPrice=parseInt(document.getElementById('grabPrice')?.value)||0;
-if(!grabPrice){toast('⚠️ Nhập giá Grab');return;}
+if(!grabPrice){toast('ΓÜá∩╕Å Nhß║¡p gi├í Grab');return;}
 const menuTotal=grabCurrentItems.reduce((s,i)=>s+i.price*i.qty,0);
 const fee=Math.round(grabPrice*GRAB_FEE_RATE);
 const net=grabPrice-fee;
@@ -1644,7 +1622,7 @@ state.grabOrders.push({
     netAmount:net
 });
 // Also create a hidden invoice for ingredient tracking (method='grab')
-const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:grabCurrentItems.map(i=>({...i})),total:grabPrice,method:'grab',note:'Đơn Grab'};
+const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:grabCurrentItems.map(i=>({...i})),total:grabPrice,method:'grab',note:'─É╞ín Grab'};
 state.todayInvoices.push(inv);
 archiveDay(today(),state.todayInvoices);
 // Reset form
@@ -1655,11 +1633,11 @@ calcGrabDiff();
 saveState();
 renderGrabSection();
 renderTodayInvoices();
-toast(`✅ Đã thêm đơn Grab — thực nhận ${fmtP(net)}`);
+toast(`Γ£à ─É├ú th├¬m ─æ╞ín Grab ΓÇö thß╗▒c nhß║¡n ${fmtP(net)}`);
 }
 
 function deleteGrabOrder(idx){
-if(!confirm('Xóa đơn Grab này?'))return;
+if(!confirm('X├│a ─æ╞ín Grab n├áy?'))return;
 const g=state.grabOrders[idx];
 if(g){
     // Also cancel the corresponding invoice
@@ -1668,7 +1646,7 @@ if(g){
 }
 state.grabOrders.splice(idx,1);
 archiveDay(today(),state.todayInvoices);
-saveState();renderGrabSection();renderTodayInvoices();toast('🗑️ Đã xóa đơn Grab');
+saveState();renderGrabSection();renderTodayInvoices();toast('≡ƒùæ∩╕Å ─É├ú x├│a ─æ╞ín Grab');
 }
 
 function renderGrabList(){
@@ -1677,7 +1655,7 @@ const summary=document.getElementById('grabSummary');
 const count=document.getElementById('grabCount');
 if(!list||!summary)return;
 const todayGrabs=(state.grabOrders||[]).filter(g=>g.date===today());
-if(count)count.textContent=todayGrabs.length?`(${todayGrabs.length} đơn)`:'';
+if(count)count.textContent=todayGrabs.length?`(${todayGrabs.length} ─æ╞ín)`:'';
 if(!todayGrabs.length){list.innerHTML='';summary.style.display='none';return;}
 summary.style.display='grid';
 const totalGross=todayGrabs.reduce((s,g)=>s+g.grabPrice,0);
@@ -1701,79 +1679,79 @@ document.getElementById('grabTotalGross').textContent=fmtP(totalGross);
 document.getElementById('grabTotalNet').textContent=fmtP(totalNet);
 const ingCostEl=document.getElementById('grabIngCost');
 if(ingCostEl){
-    ingCostEl.textContent=ingCost>0?fmtP(ingCost):'Chưa có CT';
+    ingCostEl.textContent=ingCost>0?fmtP(ingCost):'Ch╞░a c├│ CT';
     // Show profit after ingredient cost
     if(ingCost>0){
         const profit=totalNet-ingCost;
-        ingCostEl.innerHTML=fmtP(ingCost)+`<div style="font-size:0.65rem;color:${profit>=0?'var(--accent-green)':'var(--accent-red)'};margin-top:2px;">Lãi: ${fmtP(profit)}</div>`;
+        ingCostEl.innerHTML=fmtP(ingCost)+`<div style="font-size:0.65rem;color:${profit>=0?'var(--accent-green)':'var(--accent-red)'};margin-top:2px;">L├úi: ${fmtP(profit)}</div>`;
     }
 }
 list.innerHTML=todayGrabs.map((g,idx)=>{
-    const items=g.items.map(i=>`${i.name}×${i.qty}`).join(', ');
-    return `<div class="grab-item"><span class="gi-items">${esc(items)}</span><span class="gi-prices"><span class="gi-menu">${fmtP(g.menuTotal)}</span><span class="gi-grab">${fmtP(g.grabPrice)}</span><span class="gi-net">→${fmtP(g.netAmount)}</span></span><button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:0.7rem;margin-left:8px;" onclick="deleteGrabOrder(${idx})">✕</button></div>`;
+    const items=g.items.map(i=>`${i.name}├ù${i.qty}`).join(', ');
+    return `<div class="grab-item"><span class="gi-items">${esc(items)}</span><span class="gi-prices"><span class="gi-menu">${fmtP(g.menuTotal)}</span><span class="gi-grab">${fmtP(g.grabPrice)}</span><span class="gi-net">ΓåÆ${fmtP(g.netAmount)}</span></span><button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:0.7rem;margin-left:8px;" onclick="deleteGrabOrder(${idx})">Γ£ò</button></div>`;
 }).join('');
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // EXPORT & BACKUP
-// ═══════════════════════════════════════
-function exportCSV(){const d=getDashData();let csv='Tên món,Số lượng,Doanh thu\n';Object.entries(d.itemsSold).sort((a,b)=>b[1].qty-a[1].qty).forEach(([n,x])=>{csv+=`"${n}",${x.qty},${x.revenue}\n`;});csv+=`\nTổng doanh thu,,${d.totalRevenue}\nTổng hóa đơn,,${d.totalInvoices}\nTiền mặt,,${d.cashTotal}\nChuyển khoản,,${d.transferTotal}\n`;navigator.clipboard.writeText(csv).then(()=>toast('📋 Đã copy CSV!'));}
-function exportDashJSON(){const b=new Blob([JSON.stringify(state.history,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-data-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('💾 Đã tải JSON!');}
-function exportAttCSV(){const td=today(),recs=state.attendance[td]||[];let csv='Tên,Vào ca,Ra ca,Số giờ\n';recs.forEach(r=>{csv+=`"${r.name}","${r.checkIn}","${r.checkOut||''}",${r.hours||''}\n`;});navigator.clipboard.writeText(csv).then(()=>toast('📋 Đã copy CSV chấm công!'));}
-function downloadBackup(){const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-backup-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã tải backup!');}
-function restoreBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>{try{const p=JSON.parse(ev.target.result);if(!p.menu){toast('❌ File không hợp lệ');return;}state={...state,...p};localStorage.setItem('monsteaPOS',JSON.stringify(state));if(firebaseDb){isRemoteUpdate=true;firebaseDb.ref('state').set(state).then(()=>{isRemoteUpdate=false;updateSyncStatus('connected');toast('✅ Đã khôi phục & đồng bộ lên cloud!');}).catch(()=>{isRemoteUpdate=false;toast('✅ Đã khôi phục (chưa sync cloud)');});}else{toast('✅ Đã khôi phục!');}renderAll();}catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}
-function clearOldData(){const c=new Date();c.setDate(c.getDate()-30);const cs=c.toISOString().slice(0,10);let rm=0;Object.keys(state.history).forEach(d=>{if(d<cs){delete state.history[d];rm++;}});Object.keys(state.attendance).forEach(d=>{if(d<cs){delete state.attendance[d];rm++;}});saveState();toast(`🗑️ Đã xóa ${rm} bản ghi cũ`);}
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+function exportCSV(){const d=getDashData();let csv='T├¬n m├│n,Sß╗æ l╞░ß╗úng,Doanh thu\n';Object.entries(d.itemsSold).sort((a,b)=>b[1].qty-a[1].qty).forEach(([n,x])=>{csv+=`"${n}",${x.qty},${x.revenue}\n`;});csv+=`\nTß╗òng doanh thu,,${d.totalRevenue}\nTß╗òng h├│a ─æ╞ín,,${d.totalInvoices}\nTiß╗ün mß║╖t,,${d.cashTotal}\nChuyß╗ân khoß║ún,,${d.transferTotal}\n`;navigator.clipboard.writeText(csv).then(()=>toast('≡ƒôï ─É├ú copy CSV!'));}
+function exportDashJSON(){const b=new Blob([JSON.stringify(state.history,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-data-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('≡ƒÆ╛ ─É├ú tß║úi JSON!');}
+function exportAttCSV(){const td=today(),recs=state.attendance[td]||[];let csv='T├¬n,V├áo ca,Ra ca,Sß╗æ giß╗¥\n';recs.forEach(r=>{csv+=`"${r.name}","${r.checkIn}","${r.checkOut||''}",${r.hours||''}\n`;});navigator.clipboard.writeText(csv).then(()=>toast('≡ƒôï ─É├ú copy CSV chß║Ñm c├┤ng!'));}
+function downloadBackup(){const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-backup-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('≡ƒôÑ ─É├ú tß║úi backup!');}
+function restoreBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>{try{const p=JSON.parse(ev.target.result);if(!p.menu){toast('Γ¥î File kh├┤ng hß╗úp lß╗ç');return;}state={...state,...p};localStorage.setItem('monsteaPOS',JSON.stringify(state));if(firebaseDb){isRemoteUpdate=true;firebaseDb.ref('state').set(state).then(()=>{isRemoteUpdate=false;updateSyncStatus('connected');toast('Γ£à ─É├ú kh├┤i phß╗Ñc & ─æß╗ông bß╗Ö l├¬n cloud!');}).catch(()=>{isRemoteUpdate=false;toast('Γ£à ─É├ú kh├┤i phß╗Ñc (ch╞░a sync cloud)');});}else{toast('Γ£à ─É├ú kh├┤i phß╗Ñc!');}renderAll();}catch(err){toast('Γ¥î Lß╗ùi: '+err.message);}};r.readAsText(f);e.target.value='';}
+function clearOldData(){const c=new Date();c.setDate(c.getDate()-30);const cs=c.toISOString().slice(0,10);let rm=0;Object.keys(state.history).forEach(d=>{if(d<cs){delete state.history[d];rm++;}});Object.keys(state.attendance).forEach(d=>{if(d<cs){delete state.attendance[d];rm++;}});saveState();toast(`≡ƒùæ∩╕Å ─É├ú x├│a ${rm} bß║ún ghi c┼⌐`);}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // UTILS
-// ═══════════════════════════════════════
-function fmtP(n){return Math.round(n).toLocaleString('vi-VN')+'đ';}
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+function fmtP(n){return Math.round(n).toLocaleString('vi-VN')+'─æ';}
 function fmtS(n){return n>=1000000?(n/1000000).toFixed(1)+'tr':n>=1000?Math.round(n/1000)+'k':n+'';}
 function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML;}
 function toast(m){const e=document.createElement('div');e.className='toast';e.textContent=m;document.getElementById('toastContainer').appendChild(e);setTimeout(()=>e.remove(),3000);}
 function vibrate(ms){try{navigator.vibrate(ms||30);}catch(e){}}
 function playPaySound(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o1=ctx.createOscillator(),g1=ctx.createGain();o1.connect(g1);g1.connect(ctx.destination);o1.type='sine';o1.frequency.value=800;g1.gain.setValueAtTime(0.3,ctx.currentTime);g1.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.3);o1.start(ctx.currentTime);o1.stop(ctx.currentTime+0.3);const o2=ctx.createOscillator(),g2=ctx.createGain();o2.connect(g2);g2.connect(ctx.destination);o2.type='sine';o2.frequency.value=1200;g2.gain.setValueAtTime(0.3,ctx.currentTime+0.15);g2.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+0.5);o2.start(ctx.currentTime+0.15);o2.stop(ctx.currentTime+0.5);}catch(e){}}
-function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');if(!bar)return;const ct=document.getElementById('mobCount'),tt=document.getElementById('mobTotal');const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);const disc=getDiscountAmount();const final=Math.max(0,ta-disc);if(tq>0){bar.classList.add('has-items');ct.textContent=tq+' món';tt.textContent=fmtP(final);}else{bar.classList.remove('has-items');}}
+function updateMobileBar(){const bar=document.getElementById('mobileOrderBar');if(!bar)return;const ct=document.getElementById('mobCount'),tt=document.getElementById('mobTotal');const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0),ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(o.price+tp)*o.qty;},0);const disc=getDiscountAmount();const final=Math.max(0,ta-disc);if(tq>0){bar.classList.add('has-items');ct.textContent=tq+' m├│n';tt.textContent=fmtP(final);}else{bar.classList.remove('has-items');}}
 function openModal(t,b){document.getElementById('modalTitle').textContent=t;document.getElementById('modalBody').innerHTML=b;document.getElementById('modal').classList.add('active');}
 function closeModal(){document.getElementById('modal').classList.remove('active');}
 
-// ═══════════════════════════════════════
-// GUIDE (Hướng dẫn pha chế)
-// ═══════════════════════════════════════
-let guideCategory='Tất cả';
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+// GUIDE (H╞░ß╗¢ng dß║½n pha chß║┐)
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
+let guideCategory='Tß║Ñt cß║ú';
 function renderGuide(){
     const ct=document.getElementById('guideCatTabs');if(!ct)return;
-    ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===guideCategory?'active':''}" onclick="setGuideCategory('${c}')">${c}</button>`).join('');
+    ct.innerHTML=['Tß║Ñt cß║ú',...state.categories].map(c=>`<button class="cat-btn ${c===guideCategory?'active':''}" onclick="setGuideCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('guideMenuGrid');
     const searchEl=document.getElementById('guideSearchInput');
     const query=(searchEl?searchEl.value:'').toLowerCase().trim();
-    const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory)&&(!query||m.name.toLowerCase().includes(query)));
+    const items=state.menu.filter(m=>m.active&&(guideCategory==='Tß║Ñt cß║ú'||m.category===guideCategory)&&(!query||m.name.toLowerCase().includes(query)));
     let html=items.map(m=>{
         const hasGuide=(state.menuGuides&&state.menuGuides[m.id])||((state.guideImages&&state.guideImages[m.id]&&state.guideImages[m.id].length));
         const vis=getMenuVisual(m);
         return `<div class="menu-item-btn" style="position:relative;${hasGuide?'border-color:rgba(74,222,128,0.4);':''}" onclick="showGuide(${m.id})">
-        ${hasGuide?'<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;">✅</span>':''}
+        ${hasGuide?'<span style="position:absolute;top:4px;right:6px;font-size:0.6rem;">Γ£à</span>':''}
         ${vis}<div class="mi-name">${esc(m.name)}</div>
-        <div style="font-size:0.65rem;color:${hasGuide?'var(--accent-green)':'var(--text-muted)'};">${hasGuide?'Đã có HD':'Chưa có'}</div></div>`;
+        <div style="font-size:0.65rem;color:${hasGuide?'var(--accent-green)':'var(--text-muted)'};">${hasGuide?'─É├ú c├│ HD':'Ch╞░a c├│'}</div></div>`;
     }).join('');
-    if(!html) html='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Chưa có món</div>';
+    if(!html) html='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">Ch╞░a c├│ m├│n</div>';
     if(currentRole==='owner'){
         html+=`<div class="menu-item-btn" style="border:2px dashed var(--border-subtle);background:transparent;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0.8;cursor:pointer;min-height:100px;box-shadow:none;" onclick="addCustomGuide()">
-        <div style="font-size:2rem;margin-bottom:4px;line-height:1;">➕</div>
-        <div style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);">Thêm HD mới</div></div>`;
+        <div style="font-size:2rem;margin-bottom:4px;line-height:1;">Γ₧ò</div>
+        <div style="font-size:0.75rem;font-weight:600;color:var(--text-secondary);">Th├¬m HD mß╗¢i</div></div>`;
     }
     g.innerHTML=html;
 }
 function addCustomGuide(){
-    const n=prompt('Tên hướng dẫn mới (VD: Cách ủ trà đen):');
+    const n=prompt('T├¬n h╞░ß╗¢ng dß║½n mß╗¢i (VD: C├ích ß╗º tr├á ─æen):');
     if(!n)return;
-    const cat=guideCategory==='Tất cả'?(state.categories[0]||'Khác'):guideCategory;
+    const cat=guideCategory==='Tß║Ñt cß║ú'?(state.categories[0]||'Kh├íc'):guideCategory;
     const newId=state.nextMenuId++;
     state.menu.push({id:newId,name:n,price:0,category:cat,active:true,isGuide:true});
     saveState();
     renderGuide();
     showGuide(newId);
-    toast('✅ Đã tạo hướng dẫn mới');
+    toast('Γ£à ─É├ú tß║ío h╞░ß╗¢ng dß║½n mß╗¢i');
 }
 function setGuideCategory(c){guideCategory=c;renderGuide();}
 function showGuide(id){
@@ -1783,24 +1761,24 @@ function showGuide(id){
     const isOwner=currentRole==='owner';
     const imgGallery=imgs.length?`<div style="display:flex;gap:8px;flex-wrap:wrap;">${imgs.map((src,i)=>`<div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--border-subtle);">
     <img src="${src}" style="width:120px;height:120px;object-fit:cover;display:block;cursor:pointer;" onclick="window.open(this.src,'_blank')">
-    ${isOwner?`<button onclick="removeGuideImage(${id},${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#ff6b6b;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center;">✕</button>`:''}
+    ${isOwner?`<button onclick="removeGuideImage(${id},${i})" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.7);color:#ff6b6b;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:0.7rem;display:flex;align-items:center;justify-content:center;">Γ£ò</button>`:''}
     </div>`).join('')}</div>`:'';
     const body=`<div style="display:flex;flex-direction:column;gap:12px;">
     <div><div style="font-weight:700;font-size:1rem;">${esc(m.name)}</div>
-    <div style="font-size:0.82rem;color:var(--accent-warm);">${fmtP(m.price)} — ${esc(m.category)}</div></div>
-    ${isOwner?`<textarea id="guideText" rows="8" style="width:100%;padding:10px;font-size:0.85rem;line-height:1.6;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);resize:vertical;" placeholder="Nhập hướng dẫn pha chế...">${esc(guide)}</textarea>
+    <div style="font-size:0.82rem;color:var(--accent-warm);">${fmtP(m.price)} ΓÇö ${esc(m.category)}</div></div>
+    ${isOwner?`<textarea id="guideText" rows="8" style="width:100%;padding:10px;font-size:0.85rem;line-height:1.6;border-radius:8px;border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);resize:vertical;" placeholder="Nhß║¡p h╞░ß╗¢ng dß║½n pha chß║┐...">${esc(guide)}</textarea>
     ${imgGallery}
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
     <label class="btn btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:4px;">
-    📷 Thêm ảnh <input type="file" accept="image/*" capture="environment" multiple style="display:none;" onchange="addGuideImage(${m.id},this.files)">
+    ≡ƒô╖ Th├¬m ß║únh <input type="file" accept="image/*" capture="environment" multiple style="display:none;" onchange="addGuideImage(${m.id},this.files)">
     </label>
-    <span style="font-size:0.7rem;color:var(--text-muted);">${imgs.length}/5 ảnh</span>
+    <span style="font-size:0.7rem;color:var(--text-muted);">${imgs.length}/5 ß║únh</span>
     </div>
-    <button class="btn btn-primary" onclick="saveGuide(${m.id})">💾 Lưu hướng dẫn</button>`
+    <button class="btn btn-primary" onclick="saveGuide(${m.id})">≡ƒÆ╛ L╞░u h╞░ß╗¢ng dß║½n</button>`
     :`${imgGallery}
-    <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border-subtle);white-space:pre-wrap;line-height:1.7;font-size:0.88rem;min-height:60px;">${guide?esc(guide):'<span style="color:var(--text-muted);font-style:italic;">Chưa có hướng dẫn</span>'}</div>`}
+    <div style="padding:16px;background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border-subtle);white-space:pre-wrap;line-height:1.7;font-size:0.88rem;min-height:60px;">${guide?esc(guide):'<span style="color:var(--text-muted);font-style:italic;">Ch╞░a c├│ h╞░ß╗¢ng dß║½n</span>'}</div>`}
     </div>`;
-    openModal(`📖 ${m.name}`,body);
+    openModal(`≡ƒôû ${m.name}`,body);
 }
 function compressImage(file,maxW,quality){return new Promise((resolve,reject)=>{
     const reader=new FileReader();reader.onerror=reject;
@@ -1819,48 +1797,48 @@ function addGuideImage(id,files){
     if(!state.guideImages)state.guideImages={};
     if(!state.guideImages[id])state.guideImages[id]=[];
     const current=state.guideImages[id];
-    if(current.length>=5){toast('⚠️ Tối đa 5 ảnh');return;}
+    if(current.length>=5){toast('ΓÜá∩╕Å Tß╗æi ─æa 5 ß║únh');return;}
     const remaining=5-current.length;
     const toProcess=Array.from(files).slice(0,remaining);
-    toast(`📷 Đang nén ${toProcess.length} ảnh...`);
+    toast(`≡ƒô╖ ─Éang n├⌐n ${toProcess.length} ß║únh...`);
     Promise.all(toProcess.map(f=>compressImage(f,600,0.5))).then(results=>{
         state.guideImages[id].push(...results);
         saveState();showGuide(id);renderGuide();
-        toast(`✅ Đã thêm ${results.length} ảnh`);
-    }).catch(()=>toast('❌ Lỗi xử lý ảnh'));
+        toast(`Γ£à ─É├ú th├¬m ${results.length} ß║únh`);
+    }).catch(()=>toast('Γ¥î Lß╗ùi xß╗¡ l├╜ ß║únh'));
 }
 function removeGuideImage(id,idx){
-    if(!confirm('Xóa ảnh này?'))return;
+    if(!confirm('X├│a ß║únh n├áy?'))return;
     state.guideImages[id].splice(idx,1);
     saveState();showGuide(id);renderGuide();
-    toast('🗑️ Đã xóa ảnh');
+    toast('≡ƒùæ∩╕Å ─É├ú x├│a ß║únh');
 }
 function saveGuide(id){
     const txt=document.getElementById('guideText').value;
     if(!state.menuGuides)state.menuGuides={};
     state.menuGuides[id]=txt;
     saveState();renderGuide();closeModal();
-    toast('✅ Đã lưu hướng dẫn');
+    toast('Γ£à ─É├ú l╞░u h╞░ß╗¢ng dß║½n');
 }
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // HELP ALERT (cross-device via Firebase)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function playHelpSound(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();
 function beep(freq,start,dur){const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='square';o.frequency.value=freq;g.gain.setValueAtTime(0.5,ctx.currentTime+start);g.gain.exponentialRampToValueAtTime(0.01,ctx.currentTime+start+dur);o.start(ctx.currentTime+start);o.stop(ctx.currentTime+start+dur);}
 beep(880,0,0.3);beep(1100,0.15,0.3);beep(880,0.6,0.3);beep(1100,0.75,0.3);
 const btn=document.getElementById('helpBtn');if(btn){btn.classList.add('ringing');setTimeout(()=>btn.classList.remove('ringing'),1600);}
 }catch(e){}}
-function sendHelpAlert(){const now=Date.now();if(now-lastHelpTs<3000){toast('⏳ Đợi 3 giây');return;}lastHelpTs=now;
-playHelpSound();vibrate(300);toast('🔔 Đang gọi hỗ trợ...');
+function sendHelpAlert(){const now=Date.now();if(now-lastHelpTs<3000){toast('ΓÅ│ ─Éß╗úi 3 gi├óy');return;}lastHelpTs=now;
+playHelpSound();vibrate(300);toast('≡ƒöö ─Éang gß╗ìi hß╗ù trß╗ú...');
 if(firebaseReady&&firebaseDb){firebaseDb.ref('helpAlert').set({ts:now,from:currentStaffName||'?'});}}
 function listenHelpAlert(){if(!firebaseDb)return;
 firebaseDb.ref('helpAlert').on('value',snap=>{const v=snap.val();if(!v||!v.ts)return;
-if(v.ts>lastHelpTs&&Date.now()-v.ts<5000){lastHelpTs=v.ts;playHelpSound();vibrate(500);toast(`🔔 ${v.from} cần hỗ trợ!`);}});}
+if(v.ts>lastHelpTs&&Date.now()-v.ts<5000){lastHelpTs=v.ts;playHelpSound();vibrate(500);toast(`≡ƒöö ${v.from} cß║ºn hß╗ù trß╗ú!`);}});}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // WEEKLY SCHEDULE
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 function getISOWeekKey(offset){const d=new Date();d.setDate(d.getDate()+offset*7);
 const thu=new Date(d);thu.setDate(thu.getDate()-((d.getDay()+6)%7)+3);
 const yr=thu.getFullYear();const wk=Math.ceil(((thu-new Date(yr,0,4))/86400000+new Date(yr,0,4).getDay()+1)/7);
@@ -1873,7 +1851,7 @@ function renderWeekSchedule(){const wk=getISOWeekKey(scheduleWeekOffset);
 const dates=getWeekDates(scheduleWeekOffset);
 const dayNames=['T2','T3','T4','T5','T6','T7','CN'];
 const label=document.getElementById('scheduleWeekLabel');
-if(label)label.textContent=`${dates[0].getDate()}/${dates[0].getMonth()+1} — ${dates[6].getDate()}/${dates[6].getMonth()+1}`;
+if(label)label.textContent=`${dates[0].getDate()}/${dates[0].getMonth()+1} ΓÇö ${dates[6].getDate()}/${dates[6].getMonth()+1}`;
 if(!state.weekSchedule)state.weekSchedule={};
 if(!state.weekSchedule[wk])state.weekSchedule[wk]={};
 const sched=state.weekSchedule[wk];
@@ -1893,23 +1871,23 @@ html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${isMyRow?'back
 for(let i=0;i<7;i++){const checked=sched[s.id][i];
 html+=`<td style="text-align:center;padding:4px;"><div style="width:28px;height:28px;margin:auto;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:${canEdit?'pointer':'default'};
 background:${checked?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.03)'};border:1px solid ${checked?'rgba(74,222,128,0.3)':'var(--border-subtle)'};font-size:0.7rem;"
-onclick="${canEdit?`toggleSchedule(${s.id},${i},'${wk}')`:''}">${checked?'✅':''}</div></td>`;}
+onclick="${canEdit?`toggleSchedule(${s.id},${i},'${wk}')`:''}">${checked?'Γ£à':''}</div></td>`;}
 html+=`</tr>`;});
 html+=`</tbody></table>`;
-if(isPast)html+=`<div style="text-align:center;font-size:0.7rem;color:var(--text-muted);margin-top:6px;">📖 Tuần cũ — chỉ xem</div>`;
+if(isPast)html+=`<div style="text-align:center;font-size:0.7rem;color:var(--text-muted);margin-top:6px;">≡ƒôû Tuß║ºn c┼⌐ ΓÇö chß╗ë xem</div>`;
 grid.innerHTML=html;}
 function toggleSchedule(staffId,dayIdx,wk){if(!state.weekSchedule[wk])state.weekSchedule[wk]={};
 if(!state.weekSchedule[wk][staffId])state.weekSchedule[wk][staffId]=[false,false,false,false,false,false,false];
 state.weekSchedule[wk][staffId][dayIdx]=!state.weekSchedule[wk][staffId][dayIdx];
 saveState();renderWeekSchedule();}
 
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 // SWIPE TABS (mobile)
-// ═══════════════════════════════════════
+// ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ
 (function(){const ct=document.getElementById('posCatTabs');if(!ct)return;let sx=0;
 ct.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;},{passive:true});
 ct.addEventListener('touchend',e=>{const dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)<50)return;
-const cats=['Tất cả',...state.categories];const ci=cats.indexOf(posCategory);
+const cats=['Tß║Ñt cß║ú',...state.categories];const ci=cats.indexOf(posCategory);
 if(dx<0&&ci<cats.length-1)setPosCategory(cats[ci+1]);
 else if(dx>0&&ci>0)setPosCategory(cats[ci-1]);
 const ab=ct.querySelector('.cat-btn.active');if(ab)ab.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
@@ -1921,6 +1899,6 @@ document.addEventListener('keydown',e=>{if(!document.getElementById('tab-pos').c
 loadState(); // Load saved state BEFORE session restore (for ownerPassword, staff passwords)
 const _sp=sessionStorage.getItem('monsteaPwd');
 if(_sp){
-if(_sp===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chủ quán';document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
+if(_sp===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chß╗º qu├ín';document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
 else{const sm=state.staff.find(s=>s.password===_sp);if(sm){currentRole='staff';currentStaffId=sm.id;currentStaffName=sm.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}}
 }else{document.getElementById('loginPwd').focus();}

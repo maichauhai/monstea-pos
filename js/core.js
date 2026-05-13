@@ -29,12 +29,12 @@ let state = {
     staff:[...DEFAULT_STAFF], ingredients:[...DEFAULT_INGREDIENTS],
     recipes:{},
     recipeTemplates:[],
-    currentOrder:[], todayInvoices:[], grabOrders:[], history:{}, attendance:{}, editLog:[],
-    purchases:{}, expenses:{}, dailyNotes:[],
+    currentOrder:[], todayInvoices:[], invoiceArchive:{}, grabOrders:[], history:{}, attendance:{}, editLog:[],
+    purchases:{}, expenses:{}, manualUsage:{}, prepTracking:{}, dailyNotes:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
-    nextPurchaseId:1, nextExpenseId:1,
+    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextPrepId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'060997',
     weekSchedule:{},
@@ -73,7 +73,7 @@ function confirmAction(msg, onYes, btnLabel){
 // ═══════════════════════════════════════
 // PERSISTENCE
 // ═══════════════════════════════════════
-function today(){return new Date().toISOString().slice(0,10)}
+function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})}
 function nowHour(){return new Date().getHours()}
 function removeDiacritics(str){
@@ -83,6 +83,8 @@ function searchMatch(text,query){
     return removeDiacritics(text.toLowerCase()).includes(removeDiacritics(query.toLowerCase()));
 }
 function cloneData(v){return JSON.parse(JSON.stringify(v||{}));}
+function isDeleted(item){return !!(item&&item._deleted);}
+function activeItems(list){return (list||[]).filter(item=>!isDeleted(item));}
 function getDeviceId(){
     let id=localStorage.getItem('monsteaDeviceId');
     if(!id){id='dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);localStorage.setItem('monsteaDeviceId',id);}
@@ -90,24 +92,62 @@ function getDeviceId(){
 }
 function makeSyncId(prefix){return `${today()}-${Date.now().toString(36)}-${getDeviceId()}-${Math.random().toString(36).slice(2,7)}-${prefix||'inv'}`;}
 function invoiceKey(inv){return `${inv.syncId||inv.id}_${inv.date||''}`;}
-function itemStamp(item){return item&&item._lastModified?item._lastModified:0;}
-function mergeArrayByKey(remoteArr,localArr,keyFn,preferNewer){
+function invoiceRef(inv){return String(inv&&(inv.syncId||`${inv.date||today()}:${inv.id}`));}
+function jsString(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');}
+function findInvoiceByRef(ref,includeCancelled){
+    const td=today(),key=String(ref);
+    return [...(state.todayInvoices||[])].reverse().find(i=>i.date===td&&(includeCancelled||!i.cancelled)&&(invoiceRef(i)===key||(!i.syncId&&String(i.id)===key)));
+}
+function findInvoiceIndexByRef(ref){
+    const td=today(),key=String(ref);
+    for(let idx=(state.todayInvoices||[]).length-1;idx>=0;idx--){
+        const i=state.todayInvoices[idx];
+        if(i&&i.date===td&&!i.cancelled&&(invoiceRef(i)===key||(!i.syncId&&String(i.id)===key)))return idx;
+    }
+    return -1;
+}
+function itemStamp(item){return Number(item&&item._lastModified)||0;}
+function syncKey(prefix,item,keyField){
+    if(!item)return '';
+    if(item.syncId)return item.syncId;
+    return `${prefix||keyField}:${item[keyField]!==undefined?item[keyField]:''}`;
+}
+function itemRef(item){return String(item&&(item.syncId||item.id));}
+function findByRef(list,ref){const key=String(ref);return (list||[]).find(item=>item&&(itemRef(item)===key||(!item.syncId&&String(item.id)===key)));}
+function preferNewerItem(old,item,resolver){
+    if(!old)return item;
+    if(resolver)return resolver(old,item);
+    const oldStamp=itemStamp(old),newStamp=itemStamp(item);
+    if(newStamp>oldStamp)return item;
+    if(newStamp<oldStamp)return old;
+    if(isDeleted(item)&&!isDeleted(old))return item;
+    return old;
+}
+function mergeArrayByKey(remoteArr,localArr,keyFn,preferNewer,resolver){
     const map=new Map();
-    (remoteArr||[]).forEach(item=>{if(item)map.set(keyFn(item),item);});
+    (remoteArr||[]).forEach(item=>{const key=item&&keyFn(item);if(key)map.set(key,item);});
     (localArr||[]).forEach(item=>{
         if(!item)return;
         const key=keyFn(item),old=map.get(key);
         if(!old)map.set(key,item);
-        else if(preferNewer&&itemStamp(item)>itemStamp(old))map.set(key,item);
+        else if(preferNewer)map.set(key,preferNewerItem(old,item,resolver));
     });
     return [...map.values()];
 }
-function mergeByDateBuckets(remoteData,localData,keyField){
+function attendanceScore(r){return (r&&r.checkIn?1:0)+(r&&r.checkOut?3:0)+(r&&r.hours?1:0);}
+function mergeAttendanceRecord(old,item){
+    const oldStamp=itemStamp(old),newStamp=itemStamp(item);
+    if(newStamp>oldStamp)return item;
+    if(newStamp<oldStamp)return old;
+    return attendanceScore(item)>attendanceScore(old)?item:old;
+}
+function mergeByDateBuckets(remoteData,localData,keyFnOrField,prefix,resolver){
     const remote=cloneData(remoteData),local=cloneData(localData);
     const out=remote||{};
     const allDates=new Set([...Object.keys(out),...Object.keys(local||{})]);
+    const keyFn=typeof keyFnOrField==='function'?keyFnOrField:(item=>syncKey(prefix,item,keyFnOrField));
     allDates.forEach(d=>{
-        out[d]=mergeArrayByKey(out[d]||[],(local||{})[d]||[],item=>item[keyField],true);
+        out[d]=mergeArrayByKey(out[d]||[],(local||{})[d]||[],keyFn,true,resolver);
     });
     return out;
 }
@@ -116,40 +156,79 @@ function mergeHistory(remoteHistory,localHistory){
     const local=cloneData(localHistory);
     Object.keys(local||{}).forEach(d=>{
         if(!out[d])out[d]=local[d];
-        else if((local[d].invoices||0)>(out[d].invoices||0))out[d]=local[d];
+        else if(itemStamp(local[d])>itemStamp(out[d])||(local[d].invoices||0)>(out[d].invoices||0))out[d]=local[d];
     });
     return out;
+}
+function bumpNextFromArray(obj,field,nextField){
+    const ids=(obj[field]||[]).map(x=>Number(x.id)).filter(Number.isFinite);
+    if(ids.length)obj[nextField]=Math.max(obj[nextField]||1,...ids)+1;
+}
+function bumpNextFromBuckets(obj,field,nextField){
+    const ids=[];
+    Object.values(obj[field]||{}).forEach(list=>(list||[]).forEach(x=>{const id=Number(x.id);if(Number.isFinite(id))ids.push(id);}));
+    if(ids.length)obj[nextField]=Math.max(obj[nextField]||1,...ids)+1;
 }
 function mergeStateData(remoteState,localState,preferLocalRoot){
     const remote=cloneData(remoteState),local=cloneData(localState);
     const merged=preferLocalRoot?{...remote,...local}:{...local,...remote};
     merged.todayInvoices=mergeArrayByKey(remote.todayInvoices||[],local.todayInvoices||[],invoiceKey,true);
-    const invoiceIds=merged.todayInvoices.map(i=>Number(i.id)).filter(Number.isFinite);
-    if(invoiceIds.length)merged.nextInvoiceId=Math.max(merged.nextInvoiceId||1,...invoiceIds)+1;
+    merged.invoiceArchive=mergeByDateBuckets(remote.invoiceArchive,local.invoiceArchive,invoiceKey,'invoice');
     merged.grabOrders=mergeArrayByKey(remote.grabOrders||[],local.grabOrders||[],g=>g.syncId||`${g.time}_${g.date}`,true);
-    merged.attendance=mergeByDateBuckets(remote.attendance,local.attendance,'staffId');
-    merged.purchases=mergeByDateBuckets(remote.purchases,local.purchases,'id');
-    merged.expenses=mergeByDateBuckets(remote.expenses,local.expenses,'id');
-    merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id');
+    merged.attendance=mergeByDateBuckets(remote.attendance,local.attendance,item=>item.staffId,'attendance',mergeAttendanceRecord);
+    merged.purchases=mergeByDateBuckets(remote.purchases,local.purchases,'id','purchase');
+    merged.expenses=mergeByDateBuckets(remote.expenses,local.expenses,'id','expense');
+    merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id','stockout');
+    merged.prepTracking=mergeByDateBuckets(remote.prepTracking,local.prepTracking,'id','prep');
+    merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
+    merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
+    merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
+    merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
     merged.history=mergeHistory(remote.history,local.history);
+    bumpNextFromArray(merged,'todayInvoices','nextInvoiceId');
+    bumpNextFromArray(merged,'menu','nextMenuId');
+    bumpNextFromArray(merged,'staff','nextStaffId');
+    bumpNextFromArray(merged,'ingredients','nextIngId');
+    bumpNextFromArray(merged,'recipeTemplates','nextTplId');
+    bumpNextFromBuckets(merged,'purchases','nextPurchaseId');
+    bumpNextFromBuckets(merged,'expenses','nextExpenseId');
+    bumpNextFromBuckets(merged,'manualUsage','nextStockOutId');
+    bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
+    delete merged._syncRole;
     return merged;
 }
 function stateForFirebase(){
     const s=cloneData(state);
     s.currentOrder=[];
+    s._syncRole=currentRole||'unknown';
     delete s._editingInvoiceId;
+    delete s._editingInvoiceRef;
     delete s._editingOldSummary;
+    if(currentRole!=='owner'){
+        delete s.menu;delete s.categories;delete s.staff;delete s.recipes;delete s.recipeTemplates;
+        delete s.weekSchedule;delete s.menuGuides;delete s.guideImages;
+        delete s.password;delete s.ownerPassword;delete s.nextMenuId;delete s.nextStaffId;delete s.nextTplId;
+    }
     return s;
+}
+function archiveRawInvoices(list,excludeDate){
+  if(!state.invoiceArchive)state.invoiceArchive={};
+  (list||[]).forEach(inv=>{
+    if(!inv||!inv.date||inv.date===excludeDate)return;
+    if(!state.invoiceArchive[inv.date])state.invoiceArchive[inv.date]=[];
+    state.invoiceArchive[inv.date]=mergeArrayByKey(state.invoiceArchive[inv.date],[inv],invoiceKey,true);
+  });
 }
 function persistMergedState(localOrder){
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
-  const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
+  const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   if(localOrder)state.currentOrder=localOrder;
   localStorage.setItem('monsteaPOS',JSON.stringify(state));
 }
 function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;if(!state.purchases)state.purchases={};if(!state.expenses)state.expenses={};if(!state.dailyNotes)state.dailyNotes=[];
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
+if(!state.invoiceArchive)state.invoiceArchive={};
 if(!Array.isArray(state.grabOrders))state.grabOrders=[];
 if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
@@ -160,6 +239,7 @@ if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
 if(!state.manualUsage)state.manualUsage={};
 if(!state.prepTracking)state.prepTracking={};
+if(!state.nextStockOutId)state.nextStockOutId=1;
 if(!state.nextPrepId)state.nextPrepId=1;
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
@@ -195,7 +275,7 @@ function attemptLogin(){const p=document.getElementById('loginPwd').value;
 if(p===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chủ quán';
 sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
 applyRole();initFirebase();return;}
-const staffMatch=state.staff.find(s=>s.password===p);
+const staffMatch=activeItems(state.staff).find(s=>s.password===p);
 if(staffMatch){currentRole='staff';currentStaffId=staffMatch.id;currentStaffName=staffMatch.name;
 sessionStorage.setItem('monsteaPwd',p);document.getElementById('loginOverlay').style.display='none';document.getElementById('loginError').textContent='';
 applyRole();initFirebase();return;}
@@ -276,17 +356,13 @@ function autoBackup(){
     if(!firebaseDb||!firebaseReady)return;
     const td=today();
     if(state._lastBackupDate===td)return; // Already backed up today
-    const backupData={
-        timestamp:new Date().toISOString(),
-        ingredients:state.ingredients,
-        menu:state.menu,
-        staff:state.staff,
-        recipes:state.recipes,
-        recipeTemplates:state.recipeTemplates,
-        history:state.history,
-        weekSchedule:state.weekSchedule,
-        menuGuides:state.menuGuides
-    };
+    const backupData=cloneData(state);
+    backupData.currentOrder=[];
+    delete backupData._editingInvoiceId;
+    delete backupData._editingInvoiceRef;
+    delete backupData._editingOldSummary;
+    backupData.timestamp=new Date().toISOString();
+    backupData._backupVersion=2;
     firebaseDb.ref('backups/'+td).set(backupData).then(()=>{
         state._lastBackupDate=td;
         state._lastBackup=nowTime();
@@ -302,6 +378,10 @@ function autoBackup(){
 function checkNewDay(){const td=today();
 // ONE-TIME CLEANUP: xóa ghost data ngày nghỉ (2/5 & 3/5/2026) — remove after 2026-05-15
 ['2026-05-02','2026-05-03'].forEach(d=>{if(state.history&&state.history[d]){delete state.history[d];console.log('[POS] Cleaned ghost history: '+d);}});
+// Archive stale raw invoices before purging the working register.
+const staleByDate={};
+(state.todayInvoices||[]).forEach(inv=>{if(inv&&inv.date&&inv.date!==td){if(!staleByDate[inv.date])staleByDate[inv.date]=[];staleByDate[inv.date].push(inv);}});
+Object.keys(staleByDate).forEach(d=>{archiveDay(d,staleByDate[d]);archiveRawInvoices(staleByDate[d],td);});
 // ALWAYS purge stale invoices from other dates (root cause of ghost data)
 const before=state.todayInvoices.length;
 state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);
@@ -310,12 +390,14 @@ if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);sta
 state.nextInvoiceId=state.todayInvoices.length?Math.max(...state.todayInvoices.map(i=>i.id))+1:1;saveState();}
 }
 
-function archiveDay(dk,invoices){invoices=invoices.filter(i=>i.date===dk);if(!invoices.length)return;const is={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
+function archiveDay(dk,invoices){invoices=activeItems(invoices).filter(i=>i.date===dk);if(!invoices.length)return;const is={},isById={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
 invoices.forEach(inv=>{if(inv.cancelled)return;
 if(inv.method==='staff'){staffCount++;staffOrigTotal+=(inv.staffOriginalTotal||0);}
 else{ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
 const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;}
 inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;if(inv.method!=='staff'){is[i.name].revenue+=i.price*i.qty;}
+if(i.menuId){const key=String(i.menuId);if(!isById[key])isById[key]={name:i.name,qty:0,revenue:0};isById[key].qty+=i.qty;if(inv.method!=='staff'){isById[key].revenue+=i.price*i.qty;}}
 (i.toppings||[]).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=i.qty;if(inv.method!=='staff'){is[t.name].revenue+=t.price*i.qty;}});});});
-state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,hourlyRevenue:hr,grabTotal:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.grabPrice,0),grabNet:(state.grabOrders||[]).filter(g=>g.date===dk).reduce((s,g)=>s+g.netAmount,0)};}
+const grabs=activeItems(state.grabOrders||[]).filter(g=>g.date===dk);
+state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,itemsSoldById:isById,hourlyRevenue:hr,grabTotal:grabs.reduce((s,g)=>s+g.grabPrice,0),grabNet:grabs.reduce((s,g)=>s+g.netAmount,0),_lastModified:Date.now()};}
 

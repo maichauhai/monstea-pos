@@ -45,7 +45,7 @@ function changePassword(){
 function changeOwnerPassword(){
     const np=document.getElementById('ownerPwdInput').value.trim();
     if(!np||np.length<4){toast('⚠️ Mật khẩu tối thiểu 4 ký tự');return;}
-    const dup=state.staff.find(s=>s.password===np);
+    const dup=activeItems(state.staff).find(s=>s.password===np);
     if(dup){toast(`⚠️ Trùng pass NV "${dup.name}"`);return;}
     state.ownerPassword=np;saveState();
     sessionStorage.setItem('monsteaPwd',np);
@@ -71,13 +71,13 @@ function renderPOSMenu(){
     ct.innerHTML=['Tất cả',...state.categories].map(c=>`<button class="cat-btn ${c===posCategory?'active':''}" onclick="setPosCategory('${c}')">${c}</button>`).join('');
     const g=document.getElementById('posMenuGrid');
     const searchVal=(document.getElementById('menuSearch')?.value||'').trim().toLowerCase();
-    let items=state.menu.filter(m=>m.active&&!m.isGuide&&(posCategory==='Tất cả'||m.category===posCategory));
+    let items=activeItems(state.menu).filter(m=>m.active&&!m.isGuide&&(posCategory==='Tất cả'||m.category===posCategory));
     // Build global numbering (across all active items)
-    const allActive=state.menu.filter(m=>m.active&&!m.isGuide);
+    const allActive=activeItems(state.menu).filter(m=>m.active&&!m.isGuide);
     const numMap={};allActive.forEach((m,idx)=>{numMap[m.id]=idx+1;});
     // Search filter
     if(searchVal){
-        const allForSearch=state.menu.filter(m=>m.active&&!m.isGuide);
+        const allForSearch=activeItems(state.menu).filter(m=>m.active&&!m.isGuide);
         const isNum=/^\d+$/.test(searchVal);
         items=allForSearch.filter(m=>{
             if(isNum)return String(numMap[m.id])===searchVal;
@@ -106,7 +106,7 @@ function setPosCategory(c){posCategory=c;document.getElementById('menuSearch').v
         grid.addEventListener('touchend',e=>{touchEndX=e.changedTouches[0].screenX;handleSwipe();},{passive:true});
     });
 })();
-function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
+function addToOrder(id){const m=activeItems(state.menu).find(x=>x.id===id);if(!m)return;
     const isTopping=m.category==='Topping';
     if(isTopping&&state.currentOrder.length>0){
         const last=state.currentOrder[state.currentOrder.length-1];
@@ -120,7 +120,7 @@ function addToOrder(id){const m=state.menu.find(x=>x.id===id);if(!m)return;
 function changeQty(idx,d){const i=state.currentOrder[idx];if(!i)return;i.qty+=d;if(i.qty<=0)state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
 function removeFromOrder(idx){state.currentOrder.splice(idx,1);renderOrder();renderPOSMenu();}
 function removeTopping(orderIdx,tIdx){state.currentOrder[orderIdx].toppings.splice(tIdx,1);renderOrder();renderPOSMenu();}
-function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
+function clearOrder(){state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';delete state._editingInvoiceId;delete state._editingInvoiceRef;delete state._editingOldSummary;document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';renderOrder();renderPOSMenu();}
 function renderOrder(){const c=document.getElementById('orderItems'),t=document.getElementById('orderTotal'),n=document.getElementById('orderCount');
 if(!state.currentOrder.length){c.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--text-muted);font-size:0.85rem;">Chọn món từ menu bên trái</div>';t.textContent='0đ';n.textContent='0 món';updateMobileBar();return;}
 const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0);
@@ -169,12 +169,13 @@ if(!isStaff&&window.innerWidth<=768&&!confirm(`Thanh toán ${fmtP(total)} bằng
 if(isStaff&&!confirm(`🏠 Xác nhận đơn nội bộ (${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món — giá gốc ${fmtP(subtotal)})? Giá sẽ = 0đ`))return;
 const note=document.getElementById('orderNote').value.trim();
 const flatItems=state.currentOrder.map(o=>({menuId:o.menuId,name:o.name,price:o.price,qty:o.qty,toppings:(o.toppings||[]).map(t=>({menuId:t.menuId,name:t.name,price:t.price}))}));
-if(state._editingInvoiceId){const eid=state._editingInvoiceId,inv=state.todayInvoices.find(i=>i.id===eid);
+const editRef=state._editingInvoiceRef||state._editingInvoiceId;
+if(editRef){const inv=findInvoiceByRef(editRef,true),eid=inv?inv.id:editRef;
 if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
-if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
+if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,invoiceRef:invoiceRef(inv),action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
 inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;inv.discount=discount>0?discount:undefined;inv._lastModified=Date.now();
 toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
-delete state._editingInvoiceId;delete state._editingOldSummary;
+delete state._editingInvoiceId;delete state._editingInvoiceRef;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
 }else{const inv={id:state.nextInvoiceId++,syncId:makeSyncId('inv'),_lastModified:Date.now(),date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
 if(discount>0)inv.discount=discount;
@@ -183,16 +184,16 @@ state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${st
 playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
-const ti=state.todayInvoices.filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
+const ti=activeItems(state.todayInvoices).filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
 ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn${sc?' ('+sc+' nội bộ)':''} — ${fmtP(tt)})`;
 if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có hóa đơn</div>';return;}
 c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
-return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail(${inv.id})"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
+return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail('${jsString(invoiceRef(inv))}')"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
-function showInvoiceDetail(id){const td=today();
-// Use reverse search to get the LATEST matching invoice (today's, not stale)
-const inv=[...state.todayInvoices].reverse().find(i=>i.id===id&&i.date===td);if(!inv)return;
-const logs=(state.editLog||[]).filter(l=>l.invoiceId===id&&l.time&&l.time.startsWith(td));
+function showInvoiceDetail(ref){const td=today();
+const inv=findInvoiceByRef(ref,true);if(!inv)return;
+const invRef=invoiceRef(inv);
+const logs=(state.editLog||[]).filter(l=>(l.invoiceRef===invRef||(!l.invoiceRef&&l.invoiceId===inv.id))&&l.time&&l.time.startsWith(td));
 const logS=logs.length?`<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><div style="font-size:0.78rem;color:var(--accent);font-weight:600;margin-bottom:8px;">📝 Lịch sử (${logs.length})</div>${logs.map(l=>`<div class="edit-log-item"><div class="log-time">${l.time} — ${l.action}</div><div class="log-detail">${l.before?`<div class="log-before">Trước: ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">Sau: ${esc(l.after)}</div>`:''}</div></div>`).join('')}</div>`:'';
 const invSubTotal=inv.items.reduce((s,i)=>{const tp=(i.toppings||[]).reduce((st,t)=>st+t.price,0);return s+(i.price+tp)*i.qty;},0);
 const discLine=inv.discount?`<div style="display:flex;justify-content:space-between;margin-top:6px;padding:6px 0;"><span style="font-size:0.85rem;color:var(--text-muted);">Tạm tính</span><span style="font-size:0.85rem;color:var(--text-muted);">${fmtP(invSubTotal)}</span></div><div style="display:flex;justify-content:space-between;"><span style="font-size:0.88rem;color:var(--accent-purple);">🎁 Giảm giá</span><span style="color:var(--accent-purple);font-weight:700;font-size:0.88rem;">-${fmtP(inv.discount)}</span></div>`:'';
@@ -208,22 +209,23 @@ ${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);
 <div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);">💳 ${inv.method==='cash'?'Tiền mặt':inv.method==='staff'?'🏠 Nội bộ (NV/Người nhà)':'CK'}</div>
 ${inv.method==='staff'&&inv.staffOriginalTotal?'<div style="margin-top:4px;font-size:0.78rem;color:var(--accent-purple);">💡 Giá gốc: '+fmtP(inv.staffOriginalTotal)+' → Giảm 100%</div>':''}
 ${logS}
-${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice(${inv.id})" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice(${inv.id})" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
+${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice('${jsString(invRef)}')" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice('${jsString(invRef)}')" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
 openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}
 
-function editInvoice(id){const td=today();const inv=[...state.todayInvoices].reverse().find(i=>i.id===id&&i.date===td);if(!inv||inv.cancelled)return;closeModal();
-state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=id;state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
+function editInvoice(ref){const inv=findInvoiceByRef(ref);if(!inv||inv.cancelled)return;const id=inv.id;closeModal();
+state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=inv.id;state._editingInvoiceRef=invoiceRef(inv);state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
 document.getElementById('orderTitle').textContent=`✏️ SỬA #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
 document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${String(id).padStart(3,'0')}`);}
 
-function cancelInvoice(id){const td=today();
+function cancelInvoice(ref){const td=today();
 // Find the actual invoice object in the array (not a copy) using index
-const idx=state.todayInvoices.findIndex(i=>i.id===id&&i.date===td&&!i.cancelled);
-if(idx===-1){toast(`⚠️ Không tìm thấy đơn #${String(id).padStart(3,'0')} hôm nay hoặc đã hủy rồi`);return;}
+const idx=findInvoiceIndexByRef(ref);
+if(idx===-1){toast('⚠️ Không tìm thấy đơn hôm nay hoặc đã hủy rồi');return;}
 const inv=state.todayInvoices[idx];
+const id=inv.id,invRef=invoiceRef(inv);
 confirmAction(`Hủy đơn #${String(id).padStart(3,'0')}?`,()=>{
 inv.cancelled=true;inv._lastModified=Date.now();if(!state.editLog)state.editLog=[];
-state.editLog.push({invoiceId:id,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
+state.editLog.push({invoiceId:id,invoiceRef:invRef,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
 archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${String(id).padStart(3,'0')}`);}, 'Hủy đơn');}
 
 function showEditLog(){const td=today();const logs=(state.editLog||[]).filter(l=>l.time&&l.time.startsWith(td));if(!logs.length){openModal('📝 Nhật ký','<div style="text-align:center;padding:20px;color:var(--text-muted);">Hôm nay chưa có thay đổi</div>');return;}

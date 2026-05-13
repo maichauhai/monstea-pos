@@ -9,18 +9,27 @@ else if(dashFilter==='week'){for(let i=6;i>=0;i--){const d=new Date();d.setDate(
 else if(dashFilter==='month'){const now=new Date(),y=now.getFullYear(),m=now.getMonth();for(let d=1;d<=now.getDate();d++)dates.push(new Date(y,m,d).toISOString().slice(0,10));}
 else{const p=document.getElementById('dashDatePick').value;dates=p?[p]:[td];}
 if(dates.includes(td))archiveDay(td,state.todayInvoices);
-let tr=0,ti=0,ct=0,tt=0;const is={},hr={};
+let tr=0,ti=0,ct=0,tt=0;const is={},isById={},hr={};
 dates.forEach(d=>{const dd=state.history[d];if(!dd)return;tr+=dd.totalRevenue;ti+=dd.invoices;ct+=dd.cashTotal||0;tt+=dd.transferTotal||0;
 if(dd.itemsSold)Object.entries(dd.itemsSold).forEach(([n,x])=>{if(!is[n])is[n]={qty:0,revenue:0};is[n].qty+=x.qty;is[n].revenue+=x.revenue;});
+if(dd.itemsSoldById)Object.entries(dd.itemsSoldById).forEach(([id,x])=>{if(!isById[id])isById[id]={name:x.name,qty:0,revenue:0};isById[id].qty+=x.qty;isById[id].revenue+=x.revenue;});
 if(dd.hourlyRevenue)Object.entries(dd.hourlyRevenue).forEach(([h,r])=>{hr[h]=(hr[h]||0)+r;});});
-return{dates,totalRevenue:tr,totalInvoices:ti,cashTotal:ct,transferTotal:tt,itemsSold:is,hourlyRevenue:hr};}
+return{dates,totalRevenue:tr,totalInvoices:ti,cashTotal:ct,transferTotal:tt,itemsSold:is,itemsSoldById:isById,hourlyRevenue:hr};}
 
 function calcIngredientCost(dashData){
     let total=0;
+    if(dashData.itemsSoldById&&Object.keys(dashData.itemsSoldById).length){
+        Object.entries(dashData.itemsSoldById).forEach(([menuId,data])=>{
+            const recipe=state.recipes[menuId]||[];
+            recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
+            if(!ing)return;total+=r.qty*data.qty*ing.unitPrice;});
+        });
+        return Math.round(total);
+    }
     Object.entries(dashData.itemsSold).forEach(([name,data])=>{
-        const mi=state.menu.find(m=>m.name===name);if(!mi)return;
+        const mi=activeItems(state.menu).find(m=>m.name===name);if(!mi)return;
         const recipe=state.recipes[mi.id]||[];
-        recipe.forEach(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+        recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
         if(!ing)return;total+=r.qty*data.qty*ing.unitPrice;});
     });
     return Math.round(total);
@@ -58,7 +67,7 @@ function statCard(label, value, color, extra='') {
 function renderDashboard(){
     const d=getDashData(), avg=d.totalInvoices?Math.round(d.totalRevenue/d.totalInvoices):0;
     const nlCost=calcIngredientCost(d), nvCost=calcLaborCost(d.dates), gross=d.totalRevenue-nlCost-nvCost;
-    let otherExp=0; d.dates.forEach(dt=>{((state.expenses||{})[dt]||[]).forEach(e=>otherExp+=e.amount);});
+    let otherExp=0; d.dates.forEach(dt=>{activeItems((state.expenses||{})[dt]||[]).forEach(e=>otherExp+=e.amount);});
     document.getElementById('dashStats').innerHTML = [
         statCard('Doanh thu', fmtP(d.totalRevenue), 'var(--accent)'),
         statCard('Hóa đơn', d.totalInvoices, 'var(--accent-blue)'),

@@ -2,14 +2,21 @@
 // ═══════════════════════════════════════
 function calcDailyUsage(date){
     const usage={};const dd=state.history[date];if(!dd||!dd.itemsSold)return usage;
+    if(dd.itemsSoldById&&Object.keys(dd.itemsSoldById).length){
+        Object.entries(dd.itemsSoldById).forEach(([menuId,data])=>{
+            const recipe=state.recipes[menuId]||[];
+            recipe.forEach(r=>{if(!usage[r.ingId])usage[r.ingId]=0;usage[r.ingId]+=r.qty*data.qty;});
+        });
+        return usage;
+    }
     Object.entries(dd.itemsSold).forEach(([name,data])=>{
-        const mi=state.menu.find(m=>m.name===name);if(!mi)return;
+        const mi=activeItems(state.menu).find(m=>m.name===name);if(!mi)return;
         const recipe=state.recipes[mi.id]||[];
         recipe.forEach(r=>{if(!usage[r.ingId])usage[r.ingId]=0;usage[r.ingId]+=r.qty*data.qty;});
     });return usage;
 }
 function calcTotalPurchased(ingId){
-    let total=0;Object.values(state.purchases||{}).forEach(list=>{list.forEach(p=>{if(p.ingId===ingId)total+=p.totalQty;});});return total;
+    let total=0;Object.values(state.purchases||{}).forEach(list=>{activeItems(list).forEach(p=>{if(p.ingId===ingId)total+=p.totalQty;});});return total;
 }
 function calcAvgDailyUsage(ingId){
     let total=0,days=0;
@@ -21,7 +28,7 @@ function getStockInfo(ing){
     const purchased=calcTotalPurchased(ing.id);
     let totalUsed=0;Object.keys(state.history||{}).forEach(d=>{const u=calcDailyUsage(d);if(u[ing.id])totalUsed+=u[ing.id];});
     // Tính xuất kho thủ công
-    let manualUsed=0;Object.values(state.manualUsage||{}).forEach(list=>{list.forEach(s=>{if(s.ingId===ing.id)manualUsed+=s.qty;});});
+    let manualUsed=0;Object.values(state.manualUsage||{}).forEach(list=>{activeItems(list).forEach(s=>{if(s.ingId===ing.id)manualUsed+=s.qty;});});
     // Tính hao hụt từ prep tracking (phần chuẩn bị nhưng không bán được)
     const prepWaste=calcTotalPrepWaste(ing.id);
     const openStock=ing.openStock||0;
@@ -38,12 +45,13 @@ function getStockInfo(ing){
 }
 function renderInventory(){
     const search=(document.getElementById('ingSearch')?.value||'').toLowerCase();
-    const list=state.ingredients.filter(i=>!search||searchMatch(i.name,search));
-    const totalInvValue=state.ingredients.filter(i=>!i.hidden).reduce((sum,i)=>{const s=getStockInfo(i);return sum+s.stock*i.unitPrice;},0);
-    document.getElementById('ingCount').innerHTML=`(${state.ingredients.length} nguyên liệu) <span style="margin-left:8px;color:var(--accent);font-weight:700;">💰 ${fmtP(Math.round(totalInvValue))}</span>`;
+    const ingredients=activeItems(state.ingredients);
+    const list=ingredients.filter(i=>!search||searchMatch(i.name,search));
+    const totalInvValue=ingredients.filter(i=>!i.hidden).reduce((sum,i)=>{const s=getStockInfo(i);return sum+s.stock*i.unitPrice;},0);
+    document.getElementById('ingCount').innerHTML=`(${ingredients.length} nguyên liệu) <span style="margin-left:8px;color:var(--accent);font-weight:700;">💰 ${fmtP(Math.round(totalInvValue))}</span>`;
     const sI={ok:'🟢',warning:'🟡',danger:'🔴'};
     // Need-to-buy card
-    const needList=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
+    const needList=ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     const ntbEl=document.getElementById('needToBuyCard');
     if(ntbEl){
       if(!needList.length){ntbEl.innerHTML='';}
@@ -117,12 +125,12 @@ function renderInventory(){
     html+='</tbody></table>';
     document.getElementById('inventoryTable').innerHTML=html;
 }
-function setOpenStock(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.openStock=parseFloat(val)||0;saveState();}}
-function setWarnLevel(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.warnLevel=parseFloat(val)||0;saveState();}}
-function setSLN(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.sln=parseFloat(val)||1;saveState();}}
+function setOpenStock(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.openStock=parseFloat(val)||0;i._lastModified=Date.now();saveState();}}
+function setWarnLevel(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.warnLevel=parseFloat(val)||0;i._lastModified=Date.now();saveState();}}
+function setSLN(id,val){const i=state.ingredients.find(x=>x.id===id);if(i){i.sln=parseFloat(val)||1;i._lastModified=Date.now();saveState();}}
 function addIngredient(){const n=document.getElementById('newIngName').value.trim(),u=document.getElementById('newIngUnit').value.trim(),p=parseInt(document.getElementById('newIngPrice').value);
 if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
-state.ingredients.push({id:state.nextIngId++,name:n,unit:u,unitPrice:p,sln:1,openStock:0,warnLevel:0});
+state.ingredients.push({id:state.nextIngId++,name:n,unit:u,unitPrice:p,sln:1,openStock:0,warnLevel:0,_lastModified:Date.now()});
 document.getElementById('newIngName').value='';document.getElementById('newIngUnit').value='';document.getElementById('newIngPrice').value='';
 saveState();renderInventory();toast(`✅ Đã thêm "${n}"`);}
 function editIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;
@@ -144,17 +152,17 @@ const n=document.getElementById('editIngName').value.trim(),u=document.getElemen
 const supplier=document.getElementById('editIngSupplier')?.value.trim()||'';
 const supplierLink=document.getElementById('editIngSupplierLink')?.value.trim()||'';
 if(!n||!u||!p){toast('⚠️ Nhập đủ thông tin');return;}
-i.name=n;i.unit=u;i.unitPrice=p;i.sln=sln;i.supplier=supplier;i.supplierLink=supplierLink;
+i.name=n;i.unit=u;i.unitPrice=p;i.sln=sln;i.supplier=supplier;i.supplierLink=supplierLink;i._lastModified=Date.now();
 saveState();renderInventory();renderRecipes();closeModal();toast(`✅ Đã cập nhật "${n}"`);}
-function toggleHideIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;i.hidden=!i.hidden;saveState();renderInventory();toast(i.hidden?`👁️‍🗨️ Đã ẩn "${i.name}" khỏi danh sách cần mua`:`👁️ Đã hiện lại "${i.name}"`);}
-function deleteIngredient(id){confirmAction('Xóa NL này?',()=>{state.ingredients=state.ingredients.filter(i=>i.id!==id);saveState();renderInventory();toast('🗑️ Đã xóa');});}
-function exportIngredientsJSON(){const data=state.ingredients.map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0,supplier:i.supplier||'',supplierLink:i.supplierLink||'',hidden:!!i.hidden}));
+function toggleHideIngredient(id){const i=state.ingredients.find(x=>x.id===id);if(!i)return;i.hidden=!i.hidden;i._lastModified=Date.now();saveState();renderInventory();toast(i.hidden?`👁️‍🗨️ Đã ẩn "${i.name}" khỏi danh sách cần mua`:`👁️ Đã hiện lại "${i.name}"`);}
+function deleteIngredient(id){confirmAction('Xóa NL này?',()=>{const i=state.ingredients.find(x=>x.id===id);if(i){i._deleted=true;i.hidden=true;i._lastModified=Date.now();}saveState();renderInventory();toast('🗑️ Đã xóa');});}
+function exportIngredientsJSON(){const data=activeItems(state.ingredients).map(i=>({name:i.name,unit:i.unit,unitPrice:i.unitPrice,sln:i.sln||1,openStock:i.openStock||0,warnLevel:i.warnLevel||0,supplier:i.supplier||'',supplierLink:i.supplierLink||'',hidden:!!i.hidden}));
 const b=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const a=document.createElement('a');
 a.href=URL.createObjectURL(b);a.download=`monstea-kho-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã xuất JSON!');}
 function importIngredientsJSON(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();
 r.onload=(ev)=>{try{const data=JSON.parse(ev.target.result);if(!Array.isArray(data)){toast('❌ File không hợp lệ');return;}
 let updated=0,added=0;data.forEach(d=>{if(!d.name)return;const existing=state.ingredients.find(i=>i.name===d.name);
-if(existing){if(d.unitPrice)existing.unitPrice=d.unitPrice;if(d.unit)existing.unit=d.unit;if(d.sln)existing.sln=d.sln;if(d.openStock!==undefined)existing.openStock=d.openStock;if(d.warnLevel!==undefined)existing.warnLevel=d.warnLevel;updated++;}
-else{state.ingredients.push({id:state.nextIngId++,name:d.name,unit:d.unit||'g',unitPrice:d.unitPrice||0,sln:d.sln||1,openStock:d.openStock||0,warnLevel:d.warnLevel||0});added++;}});
+if(existing){if(d.unitPrice)existing.unitPrice=d.unitPrice;if(d.unit)existing.unit=d.unit;if(d.sln)existing.sln=d.sln;if(d.openStock!==undefined)existing.openStock=d.openStock;if(d.warnLevel!==undefined)existing.warnLevel=d.warnLevel;existing._deleted=false;existing._lastModified=Date.now();updated++;}
+else{state.ingredients.push({id:state.nextIngId++,name:d.name,unit:d.unit||'g',unitPrice:d.unitPrice||0,sln:d.sln||1,openStock:d.openStock||0,warnLevel:d.warnLevel||0,_lastModified:Date.now()});added++;}});
 saveState();renderInventory();renderRecipes();toast(`✅ Cập nhật ${updated}, thêm ${added} NL`);
 }catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}

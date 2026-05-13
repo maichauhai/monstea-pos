@@ -16,6 +16,7 @@ var FIREBASE_URL = 'https://monstea-pos-default-rtdb.asia-southeast1.firebasedat
 var SHEET_DOANHTHU = 'Doanh thu';
 var SHEET_CHAMCONG = 'Cham cong';
 var SHEET_NGUYENLIEU = 'Nguyen lieu dung';
+var SHEET_NGUYENLIEU_DAILY = 'NL daily';
 var HOURLY_RATE = 25000; // 25K/giờ
 
 // ── MAIN ──
@@ -43,6 +44,41 @@ function fetchFirebaseState() {
   }
 }
 
+function activeItems(list) {
+  return (list || []).filter(function(item) { return item && !item._deleted; });
+}
+
+function dateKey(value) {
+  if (Object.prototype.toString.call(value) === '[object Date]') {
+    return Utilities.formatDate(value, 'Asia/Ho_Chi_Minh', 'yyyy-MM-dd');
+  }
+  return String(value || '');
+}
+
+function findRowByDate(sheet, targetDate) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return 0;
+  var values = sheet.getRange(2, 1, lastRow - 1, 1).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (dateKey(values[i][0]) === targetDate) return i + 2;
+  }
+  return 0;
+}
+
+function removeRowsByDate(sheet, targetDate, width) {
+  var removed = [];
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return removed;
+  var values = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  for (var i = values.length - 1; i >= 0; i--) {
+    if (dateKey(values[i][0]) === targetDate) {
+      removed.push(values[i]);
+      sheet.deleteRow(i + 2);
+    }
+  }
+  return removed;
+}
+
 // ═══════════════════════════════════════
 // SHEET 1: DOANH THU — 1 dòng/ngày
 // ═══════════════════════════════════════
@@ -67,7 +103,7 @@ function syncDoanhthu(state, today, nlCost, laborCost) {
   if (lastRow > 1) {
     var existingDates = sheet.getRange(2, 1, lastRow - 1, 1).getValues().flat();
     for (var i = 0; i < existingDates.length; i++) {
-      if (existingDates[i] === today) {
+      if (false && existingDates[i] === today) {
         Logger.log('Doanh thu ngay ' + today + ' da sync, bo qua');
         return;
       }
@@ -75,7 +111,7 @@ function syncDoanhthu(state, today, nlCost, laborCost) {
   }
   
   // Tính doanh thu từ hóa đơn — tách POS vs Grab
-  var invoices = (state.todayInvoices || []).filter(function(inv) { return inv.date === today; });
+  var invoices = activeItems(state.todayInvoices || []).filter(function(inv) { return inv.date === today; });
   
   var posRevenue = 0, totalCash = 0, totalTransfer = 0, posCount = 0;
   var grabRevenue = 0;
@@ -83,7 +119,7 @@ function syncDoanhthu(state, today, nlCost, laborCost) {
     if (inv.cancelled) return;
     if (inv.method === 'grab') {
       grabRevenue += inv.total;
-    } else {
+    } else if (inv.method !== 'staff') {
       posCount++;
       posRevenue += inv.total;
       if (inv.method === 'cash') totalCash += inv.total;
@@ -99,7 +135,7 @@ function syncDoanhthu(state, today, nlCost, laborCost) {
   var avg = totalCount > 0 ? Math.round(posRevenue / totalCount) : 0;
   
   // Ghi 1 dòng
-  sheet.appendRow([
+  var rowValues = [
     today,
     totalCount,
     posRevenue,
@@ -112,9 +148,14 @@ function syncDoanhthu(state, today, nlCost, laborCost) {
     nlCost || 0,
     laborCost || 0,
     '' // Lãi gộp = formula
-  ]);
-  
-  var row = sheet.getLastRow();
+  ];
+  var row = findRowByDate(sheet, today);
+  if (row) {
+    sheet.getRange(row, 1, 1, 12).setValues([rowValues]);
+  } else {
+    sheet.appendRow(rowValues);
+    row = sheet.getLastRow();
+  }
   
   // Formula: Tổng DT = DT POS + Grab - Phí Grab (C + D - E)
   sheet.getRange(row, 6).setFormula('=C' + row + '+D' + row + '-E' + row);
@@ -240,6 +281,73 @@ function syncChamcong(state, today) {
 // ═══════════════════════════════════════
 // SHEET 3: NGUYÊN LIỆU DÙNG — Cộng dồn
 // ═══════════════════════════════════════
+// Idempotent version: rewrite today's attendance rows on every run.
+function syncChamcong(state, today) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_CHAMCONG);
+  if (!sheet) { sheet = ss.insertSheet(SHEET_CHAMCONG); }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['Ngay', 'Nhan vien', 'Check-in', 'Check-out', 'So gio', 'Luong (25K, +30% sau 22h)']);
+    sheet.getRange(1, 1, 1, 6).setFontWeight('bold').setBackground('#60a5fa');
+    sheet.setFrozenRows(1);
+  }
+
+  removeRowsByDate(sheet, today, 6);
+
+  var raw = state.attendance && state.attendance[today] ? state.attendance[today] : [];
+  var records = Array.isArray(raw) ? raw : Object.keys(raw || {}).map(function(k) { return raw[k]; });
+  records = activeItems(records);
+  if (!records.length) {
+    Logger.log('Khong co cham cong');
+    return 0;
+  }
+
+  var staffById = {};
+  (state.staff || []).forEach(function(s) { if (s) staffById[String(s.id)] = s; });
+  var rows = [];
+  var totalLaborCost = 0;
+
+  records.forEach(function(record) {
+    if (!record) return;
+    var staff = staffById[String(record.staffId)] || {};
+    var checkIn = record['in'] || record.checkIn || '';
+    var checkOut = record['out'] || record.checkOut || '';
+    var hours = Number(record.hours) || 0;
+
+    if (!hours && checkIn && checkOut) {
+      var p1 = checkIn.split(':'), p2 = checkOut.split(':');
+      var inMin = Number(p1[0]) * 60 + Number(p1[1]);
+      var outMin = Number(p2[0]) * 60 + Number(p2[1]);
+      var diff = outMin - inMin;
+      hours = diff > 0 ? Math.round(diff / 60 * 10) / 10 : 0;
+    }
+
+    var wage = 0;
+    var rate = Number(record.wageRate || staff.wageRate || HOURLY_RATE);
+    if (checkIn && checkOut && hours) {
+      var inM = Number(checkIn.split(':')[0]) * 60 + Number(checkIn.split(':')[1]);
+      var outM = Number(checkOut.split(':')[0]) * 60 + Number(checkOut.split(':')[1]);
+      var cutoff = 22 * 60;
+      if (outM <= cutoff) wage = Math.round(hours * rate);
+      else if (inM >= cutoff) wage = Math.round(hours * rate * 1.3);
+      else {
+        var normalH = (cutoff - inM) / 60;
+        var otH = (outM - cutoff) / 60;
+        wage = Math.round(normalH * rate + otH * rate * 1.3);
+      }
+    }
+    totalLaborCost += wage;
+    rows.push([today, record.name || staff.name || ('NV ' + record.staffId), checkIn, checkOut, hours, wage]);
+  });
+
+  if (rows.length) {
+    sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, 6).setValues(rows);
+    sheet.getRange(sheet.getLastRow() - rows.length + 1, 6, rows.length, 1).setNumberFormat('#,##0');
+  }
+  Logger.log('Cham cong: ' + rows.length + ' NV, tong luong: ' + totalLaborCost);
+  return totalLaborCost;
+}
+
 function syncNguyenlieu(state, today) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_NGUYENLIEU);
@@ -341,6 +449,130 @@ function syncNguyenlieu(state, today) {
     sheet.getRange(2, 4, sheet.getLastRow() - 1, 1).setNumberFormat('#,##0');
   }
   
+  Logger.log('Nguyen lieu: chi phi hom nay = ' + todayCost);
+  return todayCost;
+}
+
+function applyNguyenLieuDelta(sheet, rows, sign, today) {
+  if (!rows.length) return;
+  var lastRow = sheet.getLastRow();
+  var existingData = {};
+  if (lastRow > 1) {
+    var data = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+    for (var i = 0; i < data.length; i++) {
+      var name = data[i][0];
+      if (name) {
+        existingData[name] = { row: i + 2, unit: data[i][1], qty: Number(data[i][2]) || 0, cost: Number(data[i][3]) || 0 };
+      }
+    }
+  }
+
+  rows.forEach(function(r) {
+    var name = r[1], unit = r[2], qty = Number(r[3]) || 0, cost = Number(r[4]) || 0;
+    if (!name) return;
+    if (existingData[name]) {
+      var row = existingData[name].row;
+      var newQty = Math.max(0, Math.round((existingData[name].qty + sign * qty) * 100) / 100);
+      var newCost = Math.max(0, existingData[name].cost + sign * cost);
+      sheet.getRange(row, 2).setValue(unit || existingData[name].unit || '');
+      sheet.getRange(row, 3).setValue(newQty);
+      sheet.getRange(row, 4).setValue(newCost);
+      sheet.getRange(row, 5).setValue(today);
+      existingData[name].qty = newQty;
+      existingData[name].cost = newCost;
+    } else if (sign > 0) {
+      sheet.appendRow([name, unit, qty, cost, today]);
+      existingData[name] = { row: sheet.getLastRow(), unit: unit, qty: qty, cost: cost };
+    }
+  });
+}
+
+function summaryUpdatedToday(sheet, today) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return false;
+  var values = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
+  for (var i = 0; i < values.length; i++) {
+    if (dateKey(values[i][0]) === today) return true;
+  }
+  return false;
+}
+
+// Idempotent version: keep a per-day ingredient ledger and apply deltas to summary.
+function syncNguyenlieu(state, today) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NGUYENLIEU);
+  if (!sheet) { sheet = ss.insertSheet(SHEET_NGUYENLIEU); }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(['Nguyen lieu', 'Don vi', 'Tong da dung', 'Gia tri', 'Cap nhat']);
+    sheet.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#4ade80');
+    sheet.setFrozenRows(1);
+  }
+
+  var daily = ss.getSheetByName(SHEET_NGUYENLIEU_DAILY);
+  if (!daily) { daily = ss.insertSheet(SHEET_NGUYENLIEU_DAILY); }
+  if (daily.getLastRow() === 0) {
+    daily.appendRow(['Ngay', 'Nguyen lieu', 'Don vi', 'So luong', 'Gia tri']);
+    daily.getRange(1, 1, 1, 5).setFontWeight('bold').setBackground('#d9ead3');
+    daily.setFrozenRows(1);
+  }
+
+  var recipes = state.recipes || {};
+  var ingredients = state.ingredients || [];
+  var menu = state.menu || [];
+  var ingById = {};
+  ingredients.forEach(function(ing) { if (ing && !ing._deleted) ingById[String(ing.id)] = ing; });
+  var menuByName = {};
+  menu.forEach(function(m) { if (m && !m._deleted) menuByName[m.name] = m; });
+
+  var soldItems = {};
+  activeItems(state.todayInvoices || []).forEach(function(inv) {
+    if (!inv || inv.date !== today || inv.cancelled) return;
+    (inv.items || []).forEach(function(item) {
+      var menuId = item.menuId ? String(item.menuId) : (menuByName[item.name] ? String(menuByName[item.name].id) : '');
+      if (menuId) soldItems[menuId] = (soldItems[menuId] || 0) + item.qty;
+      (item.toppings || []).forEach(function(t) {
+        var toppingId = t.menuId ? String(t.menuId) : (menuByName[t.name] ? String(menuByName[t.name].id) : '');
+        if (toppingId) soldItems[toppingId] = (soldItems[toppingId] || 0) + item.qty;
+      });
+    });
+  });
+
+  var todayUsage = {};
+  Object.keys(soldItems).forEach(function(menuId) {
+    var recipe = recipes[menuId];
+    if (!recipe || !Array.isArray(recipe)) return;
+    recipe.forEach(function(r) {
+      var ingId = String(r.ingId);
+      todayUsage[ingId] = (todayUsage[ingId] || 0) + r.qty * soldItems[menuId];
+    });
+  });
+
+  var dailyRows = [];
+  var todayCost = 0;
+  Object.keys(todayUsage).forEach(function(ingId) {
+    var ing = ingById[ingId];
+    if (!ing) return;
+    var qty = Math.round(todayUsage[ingId] * 100) / 100;
+    var cost = Math.round((Number(ing.unitPrice) || 0) * qty);
+    todayCost += cost;
+    dailyRows.push([today, ing.name, ing.unit, qty, cost]);
+  });
+
+  var oldRows = removeRowsByDate(daily, today, 5);
+  var legacyTodayAlreadyApplied = !oldRows.length && summaryUpdatedToday(sheet, today);
+  if (!legacyTodayAlreadyApplied) {
+    applyNguyenLieuDelta(sheet, oldRows, -1, today);
+    applyNguyenLieuDelta(sheet, dailyRows, 1, today);
+  }
+  if (dailyRows.length) {
+    daily.getRange(daily.getLastRow() + 1, 1, dailyRows.length, 5).setValues(dailyRows);
+    daily.getRange(daily.getLastRow() - dailyRows.length + 1, 4, dailyRows.length, 2).setNumberFormat('#,##0.##');
+  }
+
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).sort(1);
+    sheet.getRange(2, 4, sheet.getLastRow() - 1, 1).setNumberFormat('#,##0');
+  }
   Logger.log('Nguyen lieu: chi phi hom nay = ' + todayCost);
   return todayCost;
 }

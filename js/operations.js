@@ -104,15 +104,15 @@ function renderMonthlyReport(){
             Object.entries(h.itemsSold||{}).forEach(([name,x])=>{
                 if(!monthItems[name])monthItems[name]={qty:0,revenue:0};
                 monthItems[name].qty+=x.qty;monthItems[name].revenue+=x.revenue;
-                const mi=state.menu.find(m2=>m2.name===name);
-                if(mi){const recipe=state.recipes[mi.id]||[];recipe.forEach(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);if(ing)nlc+=ing.unitPrice*r.qty*x.qty;});}
+                const mi=activeItems(state.menu).find(m2=>m2.name===name);
+                if(mi){const recipe=state.recipes[mi.id]||[];recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);if(ing)nlc+=ing.unitPrice*r.qty*x.qty;});}
             });
             // Labor cost
             const recs=(state.attendance||{})[dt]||[];
             recs.forEach(r=>{if(!r.hours)return;const rRate=r.wageRate||25000;const[iH,iM]=(r.checkIn||'0:0').split(':').map(Number);const outMin=(parseInt((r.checkOut||'0:0').split(':')[0]))*60+parseInt((r.checkOut||'0:0').split(':')[1]);const inMin=iH*60+iM;if(outMin<=OT_START)nvc+=r.hours*rRate;else if(inMin>=OT_START)nvc+=r.hours*rRate*OT_MULT;else{nvc+=((OT_START-inMin)/60)*rRate+((outMin-OT_START)/60)*rRate*OT_MULT;}});
         }
         // Other expenses
-        ((state.expenses||{})[dt]||[]).forEach(e=>oexp+=e.amount);
+        activeItems((state.expenses||{})[dt]||[]).forEach(e=>oexp+=e.amount);
         const grossProfit=rev-nlc-nvc;
         const netProfit=grossProfit-oexp;
         totalRev+=rev;totalNL+=nlc;totalNV+=nvc;totalOther+=oexp;totalInv+=inv;
@@ -202,7 +202,7 @@ function printMonthlyReport(){
 // SMART RESTOCK (#13)
 // ═══════════════════════════════════════
 function copyNeedToBuyList(){
-    const items=state.ingredients.filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
+    const items=activeItems(state.ingredients).filter(i=>!i.hidden).map(i=>({...i,s:getStockInfo(i)})).filter(i=>i.s.status==='danger'||i.s.status==='warning');
     if(!items.length){toast('✅ Kho đầy đủ!');return;}
     const text=items.map(i=>{
         const emoji=i.s.status==='danger'?'🔴':'🟡';
@@ -224,14 +224,14 @@ function renderRecipes(){
     // Render templates
     renderTemplates();
 
-    c.innerHTML=state.menu.filter(m=>m.active).map(m=>{
+    c.innerHTML=activeItems(state.menu).filter(m=>m.active).map(m=>{
         const recipe=state.recipes[m.id]||[];
-        const cogs=recipe.reduce((s,r)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
+        const cogs=recipe.reduce((s,r)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
         const pct=m.price>0?Math.round(cogs/m.price*100):0;
         const isFood=['Đồ chiên','Ăn vặt'].includes(m.category);
         const ideal=isFood?'35-40%':'25-30%';
         const badge=pct===0?'':pct<=(isFood?40:30)?'good':pct<=(isFood?50:40)?'warn':'bad';
-        const ings=recipe.map(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
+        const ings=recipe.map(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
 
         return `<div class="recipe-item"><div class="recipe-header"><span class="rh-name">${esc(m.name)}</span>
         <span>${cogs>0?`<span style="font-size:0.8rem;color:var(--accent-warm)">COGS: ${fmtP(cogs)}</span> <span class="cogs-badge ${badge}">${pct}%</span> <span style="font-size:0.68rem;color:var(--text-muted)">Gợi ý: ${ideal}</span>`:'<span style="font-size:0.78rem;color:var(--text-muted)">Chưa có công thức</span>'}</span></div>
@@ -247,11 +247,11 @@ function renderRecipes(){
 
 function renderTemplates(){
     const c=document.getElementById('templatesList');if(!c)return;
-    const tpls=state.recipeTemplates||[];
+    const tpls=activeItems(state.recipeTemplates||[]);
     if(!tpls.length){c.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.82rem;">Chưa có mẫu — Bấm "Tạo mẫu mới" để bắt đầu</div>';return;}
     c.innerHTML=tpls.map(t=>{
-        const ings=t.items.map(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
-        const cost=t.items.reduce((s,r)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
+        const ings=t.items.map(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
+        const cost=t.items.reduce((s,r)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
         return `<div class="recipe-item" style="border-left:3px solid var(--accent);"><div class="recipe-header"><span class="rh-name" style="color:var(--accent)">📋 ${esc(t.name)}</span><span style="font-size:0.8rem;color:var(--accent-warm)">Chi phí: ${fmtP(cost)}</span></div>
         ${ings.length?`<div class="recipe-ing">${ings.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
         <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})" style="font-size:0.72rem;">✏️ Sửa</button><button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})" style="font-size:0.72rem;">🗑️ Xóa</button></div></div>`;
@@ -260,50 +260,50 @@ function renderTemplates(){
 function createTemplate(){
     const name=prompt('Tên bộ công thức mẫu (VD: Trà sữa cơ bản, Trà trái cây cơ bản):');
     if(!name)return;
-    const tpl={id:state.nextTplId++,name,items:[]};
+    const tpl={id:state.nextTplId++,name,items:[],_lastModified:Date.now()};
     state.recipeTemplates.push(tpl);saveState();
     editTemplate(tpl.id);}
 
 function editTemplate(tplId){
-    const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
+    const t=activeItems(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
     let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Mẫu: <strong>${esc(t.name)}</strong></p>`;
-    body+=`<div id="tplEditList">${t.items.map((r,idx)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+    body+=`<div id="tplEditList">${t.items.map((r,idx)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
     return `<div class="setting-item" id="te-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="teQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
-    body+=`<div class="add-form" style="margin-top:12px;"><select id="tplIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="tplIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addTplRow()">➕</button></div>`;
+    body+=`<div class="add-form" style="margin-top:12px;"><select id="tplIngSelect" style="flex:2;">${activeItems(state.ingredients).map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="tplIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addTplRow()">➕</button></div>`;
     body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveTemplate(${tplId})">💾 Lưu mẫu</button></div>`;
     openModal(`📋 Mẫu: ${t.name}`,body);}
 
 function addTplRow(){const sel=document.getElementById('tplIngSelect'),qty=document.getElementById('tplIngQty').value;
 if(!qty||qty<=0){toast('⚠️ Nhập số lượng');return;}
-const ing=state.ingredients.find(i=>i.id===parseInt(sel.value));if(!ing)return;
+const ing=activeItems(state.ingredients).find(i=>i.id===parseInt(sel.value));if(!ing)return;
 const list=document.getElementById('tplEditList'),idx=list.children.length;
 list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="te-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="teQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`);
 document.getElementById('tplIngQty').value='';}
 
-function saveTemplate(tplId){const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
+function saveTemplate(tplId){const t=activeItems(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
 const list=document.getElementById('tplEditList');t.items=[];
 list.querySelectorAll('.setting-item').forEach(el=>{const qI=el.querySelector('input[type="number"]');const iA=qI.getAttribute('data-ing');
 if(iA)t.items.push({ingId:parseInt(iA),qty:parseFloat(qI.value)});
-else{const nm=el.querySelector('.si-name').textContent;const ig=state.ingredients.find(i=>i.name===nm);if(ig)t.items.push({ingId:ig.id,qty:parseFloat(qI.value)});}});
-saveState();renderRecipes();closeModal();toast('✅ Đã lưu mẫu');}
+else{const nm=el.querySelector('.si-name').textContent;const ig=activeItems(state.ingredients).find(i=>i.name===nm);if(ig)t.items.push({ingId:ig.id,qty:parseFloat(qI.value)});}});
+t._lastModified=Date.now();saveState();renderRecipes();closeModal();toast('✅ Đã lưu mẫu');}
 
-function deleteTemplate(tplId){if(!confirm('Xóa mẫu này?'))return;state.recipeTemplates=state.recipeTemplates.filter(t=>t.id!==tplId);saveState();renderRecipes();toast('🗑️ Đã xóa mẫu');}
+function deleteTemplate(tplId){if(!confirm('Xóa mẫu này?'))return;const t=(state.recipeTemplates||[]).find(x=>x.id===tplId);if(t){t._deleted=true;t._lastModified=Date.now();}saveState();renderRecipes();toast('🗑️ Đã xóa mẫu');}
 
 function applyTemplate(menuId){
     const sel=document.getElementById('tplApplySelect');if(!sel)return;
-    const tpl=(state.recipeTemplates||[]).find(t=>t.id===parseInt(sel.value));if(!tpl){toast('⚠️ Chọn mẫu');return;}
+    const tpl=activeItems(state.recipeTemplates||[]).find(t=>t.id===parseInt(sel.value));if(!tpl){toast('⚠️ Chọn mẫu');return;}
     const list=document.getElementById('recipeEditList');
     tpl.items.forEach(r=>{
-        const ing=state.ingredients.find(i=>i.id===r.ingId);if(!ing)return;
+        const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);if(!ing)return;
         const idx=list.children.length;
         list.innerHTML+=`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;
     });
     toast(`✅ Đã áp dụng mẫu "${tpl.name}" — chỉnh thêm bớt rồi Lưu`);}
 
 function editRecipe(menuId){
-    const m=state.menu.find(x=>x.id===menuId);if(!m)return;
+    const m=activeItems(state.menu).find(x=>x.id===menuId);if(!m)return;
     const recipe=state.recipes[menuId]||[];
-    const tpls=state.recipeTemplates||[];
+    const tpls=activeItems(state.recipeTemplates||[]);
 
     let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Công thức cho: <strong>${esc(m.name)}</strong></p>`;
 
@@ -312,16 +312,16 @@ function editRecipe(menuId){
         body+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(232,166,53,0.06);border:1px solid rgba(232,166,53,0.15);border-radius:var(--radius-sm);"><span style="font-size:0.78rem;color:var(--accent);white-space:nowrap;">📋 Áp dụng mẫu:</span><select id="tplApplySelect" style="flex:1;">${tpls.map(t=>`<option value="${t.id}">${t.name} (${t.items.length} NL)</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="applyTemplate(${menuId})" style="white-space:nowrap;">Áp dụng</button></div>`;
     }
 
-    body+=`<div id="recipeEditList">${recipe.map((r,idx)=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+    body+=`<div id="recipeEditList">${recipe.map((r,idx)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
     return `<div class="setting-item" id="re-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
-    body+=`<div class="add-form" style="margin-top:12px;"><select id="recipeIngSelect" style="flex:2;">${state.ingredients.map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="recipeIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addRecipeRow()">➕</button></div>`;
+    body+=`<div class="add-form" style="margin-top:12px;"><select id="recipeIngSelect" style="flex:2;">${activeItems(state.ingredients).map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="recipeIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addRecipeRow()">➕</button></div>`;
     body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveRecipe(${menuId})">💾 Lưu công thức</button></div>`;
     openModal(`📋 Công thức: ${m.name}`,body);
 }
 
 function addRecipeRow(){const sel=document.getElementById('recipeIngSelect'),qty=document.getElementById('recipeIngQty').value;
 if(!qty||qty<=0){toast('⚠️ Nhập số lượng');return;}
-const ing=state.ingredients.find(i=>i.id===parseInt(sel.value));if(!ing)return;
+const ing=activeItems(state.ingredients).find(i=>i.id===parseInt(sel.value));if(!ing)return;
 const list=document.getElementById('recipeEditList'),idx=list.children.length;
 list.insertAdjacentHTML('beforeend',`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`);
 document.getElementById('recipeIngQty').value='';}
@@ -331,15 +331,15 @@ const recipe=[];
 list.querySelectorAll('.setting-item').forEach(el=>{const qtyInput=el.querySelector('input[type="number"]');
 const ingIdAttr=qtyInput.getAttribute('data-ing');
 if(ingIdAttr){recipe.push({ingId:parseInt(ingIdAttr),qty:parseFloat(qtyInput.value)});}
-else{const name=el.querySelector('.si-name').textContent;const ing=state.ingredients.find(i=>i.name===name);
+else{const name=el.querySelector('.si-name').textContent;const ing=activeItems(state.ingredients).find(i=>i.name===name);
 if(ing)recipe.push({ingId:ing.id,qty:parseFloat(qtyInput.value)});}});
 state.recipes[menuId]=recipe;saveState();renderRecipes();closeModal();toast('✅ Đã lưu công thức');}
 
 function saveMenuPrice(menuId){
-    const m=state.menu.find(x=>x.id===menuId);if(!m)return;
+    const m=activeItems(state.menu).find(x=>x.id===menuId);if(!m)return;
     const val=parseInt(document.getElementById('price-'+menuId).value);
     if(!val||val<=0){toast('⚠️ Giá không hợp lệ');return;}
-    m.price=val;saveState();renderPOSMenu();renderRecipes();
+    m.price=val;m._lastModified=Date.now();saveState();renderPOSMenu();renderRecipes();
     toast(`✅ ${m.name} — Giá: ${fmtP(val)}`);}
 
 function previewPrice(menuId){
@@ -353,14 +353,24 @@ function previewPrice(menuId){
 // ═══════════════════════════════════════
 function exportIngredientsUsed(){
     const d=getDashData();const usage={};
+    const hasById=d.itemsSoldById&&Object.keys(d.itemsSoldById).length;
+    if(hasById){
+        Object.entries(d.itemsSoldById).forEach(([menuId,data])=>{
+            const recipe=state.recipes[menuId]||[];
+            recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
+            if(!ing)return;if(!usage[ing.name])usage[ing.name]={unit:ing.unit,qty:0,cost:0};
+            usage[ing.name].qty+=r.qty*data.qty;usage[ing.name].cost+=r.qty*data.qty*ing.unitPrice;});
+        });
+    }else{
     Object.entries(d.itemsSold).forEach(([name,data])=>{
-        const menuItem=state.menu.find(m=>m.name===name);
+        const menuItem=activeItems(state.menu).find(m=>m.name===name);
         if(!menuItem)return;
         const recipe=state.recipes[menuItem.id]||[];
-        recipe.forEach(r=>{const ing=state.ingredients.find(i=>i.id===r.ingId);
+        recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
         if(!ing)return;if(!usage[ing.name])usage[ing.name]={unit:ing.unit,qty:0,cost:0};
         usage[ing.name].qty+=r.qty*data.qty;usage[ing.name].cost+=r.qty*data.qty*ing.unitPrice;});
     });
+    }
     if(!Object.keys(usage).length){toast('⚠️ Chưa có công thức hoặc chưa có doanh số');return;}
     let csv='Nguyên liệu,Đơn vị,Số lượng dùng,Chi phí\n';
     let totalCost=0;
@@ -376,11 +386,12 @@ function startClock(){function u(){const n=new Date(),e=document.getElementById(
 function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>x.staffId===id);if(!r)return 'out';return r.checkOut?'done':'in';}
 function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>x.staffId===id)||null;}
 function toggleAttendance(id){if(currentRole==='staff'&&currentStaffId!==id){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
-const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=state.staff.find(x=>x.id===id);
-if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000});toast(`✅ ${s.name} — Vào ca`);}
-else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
+const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=activeItems(state.staff).find(x=>x.id===id);
+if(!s){toast('⚠️ Không tìm thấy nhân viên');return;}
+if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000,_lastModified:Date.now()});toast(`✅ ${s.name} — Vào ca`);}
+else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;r._lastModified=Date.now();toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
 else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
-function renderAttendance(){document.getElementById('staffGrid').innerHTML=state.staff.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
+function renderAttendance(){document.getElementById('staffGrid').innerHTML=activeItems(state.staff).map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
 const isLocked=currentRole==='staff'&&currentStaffId!==s.id;
 return `<div class="staff-card status-${st}${isLocked?' locked':''}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
 const td=today(),recs=state.attendance[td]||[];
@@ -410,6 +421,7 @@ function saveEditAttendance(idx){
     r.checkIn=newIn;
     if(newOut){r.checkOut=newOut;const[iH,iM]=newIn.split(':').map(Number),[oH,oM]=newOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;}
     else{r.checkOut=null;r.hours=null;}
+    r._lastModified=Date.now();
     saveState();renderAttendance();closeModal();toast(`✅ Đã cập nhật giờ ${r.name}`);
 }
 

@@ -1,12 +1,18 @@
 import json
+import os
+import sys
 f = open('/home/nana/.openclaw/openclaw.json','r')
 c = json.load(f)
 f.close()
 
+api_key = os.environ.get('NANA_API_KEY')
+if not api_key:
+    sys.exit('Set NANA_API_KEY before running this script.')
+
 c['models']['providers']['9router-2'] = {
     'baseUrl': 'http://localhost:3000/v1',
     'api': 'openai-completions',
-    'apiKey': 'sk-f1122d7cf2d906fc-ny057d-3f15ccf4',
+    'apiKey': api_key,
     'models': [{
         'id': 'Nana-Smart',
         'name': 'Nana-Smart',

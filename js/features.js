@@ -5,7 +5,7 @@ function exportCSV(){const d=getDashData();let csv='Tên món,Số lượng,Doan
 function exportDashJSON(){const b=new Blob([JSON.stringify(state.history,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-data-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('💾 Đã tải JSON!');}
 function exportAttCSV(){const td=today(),recs=state.attendance[td]||[];let csv='Tên,Vào ca,Ra ca,Số giờ\n';recs.forEach(r=>{csv+=`"${r.name}","${r.checkIn}","${r.checkOut||''}",${r.hours||''}\n`;});navigator.clipboard.writeText(csv).then(()=>toast('📋 Đã copy CSV chấm công!'));}
 function downloadBackup(){const b=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=`monstea-backup-${today()}.json`;document.body.appendChild(a);a.click();document.body.removeChild(a);toast('📥 Đã tải backup!');}
-function restoreBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>{try{const p=JSON.parse(ev.target.result);if(!p.menu){toast('❌ File không hợp lệ');return;}state={...state,...p};localStorage.setItem('monsteaPOS',JSON.stringify(state));if(firebaseDb){isRemoteUpdate=true;firebaseDb.ref('state').set(state).then(()=>{isRemoteUpdate=false;updateSyncStatus('connected');toast('✅ Đã khôi phục & đồng bộ lên cloud!');}).catch(()=>{isRemoteUpdate=false;toast('✅ Đã khôi phục (chưa sync cloud)');});}else{toast('✅ Đã khôi phục!');}renderAll();}catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}
+function restoreBackup(e){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=(ev)=>{try{const p=JSON.parse(ev.target.result);if(!p.menu){toast('❌ File không hợp lệ');return;}state={...state,...p};localStorage.setItem('monsteaPOS',JSON.stringify(state));if(firebaseDb){isRemoteUpdate=true;const restored=cloneData(state);restored.currentOrder=[];delete restored._editingInvoiceId;delete restored._editingInvoiceRef;delete restored._editingOldSummary;firebaseDb.ref('state').transaction(remote=>mergeStateData(remote||{},restored,true),(err,committed,snap)=>{isRemoteUpdate=false;if(err){toast('✅ Đã khôi phục (chưa sync cloud)');return;}if(committed&&snap&&snap.val())state=mergeStateData(snap.val(),state,false);updateSyncStatus('connected');toast('✅ Đã khôi phục & đồng bộ lên cloud!');renderAll();});}else{toast('✅ Đã khôi phục!');renderAll();}}catch(err){toast('❌ Lỗi: '+err.message);}};r.readAsText(f);e.target.value='';}
 function clearOldData(){const c=new Date();c.setDate(c.getDate()-30);const cs=c.toISOString().slice(0,10);let rm=0;Object.keys(state.history).forEach(d=>{if(d<cs){delete state.history[d];rm++;}});Object.keys(state.attendance).forEach(d=>{if(d<cs){delete state.attendance[d];rm++;}});saveState();toast(`🗑️ Đã xóa ${rm} bản ghi cũ`);}
 
 // ═══════════════════════════════════════
@@ -31,7 +31,7 @@ function renderGuide(){
     const g=document.getElementById('guideMenuGrid');
     const searchEl=document.getElementById('guideSearchInput');
     const query=(searchEl?searchEl.value:'').toLowerCase().trim();
-    const items=state.menu.filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory)&&(!query||searchMatch(m.name,query)));
+    const items=activeItems(state.menu).filter(m=>m.active&&(guideCategory==='Tất cả'||m.category===guideCategory)&&(!query||searchMatch(m.name,query)));
     let html=items.map(m=>{
         const hasGuide=(state.menuGuides&&state.menuGuides[m.id])||((state.guideImages&&state.guideImages[m.id]&&state.guideImages[m.id].length));
         const vis=getMenuVisual(m);
@@ -53,7 +53,7 @@ function addCustomGuide(){
     if(!n)return;
     const cat=guideCategory==='Tất cả'?(state.categories[0]||'Khác'):guideCategory;
     const newId=state.nextMenuId++;
-    state.menu.push({id:newId,name:n,price:0,category:cat,active:true,isGuide:true});
+    state.menu.push({id:newId,name:n,price:0,category:cat,active:true,isGuide:true,_lastModified:Date.now()});
     saveState();
     renderGuide();
     showGuide(newId);
@@ -61,7 +61,7 @@ function addCustomGuide(){
 }
 function setGuideCategory(c){guideCategory=c;renderGuide();}
 function showGuide(id){
-    const m=state.menu.find(x=>x.id===id);if(!m)return;
+    const m=activeItems(state.menu).find(x=>x.id===id);if(!m)return;
     const guide=(state.menuGuides&&state.menuGuides[id])||'';
     const imgs=(state.guideImages&&state.guideImages[id])||[];
     const isOwner=currentRole==='owner';
@@ -169,7 +169,7 @@ let html=`<table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
 dayNames.forEach((d,i)=>{const isToday=dates[i].toISOString().slice(0,10)===today();
 html+=`<th style="padding:4px;text-align:center;${isToday?'color:var(--accent);font-weight:800;':''}">${d}<br><span style="font-size:0.6rem;font-weight:400;color:var(--text-muted)">${dates[i].getDate()}</span></th>`;});
 html+=`</tr></thead><tbody>`;
-state.staff.forEach(s=>{if(!sched[s.id])sched[s.id]=[false,false,false,false,false,false,false];
+activeItems(state.staff).forEach(s=>{if(!sched[s.id])sched[s.id]=[false,false,false,false,false,false,false];
 const canEdit=!isPast&&(currentRole==='owner'||currentStaffId===s.id);
 const isMyRow=currentStaffId===s.id;
 html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${isMyRow?'background:rgba(96,165,250,0.06);':''}">
@@ -206,5 +206,5 @@ loadState(); // Load saved state BEFORE session restore (for ownerPassword, staf
 const _sp=sessionStorage.getItem('monsteaPwd');
 if(_sp){
 if(_sp===state.ownerPassword){currentRole='owner';currentStaffId=null;currentStaffName='Chủ quán';document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}
-else{const sm=state.staff.find(s=>s.password===_sp);if(sm){currentRole='staff';currentStaffId=sm.id;currentStaffName=sm.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}}
+else{const sm=activeItems(state.staff).find(s=>s.password===_sp);if(sm){currentRole='staff';currentStaffId=sm.id;currentStaffName=sm.name;document.getElementById('loginOverlay').style.display='none';applyRole();initFirebase();}}
 }else{document.getElementById('loginPwd').focus();}

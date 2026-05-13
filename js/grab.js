@@ -71,6 +71,8 @@ const net=grabPrice-fee;
 // Save grab order
 if(!state.grabOrders)state.grabOrders=[];
 state.grabOrders.push({
+    syncId:makeSyncId('grab'),
+    _lastModified:Date.now(),
     date:today(),time:nowTime(),
     items:grabCurrentItems.map(i=>({...i})),
     menuTotal:menuTotal,
@@ -79,7 +81,7 @@ state.grabOrders.push({
     netAmount:net
 });
 // Also create a hidden invoice for ingredient tracking (method='grab')
-const inv={id:state.nextInvoiceId++,date:today(),time:nowTime(),hour:nowHour(),items:grabCurrentItems.map(i=>({...i})),total:grabPrice,method:'grab',note:'Đơn Grab'};
+const inv={id:state.nextInvoiceId++,syncId:makeSyncId('grab-inv'),_lastModified:Date.now(),date:today(),time:nowTime(),hour:nowHour(),items:grabCurrentItems.map(i=>({...i})),total:grabPrice,method:'grab',note:'Đơn Grab'};
 state.todayInvoices.push(inv);
 archiveDay(today(),state.todayInvoices);
 // Reset form
@@ -99,7 +101,7 @@ const g=state.grabOrders[idx];
 if(g){
     // Also cancel the corresponding invoice
     const inv=state.todayInvoices.find(i=>i.method==='grab'&&i.time===g.time&&i.total===g.grabPrice);
-    if(inv)inv.cancelled=true;
+    if(inv){inv.cancelled=true;inv._lastModified=Date.now();}
 }
 state.grabOrders.splice(idx,1);
 archiveDay(today(),state.todayInvoices);

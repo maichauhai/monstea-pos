@@ -82,6 +82,71 @@ function removeDiacritics(str){
 function searchMatch(text,query){
     return removeDiacritics(text.toLowerCase()).includes(removeDiacritics(query.toLowerCase()));
 }
+function cloneData(v){return JSON.parse(JSON.stringify(v||{}));}
+function getDeviceId(){
+    let id=localStorage.getItem('monsteaDeviceId');
+    if(!id){id='dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);localStorage.setItem('monsteaDeviceId',id);}
+    return id;
+}
+function makeSyncId(prefix){return `${today()}-${Date.now().toString(36)}-${getDeviceId()}-${Math.random().toString(36).slice(2,7)}-${prefix||'inv'}`;}
+function invoiceKey(inv){return `${inv.syncId||inv.id}_${inv.date||''}`;}
+function itemStamp(item){return item&&item._lastModified?item._lastModified:0;}
+function mergeArrayByKey(remoteArr,localArr,keyFn,preferNewer){
+    const map=new Map();
+    (remoteArr||[]).forEach(item=>{if(item)map.set(keyFn(item),item);});
+    (localArr||[]).forEach(item=>{
+        if(!item)return;
+        const key=keyFn(item),old=map.get(key);
+        if(!old)map.set(key,item);
+        else if(preferNewer&&itemStamp(item)>itemStamp(old))map.set(key,item);
+    });
+    return [...map.values()];
+}
+function mergeByDateBuckets(remoteData,localData,keyField){
+    const remote=cloneData(remoteData),local=cloneData(localData);
+    const out=remote||{};
+    const allDates=new Set([...Object.keys(out),...Object.keys(local||{})]);
+    allDates.forEach(d=>{
+        out[d]=mergeArrayByKey(out[d]||[],(local||{})[d]||[],item=>item[keyField],true);
+    });
+    return out;
+}
+function mergeHistory(remoteHistory,localHistory){
+    const out=cloneData(remoteHistory);
+    const local=cloneData(localHistory);
+    Object.keys(local||{}).forEach(d=>{
+        if(!out[d])out[d]=local[d];
+        else if((local[d].invoices||0)>(out[d].invoices||0))out[d]=local[d];
+    });
+    return out;
+}
+function mergeStateData(remoteState,localState,preferLocalRoot){
+    const remote=cloneData(remoteState),local=cloneData(localState);
+    const merged=preferLocalRoot?{...remote,...local}:{...local,...remote};
+    merged.todayInvoices=mergeArrayByKey(remote.todayInvoices||[],local.todayInvoices||[],invoiceKey,true);
+    const invoiceIds=merged.todayInvoices.map(i=>Number(i.id)).filter(Number.isFinite);
+    if(invoiceIds.length)merged.nextInvoiceId=Math.max(merged.nextInvoiceId||1,...invoiceIds)+1;
+    merged.grabOrders=mergeArrayByKey(remote.grabOrders||[],local.grabOrders||[],g=>g.syncId||`${g.time}_${g.date}`,true);
+    merged.attendance=mergeByDateBuckets(remote.attendance,local.attendance,'staffId');
+    merged.purchases=mergeByDateBuckets(remote.purchases,local.purchases,'id');
+    merged.expenses=mergeByDateBuckets(remote.expenses,local.expenses,'id');
+    merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id');
+    merged.history=mergeHistory(remote.history,local.history);
+    return merged;
+}
+function stateForFirebase(){
+    const s=cloneData(state);
+    s.currentOrder=[];
+    delete s._editingInvoiceId;
+    delete s._editingOldSummary;
+    return s;
+}
+function persistMergedState(localOrder){
+  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
+  const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
+  if(localOrder)state.currentOrder=localOrder;
+  localStorage.setItem('monsteaPOS',JSON.stringify(state));
+}
 function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;if(!state.purchases)state.purchases={};if(!state.expenses)state.expenses={};if(!state.dailyNotes)state.dailyNotes=[];
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
@@ -158,65 +223,9 @@ function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderG
 // FIREBASE SYNC
 // ═══════════════════════════════════════
 function mergeFirebaseState(r){
-  // ── Snapshot local data BEFORE overwrite ──
-  const localInvoices=state.todayInvoices||[];
-  const localGrab=state.grabOrders||[];
-  const localAttendance=JSON.parse(JSON.stringify(state.attendance||{}));
-  const localPurchases=JSON.parse(JSON.stringify(state.purchases||{}));
-  const localExpenses=JSON.parse(JSON.stringify(state.expenses||{}));
-  const localManualUsage=JSON.parse(JSON.stringify(state.manualUsage||{}));
-  const localHistory=JSON.parse(JSON.stringify(state.history||{}));
-
-  // Overwrite state with Firebase (shallow)
-  state={...state,...r};
-
-  // ══════════════════════════════════════
-  // BIDIRECTIONAL MERGE — union by unique key
-  // ══════════════════════════════════════
-
-  // ── 1. Invoices: key = id_date, keep NEWER version ──
-  const remoteInvoices=state.todayInvoices||[];
-  const invMap=new Map();
-  remoteInvoices.forEach(i=>invMap.set(i.id+'_'+i.date, i));
-  localInvoices.forEach(i=>{const k=i.id+'_'+i.date;
-    if(!invMap.has(k)){invMap.set(k, i);}
-    else{const rem=invMap.get(k);if((i._lastModified||0)>(rem._lastModified||0))invMap.set(k, i);}
-  });
-  state.todayInvoices=[...invMap.values()];
-
-  // ── 2. Grab orders: key = time_date ──
-  const remoteGrab=state.grabOrders||[];
-  const grabMap=new Map();
-  remoteGrab.forEach(g=>grabMap.set(g.time+'_'+g.date, g));
-  localGrab.forEach(g=>{const k=g.time+'_'+g.date; if(!grabMap.has(k))grabMap.set(k, g);});
-  state.grabOrders=[...grabMap.values()];
-
-  // ── 3. Attendance: key = staffId per date ──
-  _mergeByDate(state, 'attendance', localAttendance, 'staffId');
-
-  // ── 4. Purchases: key = id per date ──
-  _mergeByDate(state, 'purchases', localPurchases, 'id');
-
-  // ── 5. Expenses: key = id per date ──
-  _mergeByDate(state, 'expenses', localExpenses, 'id');
-
-  // ── 5b. Manual Usage (xuất kho): key = id per date ──
-  _mergeByDate(state, 'manualUsage', localManualUsage, 'id');
-
-  // ── 6. History: keep richer version per date ──
-  const remoteHistory=state.history||{};
-  Object.keys(localHistory).forEach(d=>{
-    if(!remoteHistory[d])remoteHistory[d]=localHistory[d];
-    else if(localHistory[d].invoices>remoteHistory[d].invoices)remoteHistory[d]=localHistory[d];
-  });
-  state.history=remoteHistory;
-
-  // ── Migrate ingredients ──
-  if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
-
-  // ── Purge stale invoices ──
-  const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
-  localStorage.setItem('monsteaPOS',JSON.stringify(state));
+  const localOrder=state.currentOrder||[];
+  state=mergeStateData(r,state,false);
+  persistMergedState(localOrder);
 }
 
 // Helper: merge {date: [array]} objects bidirectionally by unique key field
@@ -250,7 +259,12 @@ renderAll();isRemoteUpdate=false;});}
 
 function saveStateToFirebase(){if(!firebaseDb)return;clearTimeout(syncTimeout);
 syncTimeout=setTimeout(()=>{updateSyncStatus('syncing');
-firebaseDb.ref('state').set(state).then(()=>updateSyncStatus('connected')).catch(()=>updateSyncStatus('offline'));},500);}
+const localSnapshot=stateForFirebase();
+firebaseDb.ref('state').transaction(remote=>mergeStateData(remote||{},localSnapshot,true),(err,committed,snap)=>{
+    if(err){updateSyncStatus('offline');return;}
+    if(committed&&snap&&snap.val()){isRemoteUpdate=true;mergeFirebaseState(snap.val());isRemoteUpdate=false;renderAll();}
+    updateSyncStatus('connected');
+});},500);}
 
 function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;
 const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};

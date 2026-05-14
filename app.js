@@ -210,6 +210,8 @@ function mergeFirebaseState(r){
 
   // ── Purge stale invoices ──
   const td=today();state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
+  // ── Fix: recalculate nextInvoiceId from actual today's invoices to prevent jumps after sync ──
+  state.nextInvoiceId=state.todayInvoices.length?Math.max(...state.todayInvoices.map(i=>i.id))+1:1;
   localStorage.setItem('monsteaPOS',JSON.stringify(state));
 }
 

@@ -174,21 +174,21 @@ if(editRef){const inv=findInvoiceByRef(editRef,true),eid=inv?inv.id:editRef;
 if(inv){const os=state._editingOldSummary,ns=flatItems.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ')+` = ${fmtP(total)}`;
 if(!state.editLog)state.editLog=[];state.editLog.push({invoiceId:eid,invoiceRef:invoiceRef(inv),action:'SỬA ĐƠN',time:`${today()} ${nowTime()}`,before:os,after:ns});
 inv.items=[...flatItems];inv.total=total;inv.method=method;inv.note=note;inv.edited=true;inv.discount=discount>0?discount:undefined;inv._lastModified=Date.now();
-toast(`✅ Đã cập nhật #${String(eid).padStart(3,'0')}`);}
+toast(`✅ Đã cập nhật #${invoiceDisplayId(inv)}`);}
 delete state._editingInvoiceId;delete state._editingInvoiceRef;delete state._editingOldSummary;
 document.getElementById('orderTitle').textContent='HÓA ĐƠN MỚI';document.getElementById('orderTitle').style.color='';
-}else{const inv={id:state.nextInvoiceId++,syncId:makeSyncId('inv'),_lastModified:Date.now(),date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
+}else{const ts=Date.now();const inv={id:nextTodayInvoiceId(),syncId:makeSyncId('inv'),createdAt:ts,_lastModified:ts,date:today(),time:nowTime(),hour:nowHour(),items:[...flatItems],total,method,note};
 if(discount>0)inv.discount=discount;
 if(isStaff)inv.staffOriginalTotal=subtotal;
-state.todayInvoices.push(inv);toast(isStaff?`🏠 Nội bộ #${inv.id} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${inv.id} — ${fmtP(total)}${discount>0?' (giảm '+fmtP(discount)+')':''}`);}
+state.todayInvoices.push(inv);state.nextInvoiceId=nextTodayInvoiceId();toast(isStaff?`🏠 Nội bộ #${invoiceDisplayId(inv)} — ${state.currentOrder.reduce((s,o)=>s+o.qty,0)} món (0đ)`:`✅ Thanh toán #${invoiceDisplayId(inv)} — ${fmtP(total)}${discount>0?' (giảm '+fmtP(discount)+')':''}`);}
 playPaySound();vibrate(100);state.currentOrder=[];document.getElementById('orderNote').value='';document.getElementById('cashGiven').value='';document.getElementById('changeResult').textContent='';document.getElementById('discountInput').value='';document.getElementById('discountDisplay').textContent='';document.getElementById('finalTotalRow').style.display='none';const md=document.getElementById('mobDiscountInput');if(md)md.value='';const mc=document.getElementById('mobCashGiven');if(mc)mc.value='';const mr=document.getElementById('mobChangeResult');if(mr)mr.textContent='';archiveDay(today(),state.todayInvoices);renderOrder();renderPOSMenu();renderTodayInvoices();saveState();}
 
 function renderTodayInvoices(){const c=document.getElementById('todayInvoiceList'),ce=document.getElementById('todayInvCount');
-const ti=activeItems(state.todayInvoices).filter(i=>i.date===today()),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
+const ti=todayInvoicesSorted(),tt=ti.filter(i=>!i.cancelled&&i.method!=='staff').reduce((s,i)=>s+i.total,0),sc=ti.filter(i=>!i.cancelled&&i.method==='staff').length;
 ce.textContent=`(${ti.filter(i=>!i.cancelled).length} đơn${sc?' ('+sc+' nội bộ)':''} — ${fmtP(tt)})`;
 if(!ti.length){c.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có hóa đơn</div>';return;}
 c.innerHTML=[...ti].reverse().map(inv=>{const is=inv.items.map(i=>{const tp=(i.toppings||[]).map(t=>t.name).join('+');return `${i.name}${tp?' +'+tp:''}×${i.qty}`;}).join(', ');
-return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail('${jsString(invoiceRef(inv))}')"><span class="inv-id">#${String(inv.id).padStart(3,'0')}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
+return `<div class="inv-row ${inv.cancelled?'cancelled':''}" onclick="showInvoiceDetail('${jsString(invoiceRef(inv))}')"><span class="inv-id">#${invoiceDisplayId(inv)}${inv.cancelled?'<span class="inv-badge cancelled-badge">ĐÃ HỦY</span>':''}${inv.edited&&!inv.cancelled?'<span class="inv-badge edited">ĐÃ SỬA</span>':''}${inv.method==='grab'?'<span class="inv-badge" style="background:rgba(96,165,250,0.15);color:var(--accent-blue);">GRAB</span>':''}${inv.method==='staff'?'<span class="inv-badge staff-badge">NỘI BỘ</span>':''}</span><span class="inv-time">${inv.time}</span><span class="inv-items">${esc(is)}</span><span class="inv-method ${inv.method}">${inv.method==='cash'?'💵':inv.method==='grab'?'🏍️':inv.method==='staff'?'🏠':'📱'}</span><span class="inv-total">${inv.cancelled?fmtP(0):fmtP(inv.total)}</span></div>`;}).join('');}
 
 function showInvoiceDetail(ref){const td=today();
 const inv=findInvoiceByRef(ref,true);if(!inv)return;
@@ -210,12 +210,12 @@ ${inv.note?`<div style="margin-top:8px;font-size:0.8rem;color:var(--text-muted);
 ${inv.method==='staff'&&inv.staffOriginalTotal?'<div style="margin-top:4px;font-size:0.78rem;color:var(--accent-purple);">💡 Giá gốc: '+fmtP(inv.staffOriginalTotal)+' → Giảm 100%</div>':''}
 ${logS}
 ${!inv.cancelled?`<div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--border-subtle);"><button class="btn btn-primary btn-sm" onclick="editInvoice('${jsString(invRef)}')" style="flex:1;">✏️ Sửa đơn</button><button class="btn btn-danger btn-sm" onclick="cancelInvoice('${jsString(invRef)}')" style="flex:1;">🚫 Hủy đơn</button></div>`:''}`;
-openModal('Hóa đơn #'+String(inv.id).padStart(3,'0'),body);}
+openModal('Hóa đơn #'+invoiceDisplayId(inv),body);}
 
 function editInvoice(ref){const inv=findInvoiceByRef(ref);if(!inv||inv.cancelled)return;const id=inv.id;closeModal();
 state.currentOrder=inv.items.map(i=>({...i}));state._editingInvoiceId=inv.id;state._editingInvoiceRef=invoiceRef(inv);state._editingOldSummary=inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`;
-document.getElementById('orderTitle').textContent=`✏️ SỬA #${String(id).padStart(3,'0')}`;document.getElementById('orderTitle').style.color='var(--accent)';
-document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${String(id).padStart(3,'0')}`);}
+document.getElementById('orderTitle').textContent=`✏️ SỬA #${invoiceDisplayId(inv)}`;document.getElementById('orderTitle').style.color='var(--accent)';
+document.getElementById('orderNote').value=inv.note||'';renderOrder();toast(`✏️ Đang sửa #${invoiceDisplayId(inv)}`);}
 
 function cancelInvoice(ref){const td=today();
 // Find the actual invoice object in the array (not a copy) using index
@@ -223,11 +223,11 @@ const idx=findInvoiceIndexByRef(ref);
 if(idx===-1){toast('⚠️ Không tìm thấy đơn hôm nay hoặc đã hủy rồi');return;}
 const inv=state.todayInvoices[idx];
 const id=inv.id,invRef=invoiceRef(inv);
-confirmAction(`Hủy đơn #${String(id).padStart(3,'0')}?`,()=>{
+confirmAction(`Hủy đơn #${invoiceDisplayId(inv)}?`,()=>{
 inv.cancelled=true;inv._lastModified=Date.now();if(!state.editLog)state.editLog=[];
 state.editLog.push({invoiceId:id,invoiceRef:invRef,action:'HỦY ĐƠN',time:`${today()} ${nowTime()}`,before:inv.items.map(i=>`${i.name}×${i.qty}`).join(', ')+` = ${fmtP(inv.total)}`,after:'Đã hủy'});
-archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${String(id).padStart(3,'0')}`);}, 'Hủy đơn');}
+archiveDay(today(),state.todayInvoices);saveState();renderTodayInvoices();closeModal();toast(`🚫 Đã hủy #${invoiceDisplayId(inv)}`);}, 'Hủy đơn');}
 
 function showEditLog(){const td=today();const logs=(state.editLog||[]).filter(l=>l.time&&l.time.startsWith(td));if(!logs.length){openModal('📝 Nhật ký','<div style="text-align:center;padding:20px;color:var(--text-muted);">Hôm nay chưa có thay đổi</div>');return;}
-openModal(`📝 Nhật ký hôm nay (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">🕒 ${l.time} — #${String(l.invoiceId).padStart(3,'0')} — <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">❌ ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">✅ ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
+openModal(`📝 Nhật ký hôm nay (${logs.length})`,[...logs].reverse().map(l=>`<div class="edit-log-item"><div class="log-time">🕒 ${l.time} — #${invoiceLogDisplayId(l)} — <strong>${l.action}</strong></div><div class="log-detail">${l.before?`<div class="log-before">❌ ${esc(l.before)}</div>`:''}${l.after?`<div class="log-after">✅ ${esc(l.after)}</div>`:''}</div></div>`).join(''));}
 

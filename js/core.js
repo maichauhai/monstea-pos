@@ -94,6 +94,37 @@ function makeSyncId(prefix){return `${today()}-${Date.now().toString(36)}-${getD
 function invoiceKey(inv){return `${inv.syncId||inv.id}_${inv.date||''}`;}
 function invoiceRef(inv){return String(inv&&(inv.syncId||`${inv.date||today()}:${inv.id}`));}
 function jsString(s){return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,' ');}
+function invoiceCreatedAt(inv){
+    const explicit=Number(inv&&inv.createdAt);
+    if(Number.isFinite(explicit)&&explicit>0)return explicit;
+    const d=String(inv&&inv.date||today()),t=String(inv&&inv.time||'00:00');
+    const dm=d.match(/^(\d{4})-(\d{2})-(\d{2})$/),tm=t.match(/(\d{1,2}):(\d{2})/);
+    if(dm&&tm)return new Date(Number(dm[1]),Number(dm[2])-1,Number(dm[3]),Number(tm[1]),Number(tm[2])).getTime();
+    const stamp=Number(inv&&inv._lastModified);
+    return Number.isFinite(stamp)&&stamp>0?stamp:Number(inv&&inv.id)||0;
+}
+function compareInvoicesAsc(a,b){
+    const t=invoiceCreatedAt(a)-invoiceCreatedAt(b);
+    if(t)return t;
+    const id=(Number(a&&a.id)||0)-(Number(b&&b.id)||0);
+    if(id)return id;
+    return invoiceRef(a).localeCompare(invoiceRef(b));
+}
+function todayInvoicesSorted(){
+    const td=today();
+    return activeItems(state.todayInvoices).filter(i=>i.date===td).sort(compareInvoicesAsc);
+}
+function invoiceDisplayNo(inv){
+    const ref=invoiceRef(inv);
+    const idx=todayInvoicesSorted().findIndex(i=>invoiceRef(i)===ref);
+    return idx>=0?idx+1:Number(inv&&inv.id)||0;
+}
+function invoiceDisplayId(inv){return String(invoiceDisplayNo(inv)).padStart(3,'0');}
+function nextTodayInvoiceId(){return todayInvoicesSorted().length+1;}
+function invoiceLogDisplayId(log){
+    const inv=(state.todayInvoices||[]).find(i=>(log.invoiceRef&&invoiceRef(i)===log.invoiceRef)||(!log.invoiceRef&&i.date===today()&&i.id===log.invoiceId));
+    return inv?invoiceDisplayId(inv):String(log.invoiceId||0).padStart(3,'0');
+}
 function findInvoiceByRef(ref,includeCancelled){
     const td=today(),key=String(ref);
     return [...(state.todayInvoices||[])].reverse().find(i=>i.date===td&&(includeCancelled||!i.cancelled)&&(invoiceRef(i)===key||(!i.syncId&&String(i.id)===key)));
@@ -185,7 +216,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
     merged.history=mergeHistory(remote.history,local.history);
-    bumpNextFromArray(merged,'todayInvoices','nextInvoiceId');
+    merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
     bumpNextFromArray(merged,'staff','nextStaffId');
     bumpNextFromArray(merged,'ingredients','nextIngId');
@@ -222,6 +253,7 @@ function archiveRawInvoices(list,excludeDate){
 function persistMergedState(localOrder){
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
   const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
+  state.nextInvoiceId=nextTodayInvoiceId();
   if(localOrder)state.currentOrder=localOrder;
   localStorage.setItem('monsteaPOS',JSON.stringify(state));
 }
@@ -386,8 +418,10 @@ Object.keys(staleByDate).forEach(d=>{archiveDay(d,staleByDate[d]);archiveRawInvo
 const before=state.todayInvoices.length;
 state.todayInvoices=state.todayInvoices.filter(i=>i.date===td);
 if(state.todayInvoices.length!==before)console.log(`[POS] Purged ${before-state.todayInvoices.length} stale invoices from todayInvoices`);
-if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;
-state.nextInvoiceId=state.todayInvoices.length?Math.max(...state.todayInvoices.map(i=>i.id))+1:1;saveState();}
+let didResetChecklist=false;
+if(state.checklistDate!==td){state.openChecklist.forEach(c=>c.checked=false);state.closeChecklist.forEach(c=>c.checked=false);state.checklistDate=td;didResetChecklist=true;}
+state.nextInvoiceId=nextTodayInvoiceId();
+if(didResetChecklist)saveState();
 }
 
 function archiveDay(dk,invoices){invoices=activeItems(invoices).filter(i=>i.date===dk);if(!invoices.length)return;const is={},isById={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;

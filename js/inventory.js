@@ -2,17 +2,25 @@
 // ═══════════════════════════════════════
 function calcDailyUsage(date){
     const usage={};const dd=state.history[date];if(!dd||!dd.itemsSold)return usage;
+    const addUsage=(menuId,qty)=>{
+        const recipe=state.recipes[menuId]||[];
+        recipe.forEach(r=>{if(!usage[r.ingId])usage[r.ingId]=0;usage[r.ingId]+=r.qty*qty;});
+    };
     if(dd.itemsSoldById&&Object.keys(dd.itemsSoldById).length){
+        const countedIds=new Set();
         Object.entries(dd.itemsSoldById).forEach(([menuId,data])=>{
-            const recipe=state.recipes[menuId]||[];
-            recipe.forEach(r=>{if(!usage[r.ingId])usage[r.ingId]=0;usage[r.ingId]+=r.qty*data.qty;});
+            countedIds.add(String(menuId));
+            addUsage(menuId,data.qty||0);
+        });
+        Object.entries(dd.itemsSold||{}).forEach(([name,data])=>{
+            const mi=activeItems(state.menu).find(m=>m.name===name);if(!mi||countedIds.has(String(mi.id)))return;
+            addUsage(mi.id,data.qty||0);
         });
         return usage;
     }
     Object.entries(dd.itemsSold).forEach(([name,data])=>{
         const mi=activeItems(state.menu).find(m=>m.name===name);if(!mi)return;
-        const recipe=state.recipes[mi.id]||[];
-        recipe.forEach(r=>{if(!usage[r.ingId])usage[r.ingId]=0;usage[r.ingId]+=r.qty*data.qty;});
+        addUsage(mi.id,data.qty||0);
     });return usage;
 }
 function calcTotalPurchased(ingId){

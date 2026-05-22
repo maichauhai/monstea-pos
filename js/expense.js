@@ -23,10 +23,11 @@ function renderExpenseTab(){
     const stockOuts=activeItems((state.manualUsage||{})[dt]||[]);
     const soEl=document.getElementById('stockOutList');
     if(soEl){
-        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${reasonIcons[s.reason]||'📤'} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${reasonLabels[s.reason]||s.reason}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}','${jsString(itemRef(s))}')" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
+        soEl.innerHTML=stockOuts.length?stockOuts.map(s=>`<div class="setting-item"><span class="si-name">${s.autoStockOut?'⏱️':(reasonIcons[s.reason]||'📤')} ${esc(s.name)}</span><span style="font-size:0.72rem;color:var(--text-muted);">${s.qty} ${s.unit||''}</span><span style="font-size:0.72rem;color:var(--accent-red);">${s.autoStockOut?'Định kỳ':(reasonLabels[s.reason]||s.reason)}</span><span style="font-size:0.68rem;color:var(--text-muted);">${s.time||''}</span><button onclick="deleteStockOut('${dt}','${jsString(itemRef(s))}')" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button></div>`).join(''):'<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.8rem;">Chưa có</div>';
     }
     const soTotal=document.getElementById('stockOutTotal');
     if(soTotal)soTotal.textContent=stockOuts.length?`Tổng xuất: ${stockOuts.length} mục`:'';
+    renderRecurringStockOuts(dt);
     // Render prep waste tracking (tính năng riêng)
     renderPrepTracking(dt);
     renderNotes();
@@ -113,6 +114,7 @@ function selectStockOutIng(id){
     document.getElementById('stockOutQty').focus();
 }
 document.addEventListener('click',e=>{const dd=document.getElementById('stockOutIngDropdown');if(dd&&!e.target.closest('#stockOutIngSearch')&&!e.target.closest('#stockOutIngDropdown'))dd.style.display='none';});
+document.addEventListener('click',e=>{const dd=document.getElementById('recStockOutIngDropdown');if(dd&&!e.target.closest('#recStockOutIngSearch')&&!e.target.closest('#recStockOutIngDropdown'))dd.style.display='none';});
 
 function addStockOut(){
     const ingId=parseInt(document.getElementById('stockOutIngId').value);
@@ -141,6 +143,119 @@ function deleteStockOut(dt,ref){
         const s=findByRef((state.manualUsage||{})[dt]||[],ref);if(s){s._deleted=true;s._lastModified=Date.now();}
         saveState();renderExpenseTab();renderInventory();
     });
+}
+
+let recurringStockOutTimerStarted=false;
+function recurringStockOutItems(){return activeItems(state.recurringStockOuts||[]).sort((a,b)=>(a.time||'').localeCompare(b.time||'')||String(a.name||'').localeCompare(String(b.name||'')));}
+function recurringStockOutKey(dt,s){return `auto-stockout:${dt}:${s.syncId||s.id}`;}
+function isWeekendDate(dt){const d=new Date(dt+'T12:00:00');const day=d.getDay();return day===0||day===6;}
+function recurringStockOutQty(s,dt){return Number(isWeekendDate(dt)?s.weekendQty:s.weekdayQty)||0;}
+function hasRecurringStockOutRun(dt,s){
+    const key=recurringStockOutKey(dt,s);
+    return ((state.manualUsage||{})[dt]||[]).some(x=>x&&x.syncId===key);
+}
+function recurringTimeReached(dt,time){
+    if(dt!==today())return false;
+    const [h,m]=String(time||'15:00').split(':').map(Number);
+    const now=new Date();
+    return now.getHours()*60+now.getMinutes() >= (h||0)*60+(m||0);
+}
+function filterRecStockOutIng(){
+    const q=(document.getElementById('recStockOutIngSearch')?.value||'').toLowerCase();
+    const dd=document.getElementById('recStockOutIngDropdown');
+    if(!dd)return;
+    const list=activeItems(state.ingredients).filter(i=>!q||searchMatch(i.name,q)).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,15);
+    if(!list.length||!q){dd.style.display='none';return;}
+    dd.style.display='block';
+    dd.innerHTML=list.map(i=>`<div style="padding:8px 12px;cursor:pointer;font-size:0.82rem;border-bottom:1px solid rgba(255,255,255,0.04);" onmousedown="selectRecStockOutIng(${i.id})" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='none'">${esc(i.name)} <span style="color:var(--text-muted);font-size:0.72rem;">(${i.unit})</span></div>`).join('');
+}
+function selectRecStockOutIng(id){
+    const ing=activeItems(state.ingredients).find(i=>i.id===id);if(!ing)return;
+    document.getElementById('recStockOutIngSearch').value=ing.name;
+    document.getElementById('recStockOutIngId').value=id;
+    document.getElementById('recStockOutIngDropdown').style.display='none';
+    document.getElementById('recStockOutWeekdayQty').focus();
+}
+function addRecurringStockOut(){
+    const ingId=parseInt(document.getElementById('recStockOutIngId')?.value);
+    const ing=activeItems(state.ingredients).find(i=>i.id===ingId);
+    if(!ing){toast('⚠️ Chọn nguyên liệu cho lịch');return;}
+    const time=(document.getElementById('recStockOutTime')?.value||'15:00').trim();
+    const weekdayQty=parseFloat(document.getElementById('recStockOutWeekdayQty')?.value)||0;
+    const weekendQty=parseFloat(document.getElementById('recStockOutWeekendQty')?.value)||0;
+    if(!weekdayQty&&!weekendQty){toast('⚠️ Nhập số lượng ngày thường hoặc cuối tuần');return;}
+    if(!state.recurringStockOuts)state.recurringStockOuts=[];
+    if(!state.nextRecurringStockOutId)state.nextRecurringStockOutId=1;
+    const existing=activeItems(state.recurringStockOuts).find(s=>s.ingId===ingId&&s.time===time);
+    if(existing){
+        existing.weekdayQty=weekdayQty;existing.weekendQty=weekendQty;existing.enabled=true;existing.name=ing.name;existing.unit=ing.unit;existing._lastModified=Date.now();
+        toast(`✅ Đã cập nhật lịch ${ing.name}`);
+    }else{
+        state.recurringStockOuts.push({id:state.nextRecurringStockOutId++,syncId:makeSyncId('rec-stockout'),_lastModified:Date.now(),enabled:true,ingId,name:ing.name,unit:ing.unit,time,weekdayQty,weekendQty,reason:'used'});
+        toast(`✅ Đã thêm lịch ${time} cho ${ing.name}`);
+    }
+    document.getElementById('recStockOutIngSearch').value='';
+    document.getElementById('recStockOutIngId').value='';
+    saveState();renderRecurringStockOuts(getExpenseDate());
+}
+function toggleRecurringStockOut(ref){
+    const s=findByRef(state.recurringStockOuts||[],ref);if(!s)return;
+    s.enabled=!s.enabled;s._lastModified=Date.now();
+    saveState();renderRecurringStockOuts(getExpenseDate());
+}
+function deleteRecurringStockOut(ref){
+    confirmAction('Xóa lịch xuất kho định kỳ này?',()=>{
+        const s=findByRef(state.recurringStockOuts||[],ref);if(s){s._deleted=true;s._lastModified=Date.now();}
+        saveState();renderRecurringStockOuts(getExpenseDate());
+    });
+}
+function renderRecurringStockOuts(dt){
+    const el=document.getElementById('recStockOutList');if(!el)return;
+    const schedules=recurringStockOutItems();
+    if(!schedules.length){el.innerHTML='<div style="text-align:center;padding:10px;color:var(--text-muted);font-size:0.78rem;">Chưa có lịch định kỳ</div>';return;}
+    el.innerHTML=schedules.map(s=>{
+        const qty=recurringStockOutQty(s,dt),done=hasRecurringStockOutRun(dt,s),enabled=s.enabled!==false;
+        return `<div class="setting-item" style="gap:6px;flex-wrap:wrap;">
+            <span class="si-name" style="min-width:130px;">⏱️ ${esc(s.name)}</span>
+            <span style="font-size:0.72rem;color:var(--text-muted);">${s.time||'15:00'} · T2-T6: ${s.weekdayQty||0}${s.unit||''} · T7-CN: ${s.weekendQty||0}${s.unit||''}</span>
+            <span style="font-size:0.72rem;color:${done?'var(--accent-green)':'var(--text-muted)'};">${done?'Đã chạy hôm nay':`Hôm nay: ${qty}${s.unit||''}`}</span>
+            <button onclick="toggleRecurringStockOut('${jsString(itemRef(s))}')" style="font-size:0.7rem;background:none;border:none;cursor:pointer;color:${enabled?'var(--accent-green)':'var(--text-muted)'};">${enabled?'Bật':'Tắt'}</button>
+            <button onclick="deleteRecurringStockOut('${jsString(itemRef(s))}')" style="font-size:0.7rem;background:none;border:none;cursor:pointer;">🗑️</button>
+        </div>`;
+    }).join('');
+}
+function runRecurringStockOutsForDate(dt,force){
+    if(!state.manualUsage)state.manualUsage={};
+    if(!state.manualUsage[dt])state.manualUsage[dt]=[];
+    let added=0;
+    recurringStockOutItems().forEach(s=>{
+        if(s.enabled===false)return;
+        if(!force&&!recurringTimeReached(dt,s.time))return;
+        if(hasRecurringStockOutRun(dt,s))return;
+        const ing=activeItems(state.ingredients).find(i=>i.id===s.ingId);
+        if(!ing)return;
+        const qty=recurringStockOutQty(s,dt);
+        if(qty<=0)return;
+        if(!state.nextStockOutId)state.nextStockOutId=1;
+        state.manualUsage[dt].push({
+            id:state.nextStockOutId++,syncId:recurringStockOutKey(dt,s),_lastModified:Date.now(),autoStockOut:true,
+            recurringId:s.syncId||s.id,ingId:ing.id,name:ing.name,unit:ing.unit,qty,reason:s.reason||'used',time:s.time||nowTime()
+        });
+        added++;
+    });
+    if(added){
+        saveState();renderExpenseTab();renderInventory();
+        toast(`⏱️ Đã tự xuất kho ${added} mục định kỳ`);
+    }else if(force){
+        toast('ℹ️ Không có lịch nào cần chạy hoặc đã chạy rồi');
+    }
+    return added;
+}
+function checkRecurringStockOuts(){runRecurringStockOutsForDate(today(),false);}
+function startRecurringStockOutTimer(){
+    if(recurringStockOutTimerStarted)return;
+    recurringStockOutTimerStarted=true;
+    setInterval(checkRecurringStockOuts,60000);
 }
 
 // ═══════════════════════════════════════

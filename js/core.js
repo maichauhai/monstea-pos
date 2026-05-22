@@ -30,11 +30,11 @@ let state = {
     recipes:{},
     recipeTemplates:[],
     currentOrder:[], todayInvoices:[], invoiceArchive:{}, grabOrders:[], history:{}, attendance:{}, editLog:[],
-    purchases:{}, expenses:{}, manualUsage:{}, prepTracking:{}, dailyNotes:[],
+    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
-    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextPrepId:1,
+    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'060997',
     weekSchedule:{},
@@ -210,6 +210,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.purchases=mergeByDateBuckets(remote.purchases,local.purchases,'id','purchase');
     merged.expenses=mergeByDateBuckets(remote.expenses,local.expenses,'id','expense');
     merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id','stockout');
+    merged.recurringStockOuts=mergeArrayByKey(remote.recurringStockOuts||[],local.recurringStockOuts||[],s=>s.syncId||s.id,true);
     merged.prepTracking=mergeByDateBuckets(remote.prepTracking,local.prepTracking,'id','prep');
     merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
@@ -224,6 +225,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     bumpNextFromBuckets(merged,'purchases','nextPurchaseId');
     bumpNextFromBuckets(merged,'expenses','nextExpenseId');
     bumpNextFromBuckets(merged,'manualUsage','nextStockOutId');
+    bumpNextFromArray(merged,'recurringStockOuts','nextRecurringStockOutId');
     bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
     delete merged._syncRole;
     return merged;
@@ -270,8 +272,10 @@ if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
 if(!state.manualUsage)state.manualUsage={};
+if(!Array.isArray(state.recurringStockOuts))state.recurringStockOuts=[];
 if(!state.prepTracking)state.prepTracking={};
 if(!state.nextStockOutId)state.nextStockOutId=1;
+if(!state.nextRecurringStockOutId)state.nextRecurringStockOutId=1;
 if(!state.nextPrepId)state.nextPrepId=1;
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
@@ -326,7 +330,7 @@ function logout(){currentRole=null;currentStaffId=null;currentStaffName='';fireb
 document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
 document.getElementById('roleBar').style.display='none';document.getElementById('helpBtn').style.display='none';
 document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
-function init(){loadState();checkNewDay();renderAll();startClock();if(currentRole)applyRole();setTimeout(autoBackup,5000);}
+function init(){loadState();checkNewDay();renderAll();startClock();if(typeof checkRecurringStockOuts==='function')checkRecurringStockOuts();if(typeof startRecurringStockOutTimer==='function')startRecurringStockOutTimer();if(currentRole)applyRole();setTimeout(autoBackup,5000);}
 function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();renderWeekSchedule();}
 
 

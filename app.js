@@ -400,7 +400,7 @@ const tq=state.currentOrder.reduce((s,o)=>s+o.qty,0);
 const ta=state.currentOrder.reduce((s,o)=>{const tp=(o.toppings||[]).reduce((st,tt)=>st+tt.price,0);return s+(o.price+tp)*o.qty;},0);
 c.innerHTML=state.currentOrder.map((o,idx)=>{
     const tp=o.toppings||[];const tpTotal=tp.reduce((s,tt)=>s+tt.price,0);const lineTotal=(o.price+tpTotal)*o.qty;
-    const tpHtml=tp.length?`<div style="padding-left:12px;font-size:0.72rem;color:var(--accent-warm);">${tp.map((tt,ti)=>`+ ${esc(tt.name)} <span style="color:var(--text-muted);cursor:pointer;font-size:0.65rem;" onclick="event.stopPropagation();removeTopping(${idx},${ti})">✕</span>`).join('<br>')}</div>`:'';
+    const tpHtml=tp.length?`<div class="oi-toppings">${tp.map((tt,ti)=>`<div class="oi-topping-line">+ ${esc(tt.name)} <span class="oi-topping-remove" onclick="event.stopPropagation();removeTopping(${idx},${ti})">✕</span></div>`).join('')}</div>`:'';
     return `<div class="order-item" style="flex-wrap:wrap;"><div class="oi-name">${esc(o.name)}${tp.length?` <span style="color:var(--accent-warm);font-size:0.72rem;">(+${tp.length})</span>`:''}</div><div class="oi-qty"><button onclick="changeQty(${idx},-1)">−</button><span>${o.qty}</span><button onclick="changeQty(${idx},1)">+</button></div><div class="oi-price">${fmtP(lineTotal)}</div><span class="oi-del" onclick="removeFromOrder(${idx})">✕</span>${tpHtml}</div>`;
 }).join('');
 t.textContent=fmtP(ta);n.textContent=tq+' món';calcChange();updateMobileBar();}

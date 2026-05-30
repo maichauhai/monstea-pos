@@ -103,6 +103,8 @@
     .order-item .oi-price { font-family:var(--font-display); font-weight:600; font-size:0.85rem; color:var(--accent-warm); min-width:70px; text-align:right; }
     .order-item .oi-del { cursor:pointer; color:var(--accent-red); opacity:0.5; font-size:0.8rem; }
     .order-item .oi-del:hover { opacity:1; }
+    .order-item .oi-toppings { flex:0 0 100%; padding-left:12px; font-size:0.72rem; color:var(--accent-warm); line-height:1.45; }
+    .order-item .oi-topping-remove { color:var(--text-muted); cursor:pointer; font-size:0.65rem; }
     .order-footer { padding:16px 20px; border-top:1px solid var(--border-subtle); }
     .order-total { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
     .order-total .label { font-size:0.85rem; color:var(--text-secondary); }

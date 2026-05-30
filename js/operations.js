@@ -8,7 +8,7 @@ function setAttView(mode,val){
 }
 function getAttDates(mode){
     const td=new Date();
-    if(mode==='week'){const dates=[];for(let i=6;i>=0;i--){const d=new Date(td);d.setDate(d.getDate()-i);dates.push(d.toISOString().slice(0,10));}return dates;}
+    if(mode==='week'){const dates=[];for(let i=6;i>=0;i--){const d=new Date(td);d.setDate(d.getDate()-i);dates.push(dateKeyLocal(d));}return dates;}
     if(mode==='month'||mode==='custom'){
         let y=td.getFullYear(),m=td.getMonth();
         const pick=document.getElementById('attMonthPick')?.value;
@@ -84,32 +84,27 @@ function renderMonthlyReport(){
     const now=new Date(),y=now.getFullYear(),m=now.getMonth();
     const daysInMonth=new Date(y,m+1,0).getDate();
     const firstDay=new Date(y,m,1).getDay(); // 0=Sun
-    const OT_START=22*60,OT_MULT=1.3;
     // Collect daily data
     const dailyData=[];let totalRev=0,totalNL=0,totalNV=0,totalOther=0,totalInv=0;
     const monthItems={};
     // Previous month for comparison
     const pmDays=new Date(y,m,0).getDate();let pmRev=0,pmProfit=0;
     for(let d=1;d<=pmDays;d++){
-        const dt=`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dt=dateKeyLocal(new Date(y,m-1,d));
         const h=state.history[dt];if(h){pmRev+=h.totalRevenue||0;}
     }
     for(let d=1;d<=daysInMonth;d++){
-        const dt=`${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const dt=monthDateKey(y,m,d);
         const h=state.history[dt];
         let rev=0,inv=0,nlc=0,nvc=0,oexp=0;
         if(h){
             rev=h.totalRevenue||0;inv=h.invoices||0;
-            // NL cost from recipes
-            Object.entries(h.itemsSold||{}).forEach(([name,x])=>{
-                if(!monthItems[name])monthItems[name]={qty:0,revenue:0};
-                monthItems[name].qty+=x.qty;monthItems[name].revenue+=x.revenue;
-                const mi=activeItems(state.menu).find(m2=>m2.name===name);
-                if(mi){const recipe=state.recipes[mi.id]||[];recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);if(ing)nlc+=ing.unitPrice*r.qty*x.qty;});}
+            nlc=calcIngredientCostForDates([dt]);
+            nvc=calcLaborCost([dt]);
+            eachSoldEntry(h,entry=>{
+                if(!monthItems[entry.name])monthItems[entry.name]={qty:0,revenue:0};
+                monthItems[entry.name].qty+=entry.qty;monthItems[entry.name].revenue+=entry.revenue;
             });
-            // Labor cost
-            const recs=(state.attendance||{})[dt]||[];
-            recs.forEach(r=>{if(!r.hours)return;const rRate=r.wageRate||25000;const[iH,iM]=(r.checkIn||'0:0').split(':').map(Number);const outMin=(parseInt((r.checkOut||'0:0').split(':')[0]))*60+parseInt((r.checkOut||'0:0').split(':')[1]);const inMin=iH*60+iM;if(outMin<=OT_START)nvc+=r.hours*rRate;else if(inMin>=OT_START)nvc+=r.hours*rRate*OT_MULT;else{nvc+=((OT_START-inMin)/60)*rRate+((outMin-OT_START)/60)*rRate*OT_MULT;}});
         }
         // Other expenses
         activeItems((state.expenses||{})[dt]||[]).forEach(e=>oexp+=e.amount);

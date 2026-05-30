@@ -3,36 +3,49 @@
 // ═══════════════════════════════════════
 function setDashFilter(f){dashFilter=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));if(f!=='custom')document.querySelector(`.filter-btn[onclick*="${f}"]`)?.classList.add('active');renderDashboard();}
 
+function dateKeyLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function monthDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+function eachSoldEntry(dayData,cb){
+    if(!dayData)return;
+    const byId=dayData.itemsSoldById&&Object.keys(dayData.itemsSoldById).length?dayData.itemsSoldById:null;
+    if(byId){
+        Object.entries(byId).forEach(([menuId,data])=>{
+            const mi=activeItems(state.menu).find(m=>String(m.id)===String(menuId));
+            cb({menuId,name:data.name||mi?.name||String(menuId),qty:Number(data.qty)||0,revenue:Number(data.revenue)||0});
+        });
+        return;
+    }
+    Object.entries(dayData.itemsSold||{}).forEach(([name,data])=>{
+        const mi=activeItems(state.menu).find(m=>m.name===name);
+        cb({menuId:mi?.id,name,qty:Number(data.qty)||0,revenue:Number(data.revenue)||0});
+    });
+}
+function calcIngredientCostForDates(dates){
+    let total=0;
+    dates.forEach(dt=>{
+        eachSoldEntry(state.history[dt],entry=>{
+            const recipe=entry.menuId!==undefined?(state.recipes[entry.menuId]||[]):[];
+            recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
+            if(!ing)return;total+=r.qty*entry.qty*ing.unitPrice;});
+        });
+    });
+    return Math.round(total);
+}
 function getDashData(){const td=today();let dates=[];
 if(dashFilter==='today')dates=[td];
-else if(dashFilter==='week'){for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dates.push(d.toISOString().slice(0,10));}}
-else if(dashFilter==='month'){const now=new Date(),y=now.getFullYear(),m=now.getMonth();for(let d=1;d<=now.getDate();d++)dates.push(new Date(y,m,d).toISOString().slice(0,10));}
+else if(dashFilter==='week'){for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);dates.push(dateKeyLocal(d));}}
+else if(dashFilter==='month'){const now=new Date(),y=now.getFullYear(),m=now.getMonth();for(let d=1;d<=now.getDate();d++)dates.push(monthDateKey(y,m,d));}
 else{const p=document.getElementById('dashDatePick').value;dates=p?[p]:[td];}
 if(dates.includes(td))archiveDay(td,state.todayInvoices);
 let tr=0,ti=0,ct=0,tt=0;const is={},isById={},hr={};
 dates.forEach(d=>{const dd=state.history[d];if(!dd)return;tr+=dd.totalRevenue;ti+=dd.invoices;ct+=dd.cashTotal||0;tt+=dd.transferTotal||0;
-if(dd.itemsSold)Object.entries(dd.itemsSold).forEach(([n,x])=>{if(!is[n])is[n]={qty:0,revenue:0};is[n].qty+=x.qty;is[n].revenue+=x.revenue;});
-if(dd.itemsSoldById)Object.entries(dd.itemsSoldById).forEach(([id,x])=>{if(!isById[id])isById[id]={name:x.name,qty:0,revenue:0};isById[id].qty+=x.qty;isById[id].revenue+=x.revenue;});
+eachSoldEntry(dd,entry=>{if(!is[entry.name])is[entry.name]={qty:0,revenue:0};is[entry.name].qty+=entry.qty;is[entry.name].revenue+=entry.revenue;
+if(entry.menuId!==undefined){if(!isById[entry.menuId])isById[entry.menuId]={name:entry.name,qty:0,revenue:0};isById[entry.menuId].qty+=entry.qty;isById[entry.menuId].revenue+=entry.revenue;}});
 if(dd.hourlyRevenue)Object.entries(dd.hourlyRevenue).forEach(([h,r])=>{hr[h]=(hr[h]||0)+r;});});
 return{dates,totalRevenue:tr,totalInvoices:ti,cashTotal:ct,transferTotal:tt,itemsSold:is,itemsSoldById:isById,hourlyRevenue:hr};}
 
 function calcIngredientCost(dashData){
-    let total=0;
-    if(dashData.itemsSoldById&&Object.keys(dashData.itemsSoldById).length){
-        Object.entries(dashData.itemsSoldById).forEach(([menuId,data])=>{
-            const recipe=state.recipes[menuId]||[];
-            recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
-            if(!ing)return;total+=r.qty*data.qty*ing.unitPrice;});
-        });
-        return Math.round(total);
-    }
-    Object.entries(dashData.itemsSold).forEach(([name,data])=>{
-        const mi=activeItems(state.menu).find(m=>m.name===name);if(!mi)return;
-        const recipe=state.recipes[mi.id]||[];
-        recipe.forEach(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
-        if(!ing)return;total+=r.qty*data.qty*ing.unitPrice;});
-    });
-    return Math.round(total);
+    return calcIngredientCostForDates(dashData.dates||[]);
 }
 function calcLaborCost(dates){
     const OT_MULT=1.3,OT_HOUR=22;
@@ -84,7 +97,7 @@ function renderDashboard(){
     document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';}
 
 function renderRevenueChart(){const c=document.getElementById('revenueChart'),days=[];
-for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.toISOString().slice(0,10),dn=['CN','T2','T3','T4','T5','T6','T7'];
+for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=dateKeyLocal(d),dn=['CN','T2','T3','T4','T5','T6','T7'];
 days.push({k,label:i===0?'Nay':dn[d.getDay()],rev:state.history[k]?.totalRevenue||0});}
 const mx=Math.max(...days.map(d=>d.rev),1);
 c.innerHTML=days.map(d=>`<div class="bar-col"><div class="bar-value">${d.rev?fmtS(d.rev):''}</div><div class="bar-fill" style="height:${Math.max(4,d.rev/mx*160)}px;${d.label==='Nay'?'background:var(--accent)':''}"></div><div class="bar-label">${d.label}</div></div>`).join('');}

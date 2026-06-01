@@ -65,9 +65,13 @@
 
     /* STAT CARDS */
     .stat-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:12px; margin-bottom:20px; }
-    .stat-card { padding:16px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); text-align:center; }
-    .stat-card .stat-label { font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px; }
-    .stat-card .stat-value { font-family:var(--font-display); font-size:1.6rem; font-weight:800; }
+    .stat-card { min-width:0; overflow:hidden; padding:16px; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-md); text-align:center; }
+    .stat-card .stat-label { font-size:0.72rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; line-height:1.25; margin-bottom:6px; }
+    .stat-card .stat-value { max-width:100%; overflow:hidden; white-space:nowrap; font-family:var(--font-display); font-size:clamp(1.05rem,1.45vw,1.45rem); line-height:1.05; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:0; }
+    .cashflow-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px; margin-bottom:12px; }
+    .cashflow-stat-grid .stat-card { padding:14px 10px; }
+    .cashflow-stat-grid .stat-value { font-size:clamp(1rem,1.25vw,1.32rem); }
+    .money-table-value { display:inline-block; max-width:104px; overflow:hidden; white-space:nowrap; vertical-align:bottom; font-size:0.72rem; font-variant-numeric:tabular-nums; letter-spacing:0; }
 
     /* POS */
     .pos-layout { display:grid; grid-template-columns:1fr 380px; gap:16px; min-height:70vh; }
@@ -310,6 +314,12 @@
         .menu-item-btn .mi-name { font-size:0.68rem; }
         .order-panel { margin-bottom:90px; position:relative; z-index:1; }
         .mobile-order-bar { display:flex; flex-wrap:wrap; bottom:60px; }
+        .stat-card { padding:12px 8px; }
+        .stat-card .stat-value { font-size:1rem; }
+        .cashflow-stat-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+        .cashflow-stat-grid .stat-card { padding:12px 8px; }
+        .cashflow-stat-grid .stat-value { font-size:0.95rem; }
+        .money-table-value { max-width:82px; font-size:0.68rem; }
         .checklist-grid { grid-template-columns:1fr; }
         .chart-grid { grid-template-columns:1fr; }
         .staff-grid { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }

@@ -217,7 +217,7 @@ function statCard(label, value, color, extra='') {
     return `<div class="stat-card"${extra}><div class="stat-label">${label}</div><div class="stat-value" style="color:${color}">${value}</div></div>`;
 }
 function smallMoneyCell(n,color){
-    return `<span style="font-weight:700;color:${color||'var(--text-primary)'};">${fmtP(n)}</span>`;
+    return `<span class="money-table-value" style="font-weight:700;color:${color||'var(--text-primary)'};">${fmtP(n)}</span>`;
 }
 function renderDashboard(){
     const f=getFinancialRangeData(),d=f.sales,avg=d.totalInvoices?Math.round(d.totalRevenue/d.totalInvoices):0;
@@ -279,9 +279,9 @@ function renderCashFlowSection(f){
                 <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Grab tính theo tiền thực nhận.</div>
             </div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:12px;">
+        <div class="cashflow-stat-grid">
             ${statCard('Tiền vào thực nhận',fmtP(f.sales.realRevenue),'var(--accent-green)')}
-            ${statCard('Đã chi thực tế',fmtP(f.cashOutPaid),'var(--accent-red)')}
+            ${statCard('Đã chi NL+khác+lương',fmtP(f.cashOutPaid),'var(--accent-red)')}
             ${statCard('Dòng tiền',fmtP(f.cashNet),f.cashNet>=0?'var(--accent-green)':'var(--accent-red)')}
             ${statCard('Lãi ròng',fmtP(f.netProfit),f.netProfit>=0?'var(--accent-green)':'var(--accent-red)')}
             ${statCard('Phải trả lương',fmtP(f.laborCost),'var(--accent-blue)')}

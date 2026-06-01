@@ -37,7 +37,7 @@ let state = {
     nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'060997',
-    weekSchedule:{},
+    weekSchedule:{}, weekScheduleUpdatedAt:{},
     menuGuides:{},
     guideImages:{}
 };
@@ -223,6 +223,27 @@ function mergeHistory(remoteHistory,localHistory){
     });
     return out;
 }
+function mergeStringList(remoteArr,localArr){
+    return [...new Set([...(remoteArr||[]),...(localArr||[])].filter(Boolean))];
+}
+function mergeWeekSchedule(remoteSchedule,localSchedule,remoteStamps,localStamps){
+    const out=cloneData(remoteSchedule);
+    const local=cloneData(localSchedule);
+    const stamps={...(remoteStamps||{})};
+    Object.keys(local||{}).forEach(wk=>{
+        if(!out[wk])out[wk]=local[wk];
+        Object.keys(local[wk]||{}).forEach(staffId=>{
+            const key=`${wk}:${staffId}`;
+            const remoteStamp=Number((remoteStamps||{})[key])||0;
+            const localStamp=Number((localStamps||{})[key])||0;
+            if(out[wk][staffId]===undefined||localStamp>remoteStamp){
+                out[wk][staffId]=local[wk][staffId];
+                stamps[key]=localStamp;
+            }
+        });
+    });
+    return {schedule:out,stamps};
+}
 function bumpNextFromArray(obj,field,nextField){
     const ids=(obj[field]||[]).map(x=>Number(x.id)).filter(Number.isFinite);
     if(ids.length)obj[nextField]=Math.max(obj[nextField]||1,...ids)+1;
@@ -248,6 +269,13 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
+    merged.categories=mergeStringList(remote.categories,local.categories);
+    merged.openChecklist=mergeArrayByKey(remote.openChecklist||[],local.openChecklist||[],c=>c.id,true);
+    merged.closeChecklist=mergeArrayByKey(remote.closeChecklist||[],local.closeChecklist||[],c=>c.id,true);
+    merged.dailyNotes=mergeArrayByKey(remote.dailyNotes||[],local.dailyNotes||[],n=>n.syncId||n.id,true);
+    const scheduleMerge=mergeWeekSchedule(remote.weekSchedule,local.weekSchedule,remote.weekScheduleUpdatedAt,local.weekScheduleUpdatedAt);
+    merged.weekSchedule=scheduleMerge.schedule;
+    merged.weekScheduleUpdatedAt=scheduleMerge.stamps;
     merged.history=mergeHistory(remote.history,local.history);
     merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
@@ -271,7 +299,7 @@ function stateForFirebase(){
     delete s._editingOldSummary;
     if(currentRole!=='owner'){
         delete s.menu;delete s.categories;delete s.staff;delete s.recipes;delete s.recipeTemplates;
-        delete s.weekSchedule;delete s.menuGuides;delete s.guideImages;
+        delete s.menuGuides;delete s.guideImages;
         delete s.password;delete s.ownerPassword;delete s.nextMenuId;delete s.nextStaffId;delete s.nextTplId;
     }
     return s;
@@ -301,6 +329,7 @@ if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
 if(!state.weekSchedule)state.weekSchedule={};
+if(!state.weekScheduleUpdatedAt)state.weekScheduleUpdatedAt={};
 if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};

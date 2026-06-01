@@ -412,7 +412,7 @@ function addNote(){
     if(!text){toast('⚠️ Nhập ghi chú');return;}
     if(!state.dailyNotes)state.dailyNotes=[];
     if(!state.nextNoteId)state.nextNoteId=1;
-    state.dailyNotes.push({id:state.nextNoteId++,text,date:today(),time:nowTime(),done:false,doneDate:null});
+    state.dailyNotes.push({id:state.nextNoteId++,syncId:makeSyncId('note'),_lastModified:Date.now(),text,date:today(),time:nowTime(),done:false,doneDate:null});
     document.getElementById('noteText').value='';
     saveState();renderNotes();
 }
@@ -421,6 +421,7 @@ function toggleNote(id){
     const n=state.dailyNotes.find(x=>x.id===id);if(!n)return;
     if(!n.done){n.done=true;n.doneDate=today();}
     else{n.done=false;n.doneDate=null;}
+    n._lastModified=Date.now();
     saveState();renderNotes();
 }
 function renderNotes(){

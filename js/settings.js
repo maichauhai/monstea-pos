@@ -8,7 +8,7 @@ function renderSettings(){
 <div class="si-actions"><button onclick="editMenuItem(${m.id})" title="Sửa món">✏️</button><button onclick="toggleMenuItem(${m.id})" title="${m.active?'Ẩn':'Hiện'}">${m.active?'👁️':'🚫'}</button><button onclick="deleteMenuItem(${m.id})" title="Xóa">🗑️</button></div></div>`).join('');
     document.getElementById('newMenuCat').innerHTML=state.categories.map(c=>`<option value="${c}">${c}</option>`).join('');
     document.getElementById('staffList').innerHTML=activeItems(state.staff).map(s=>`<div class="setting-item"><span class="si-name">${esc(s.name)}</span><span style="font-size:0.7rem;color:var(--accent);margin-left:auto;margin-right:8px;">💰${fmtP(s.wageRate||25000)}/h</span><span style="font-size:0.65rem;color:var(--text-muted);margin-right:8px;">🔑****</span><div class="si-actions"><button onclick="editStaff(${s.id})" title="Sửa">✏️</button><button onclick="deleteStaff(${s.id})">🗑️</button></div></div>`).join('');
-    ['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist;
+    ['open','close'].forEach(t=>{const l=activeItems(t==='open'?state.openChecklist:state.closeChecklist);
     document.getElementById(t+'ClSettings').innerHTML=l.map(c=>`<div class="setting-item"><span class="si-name">${esc(c.text)}</span><div class="si-actions"><button onclick="deleteChecklistItem('${t}',${c.id})">🗑️</button></div></div>`).join('');});
 }
 
@@ -57,6 +57,6 @@ if(dup){toast(`⚠️ Pass "${p}" đã dùng cho ${dup.name}`);return;}
 if(APP_PASSWORDS[p]){toast('⚠️ Pass trùng với chủ quán');return;}
 s.name=n;s.password=p;s.wageRate=w;s._lastModified=Date.now();saveState();renderSettings();renderAttendance();closeModal();toast(`✅ Đã cập nhật ${n}`);}
 function deleteStaff(id){const s=state.staff.find(x=>x.id===id);if(s){s._deleted=true;s._lastModified=Date.now();}saveState();renderSettings();renderAttendance();toast('🗑️ Đã xóa');}
-function addChecklistItem(t){const iid=t==='open'?'newOpenCl':'newCloseCl';const txt=document.getElementById(iid).value.trim();if(!txt)return;(t==='open'?state.openChecklist:state.closeChecklist).push({id:state.nextClId++,text:txt,checked:false});document.getElementById(iid).value='';saveState();renderSettings();renderChecklist();toast('✅ Đã thêm');}
-function deleteChecklistItem(t,id){if(t==='open')state.openChecklist=state.openChecklist.filter(c=>c.id!==id);else state.closeChecklist=state.closeChecklist.filter(c=>c.id!==id);saveState();renderSettings();renderChecklist();}
+function addChecklistItem(t){const iid=t==='open'?'newOpenCl':'newCloseCl';const txt=document.getElementById(iid).value.trim();if(!txt)return;(t==='open'?state.openChecklist:state.closeChecklist).push({id:state.nextClId++,text:txt,checked:false,_lastModified:Date.now()});document.getElementById(iid).value='';saveState();renderSettings();renderChecklist();toast('✅ Đã thêm');}
+function deleteChecklistItem(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const item=l.find(c=>c.id===id);if(item){item._deleted=true;item._lastModified=Date.now();}saveState();renderSettings();renderChecklist();}
 

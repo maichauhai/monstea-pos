@@ -185,6 +185,8 @@ grid.innerHTML=html;}
 function toggleSchedule(staffId,dayIdx,wk){if(!state.weekSchedule[wk])state.weekSchedule[wk]={};
 if(!state.weekSchedule[wk][staffId])state.weekSchedule[wk][staffId]=[false,false,false,false,false,false,false];
 state.weekSchedule[wk][staffId][dayIdx]=!state.weekSchedule[wk][staffId][dayIdx];
+if(!state.weekScheduleUpdatedAt)state.weekScheduleUpdatedAt={};
+state.weekScheduleUpdatedAt[`${wk}:${staffId}`]=Date.now();
 saveState();renderWeekSchedule();}
 
 // ═══════════════════════════════════════

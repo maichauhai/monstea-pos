@@ -423,8 +423,8 @@ function saveEditAttendance(idx){
 // ═══════════════════════════════════════
 // CHECKLIST
 // ═══════════════════════════════════════
-function toggleChecklist(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const i=l.find(c=>c.id===id);if(i)i.checked=!i.checked;saveState();renderChecklist();}
-function renderChecklist(){['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist,c=document.getElementById(t+'Checklist'),p=document.getElementById(t+'Progress');
+function toggleChecklist(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const i=l.find(c=>c.id===id);if(i){i.checked=!i.checked;i._lastModified=Date.now();}saveState();renderChecklist();}
+function renderChecklist(){['open','close'].forEach(t=>{const l=activeItems(t==='open'?state.openChecklist:state.closeChecklist),c=document.getElementById(t+'Checklist'),p=document.getElementById(t+'Progress');
 const tot=l.length,done=l.filter(c=>c.checked).length;p.style.width=tot?(done/tot*100)+'%':'0%';
 c.innerHTML=l.map(c=>`<div class="cl-item ${c.checked?'checked':''}" onclick="toggleChecklist('${t}',${c.id})"><input type="checkbox" ${c.checked?'checked':''} onclick="event.stopPropagation();toggleChecklist('${t}',${c.id})"><span class="cl-text">${esc(c.text)}</span></div>`).join('')||'<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có</div>';});}
 

@@ -38,7 +38,7 @@ function renderAttHistory(){
         const label=dt===today()?'Hôm nay':dt.slice(5);
         html+=`<td style="padding:4px;color:var(--text-muted);white-space:nowrap;">${label}</td>`;
         state.staff.forEach(s=>{
-            const r=recs.find(x=>x.staffId===s.id);
+            const r=recs.find(x=>String(x.staffId)===String(s.id));
             if(r&&r.hours){
                 const [iH,iM]=(r.checkIn||'0:0').split(':').map(Number);
                 const [oH,oM]=(r.checkOut||'0:0').split(':').map(Number);
@@ -378,16 +378,16 @@ function exportIngredientsUsed(){
 // ATTENDANCE
 // ═══════════════════════════════════════
 function startClock(){function u(){const n=new Date(),e=document.getElementById('liveClock'),d=document.getElementById('liveDate');if(e)e.textContent=n.toLocaleTimeString('vi-VN');if(d)d.textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}u();setInterval(u,1000);}
-function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>x.staffId===id);if(!r)return 'out';return r.checkOut?'done':'in';}
-function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>x.staffId===id)||null;}
-function toggleAttendance(id){if(currentRole==='staff'&&currentStaffId!==id){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
-const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=activeItems(state.staff).find(x=>x.id===id);
+function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>String(x.staffId)===String(id));if(!r)return 'out';return r.checkOut?'done':'in';}
+function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>String(x.staffId)===String(id))||null;}
+function toggleAttendance(id){if(currentRole==='staff'&&String(currentStaffId)!==String(id)){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
+const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=activeItems(state.staff).find(x=>String(x.id)===String(id));
 if(!s){toast('⚠️ Không tìm thấy nhân viên');return;}
 if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000,_lastModified:Date.now()});toast(`✅ ${s.name} — Vào ca`);}
-else if(st==='in'){const r=state.attendance[td].find(x=>x.staffId===id);r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;r._lastModified=Date.now();toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
+else if(st==='in'){const r=state.attendance[td].find(x=>String(x.staffId)===String(id));r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;r._lastModified=Date.now();toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
 else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
 function renderAttendance(){document.getElementById('staffGrid').innerHTML=activeItems(state.staff).map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
-const isLocked=currentRole==='staff'&&currentStaffId!==s.id;
+const isLocked=currentRole==='staff'&&String(currentStaffId)!==String(s.id);
 return `<div class="staff-card status-${st}${isLocked?' locked':''}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
 const td=today(),recs=state.attendance[td]||[];
 const isOwner=currentRole==='owner';

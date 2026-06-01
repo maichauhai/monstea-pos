@@ -170,8 +170,8 @@ dayNames.forEach((d,i)=>{const isToday=dates[i].toISOString().slice(0,10)===toda
 html+=`<th style="padding:4px;text-align:center;${isToday?'color:var(--accent);font-weight:800;':''}">${d}<br><span style="font-size:0.6rem;font-weight:400;color:var(--text-muted)">${dates[i].getDate()}</span></th>`;});
 html+=`</tr></thead><tbody>`;
 activeItems(state.staff).forEach(s=>{if(!sched[s.id])sched[s.id]=[false,false,false,false,false,false,false];
-const canEdit=!isPast&&(currentRole==='owner'||currentStaffId===s.id);
-const isMyRow=currentStaffId===s.id;
+const canEdit=!isPast&&(currentRole==='owner'||String(currentStaffId)===String(s.id));
+const isMyRow=String(currentStaffId)===String(s.id);
 html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${isMyRow?'background:rgba(96,165,250,0.06);':''}">
 <td style="padding:6px 4px;font-weight:600;white-space:nowrap;">${esc(s.name)}</td>`;
 for(let i=0;i<7;i++){const checked=sched[s.id][i];

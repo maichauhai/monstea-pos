@@ -154,16 +154,75 @@ function preferNewerItem(old,item,resolver){
     if(isDeleted(item)&&!isDeleted(old))return item;
     return old;
 }
+function mergeKeyValue(key){return key===undefined||key===null?'':String(key);}
 function mergeArrayByKey(remoteArr,localArr,keyFn,preferNewer,resolver){
     const map=new Map();
-    (remoteArr||[]).forEach(item=>{const key=item&&keyFn(item);if(key)map.set(key,item);});
+    (remoteArr||[]).forEach(item=>{const key=item&&mergeKeyValue(keyFn(item));if(key)map.set(key,item);});
     (localArr||[]).forEach(item=>{
         if(!item)return;
-        const key=keyFn(item),old=map.get(key);
+        const key=mergeKeyValue(keyFn(item)),old=map.get(key);
+        if(!key)return;
         if(!old)map.set(key,item);
         else if(preferNewer)map.set(key,preferNewerItem(old,item,resolver));
     });
     return [...map.values()];
+}
+function normalizeStaffId(id){
+    const raw=String(id??'').trim();
+    if(!raw)return id;
+    const n=Number(raw);
+    return Number.isInteger(n)?n:id;
+}
+function staffPersonKey(staff){
+    const name=removeDiacritics(String(staff&&staff.name||'').toLowerCase()).trim();
+    const pwd=String(staff&&staff.password||'').trim();
+    return name&&pwd?`person:${pwd}:${name}`:'';
+}
+function staffMergeKeys(staff){
+    const keys=[];
+    const id=staff&&staff.id;
+    if(id!==undefined&&id!==null&&String(id).trim()!=='')keys.push(`id:${mergeKeyValue(normalizeStaffId(id))}`);
+    const personKey=staffPersonKey(staff);
+    if(personKey)keys.push(personKey);
+    return keys;
+}
+function normalizeStaffRecords(target=state){
+    if(!target||!Array.isArray(target.staff))return;
+    const out=[],keyToIndex=new Map(),aliases=new Map();
+    function remember(staff,idx){staffMergeKeys(staff).forEach(k=>keyToIndex.set(k,idx));}
+    target.staff.forEach(raw=>{
+        if(!raw)return;
+        const item={...raw};
+        const originalId=item.id;
+        item.id=normalizeStaffId(item.id);
+        if(String(originalId)!==String(item.id))aliases.set(String(originalId),item.id);
+        const keys=staffMergeKeys(item);
+        const found=keys.map(k=>keyToIndex.get(k)).find(idx=>idx!==undefined);
+        if(found===undefined){
+            out.push(item);
+            remember(item,out.length-1);
+            return;
+        }
+        const existing=out[found],canonicalId=normalizeStaffId(existing.id);
+        if(item.id!==undefined&&item.id!==null)aliases.set(String(item.id),canonicalId);
+        const merged=preferNewerItem(existing,item);
+        merged.id=canonicalId;
+        out[found]=merged;
+        remember(merged,found);
+    });
+    target.staff=out;
+    if(aliases.size){
+        Object.keys(target.attendance||{}).forEach(d=>{
+            (target.attendance[d]||[]).forEach(r=>{
+                const alias=aliases.get(String(r&&r.staffId));
+                if(alias!==undefined)r.staffId=alias;
+            });
+        });
+        (target.salaryPayments||[]).forEach(p=>{
+            const alias=aliases.get(String(p&&p.staffId));
+            if(alias!==undefined)p.staffId=alias;
+        });
+    }
 }
 function attendanceScore(r){return (r&&r.checkIn?1:0)+(r&&r.checkOut?3:0)+(Number(r&&r.hours)>0?1:0);}
 function attendanceComplete(r){return !!(r&&r.checkIn&&r.checkOut&&Number(r.hours)>0);}
@@ -179,12 +238,12 @@ function mergeAttendanceRecord(old,item){
     if(newStamp<oldStamp)return oldScore<newScore?item:old;
     return newScore>oldScore?item:old;
 }
-function normalizeAttendanceRecords(){
-    if(!state.attendance||!Array.isArray(state.staff))return;
-    const staffById=new Map((state.staff||[]).map(s=>[Number(s.id),s]));
-    const staffByName=new Map(activeItems(state.staff).map(s=>[removeDiacritics(String(s.name||'').toLowerCase()).trim(),s]));
-    Object.keys(state.attendance||{}).forEach(d=>{
-        const records=Array.isArray(state.attendance[d])?state.attendance[d]:[];
+function normalizeAttendanceRecords(target=state){
+    if(!target.attendance||!Array.isArray(target.staff))return;
+    const staffById=new Map((target.staff||[]).map(s=>[Number(s.id),s]));
+    const staffByName=new Map(activeItems(target.staff).map(s=>[removeDiacritics(String(s.name||'').toLowerCase()).trim(),s]));
+    Object.keys(target.attendance||{}).forEach(d=>{
+        const records=Array.isArray(target.attendance[d])?target.attendance[d]:[];
         const normalized=records.map(r=>{
             if(!r)return r;
             const current=staffById.get(Number(r.staffId));
@@ -201,7 +260,7 @@ function normalizeAttendanceRecords(){
             }
             return r;
         }).filter(Boolean);
-        state.attendance[d]=mergeArrayByKey([],normalized,r=>r.staffId,true,mergeAttendanceRecord);
+        target.attendance[d]=mergeArrayByKey([],normalized,r=>r.staffId,true,mergeAttendanceRecord);
     });
 }
 function mergeByDateBuckets(remoteData,localData,keyFnOrField,prefix,resolver){
@@ -273,6 +332,8 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.salaryPayments=mergeArrayByKey(remote.salaryPayments||[],local.salaryPayments||[],p=>p.syncId||p.id,true);
     merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
+    normalizeStaffRecords(merged);
+    normalizeAttendanceRecords(merged);
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
     merged.categories=mergeStringList(remote.categories,local.categories);
@@ -325,6 +386,7 @@ function archiveRawInvoices(list,excludeDate){
 }
 function persistMergedState(localOrder){
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
+  normalizeStaffRecords();
   normalizeAttendanceRecords();
   const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   state.nextInvoiceId=nextTodayInvoiceId();
@@ -340,6 +402,7 @@ if(!Array.isArray(state.salaryPayments))state.salaryPayments=[];
 if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
+normalizeStaffRecords();
 if(!state.weekSchedule)state.weekSchedule={};
 if(!state.weekScheduleUpdatedAt)state.weekScheduleUpdatedAt={};
 if(!state.ownerPassword)state.ownerPassword='060997';
@@ -359,6 +422,7 @@ if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.me
 if(state.staff.length>0)state.nextStaffId=Math.max(state.nextStaffId||0,...state.staff.map(s=>s.id))+1;
 if(state.ingredients.length>0)state.nextIngId=Math.max(state.nextIngId||0,...state.ingredients.map(i=>i.id))+1;
 if(state.salaryPayments.length>0)state.nextSalaryPaymentId=Math.max(state.nextSalaryPaymentId||0,...state.salaryPayments.map(p=>p.id||0))+1;
+normalizeStaffRecords();
 normalizeAttendanceRecords();
 // Fix: auto-deduplicate menu items with same ID
 const seenIds={};let hadDups=false;

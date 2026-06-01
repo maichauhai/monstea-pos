@@ -131,15 +131,22 @@
 <!-- TAB DASHBOARD -->
 <div class="tab-content" id="tab-dashboard">
     <div class="date-filter-bar">
-        <button class="filter-btn active" onclick="setDashFilter('today')">Hôm nay</button>
-        <button class="filter-btn" onclick="setDashFilter('week')">7 ngày</button>
-        <button class="filter-btn" onclick="setDashFilter('month')">Tháng này</button>
+        <button class="filter-btn active" data-filter="today" onclick="setDashFilter('today')">Hôm nay</button>
+        <button class="filter-btn" data-filter="week" onclick="setDashFilter('week')">7 ngày</button>
+        <button class="filter-btn" data-filter="month" onclick="setDashFilter('month')">Tháng này</button>
+        <button class="filter-btn" data-filter="last30" onclick="setDashFilter('last30')">1 tháng</button>
+        <button class="filter-btn" data-filter="last90" onclick="setDashFilter('last90')">3 tháng</button>
+        <button class="filter-btn" data-filter="all" onclick="setDashFilter('all')">Tất cả</button>
         <input type="date" id="dashDatePick" style="width:160px;" onchange="setDashFilter('custom')">
+        <input type="date" id="dashRangeStart" style="width:150px;" onchange="setDashFilter('range')">
+        <span style="font-size:0.75rem;color:var(--text-muted);align-self:center;">→</span>
+        <input type="date" id="dashRangeEnd" style="width:150px;" onchange="setDashFilter('range')">
     </div>
     <div class="stat-row" id="dashStats"></div>
+    <div id="cashFlowSection"></div>
     <div class="chart-grid">
-        <div class="chart-container"><div class="chart-title">📊 Doanh thu 7 ngày</div><div class="bar-chart" id="revenueChart"></div></div>
-        <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ (hôm nay)</div><div class="hourly-chart" id="hourlyChart"></div></div>
+        <div class="chart-container"><div class="chart-title">📊 Doanh thu theo kỳ</div><div class="bar-chart" id="revenueChart"></div></div>
+        <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ</div><div class="hourly-chart" id="hourlyChart"></div></div>
     </div>
     <div class="card"><div class="card-title">🏆 Top Món Bán Chạy</div>
         <table class="top-items-table"><thead><tr><th>#</th><th>Tên món</th><th>SL</th><th>Doanh thu</th><th>%</th></tr></thead><tbody id="topItemsBody"></tbody></table>
@@ -452,12 +459,12 @@
 </div>
 
 <script src="data.js?v=20260510c"></script>
-<script src="js/core.js?v=20260601-sync-guard"></script>
+<script src="js/core.js?v=20260601-cashflow"></script>
 <script src="js/pos.js?v=20260530-toppings"></script>
-<script src="js/dashboard.js?v=20260530-monthfix"></script>
+<script src="js/dashboard.js?v=20260601-cashflow"></script>
 <script src="js/inventory.js?v=20260520-inventory-toppings"></script>
 <script src="js/expense.js?v=20260601-sync-guard"></script>
-<script src="js/operations.js?v=20260601-sync-guard"></script>
+<script src="js/operations.js?v=20260601-cashflow"></script>
 <script src="js/settings.js?v=20260601-sync-guard"></script>
 <script src="js/grab.js?v=20260514-riskfix"></script>
 <script src="js/features.js?v=20260601-sync-guard"></script>

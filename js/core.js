@@ -30,11 +30,11 @@ let state = {
     recipes:{},
     recipeTemplates:[],
     currentOrder:[], todayInvoices:[], invoiceArchive:{}, grabOrders:[], history:{}, attendance:{}, editLog:[],
-    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[],
+    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[], salaryPayments:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
-    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1,
+    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1, nextSalaryPaymentId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'060997',
     weekSchedule:{}, weekScheduleUpdatedAt:{},
@@ -270,6 +270,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id','stockout');
     merged.recurringStockOuts=mergeArrayByKey(remote.recurringStockOuts||[],local.recurringStockOuts||[],s=>s.syncId||s.id,true);
     merged.prepTracking=mergeByDateBuckets(remote.prepTracking,local.prepTracking,'id','prep');
+    merged.salaryPayments=mergeArrayByKey(remote.salaryPayments||[],local.salaryPayments||[],p=>p.syncId||p.id,true);
     merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
@@ -295,6 +296,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     bumpNextFromBuckets(merged,'manualUsage','nextStockOutId');
     bumpNextFromArray(merged,'recurringStockOuts','nextRecurringStockOutId');
     bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
+    bumpNextFromArray(merged,'salaryPayments','nextSalaryPaymentId');
     delete merged._syncRole;
     return merged;
 }
@@ -309,6 +311,7 @@ function stateForFirebase(){
         delete s.menu;delete s.categories;delete s.staff;delete s.recipes;delete s.recipeTemplates;
         delete s.menuGuides;delete s.guideImages;
         delete s.password;delete s.ownerPassword;delete s.nextMenuId;delete s.nextStaffId;delete s.nextTplId;
+        delete s.salaryPayments;delete s.nextSalaryPaymentId;
     }
     return s;
 }
@@ -333,6 +336,7 @@ function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const 
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!state.invoiceArchive)state.invoiceArchive={};
 if(!Array.isArray(state.grabOrders))state.grabOrders=[];
+if(!Array.isArray(state.salaryPayments))state.salaryPayments=[];
 if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
@@ -347,12 +351,14 @@ if(!state.prepTracking)state.prepTracking={};
 if(!state.nextStockOutId)state.nextStockOutId=1;
 if(!state.nextRecurringStockOutId)state.nextRecurringStockOutId=1;
 if(!state.nextPrepId)state.nextPrepId=1;
+if(!state.nextSalaryPaymentId)state.nextSalaryPaymentId=1;
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
 if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
 if(state.staff.length>0)state.nextStaffId=Math.max(state.nextStaffId||0,...state.staff.map(s=>s.id))+1;
 if(state.ingredients.length>0)state.nextIngId=Math.max(state.nextIngId||0,...state.ingredients.map(i=>i.id))+1;
+if(state.salaryPayments.length>0)state.nextSalaryPaymentId=Math.max(state.nextSalaryPaymentId||0,...state.salaryPayments.map(p=>p.id||0))+1;
 normalizeAttendanceRecords();
 // Fix: auto-deduplicate menu items with same ID
 const seenIds={};let hadDups=false;

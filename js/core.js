@@ -226,6 +226,11 @@ function mergeHistory(remoteHistory,localHistory){
 function mergeStringList(remoteArr,localArr){
     return [...new Set([...(remoteArr||[]),...(localArr||[])].filter(Boolean))];
 }
+function mergePlainObject(remoteObj,localObj,preferLocalRoot){
+    const remote=cloneData(remoteObj);
+    const local=cloneData(localObj);
+    return preferLocalRoot?{...remote,...local}:{...local,...remote};
+}
 function mergeWeekSchedule(remoteSchedule,localSchedule,remoteStamps,localStamps){
     const out=cloneData(remoteSchedule);
     const local=cloneData(localSchedule);
@@ -270,6 +275,9 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
     merged.categories=mergeStringList(remote.categories,local.categories);
+    merged.recipes=mergePlainObject(remote.recipes,local.recipes,preferLocalRoot);
+    merged.menuGuides=mergePlainObject(remote.menuGuides,local.menuGuides,preferLocalRoot);
+    merged.guideImages=mergePlainObject(remote.guideImages,local.guideImages,preferLocalRoot);
     merged.openChecklist=mergeArrayByKey(remote.openChecklist||[],local.openChecklist||[],c=>c.id,true);
     merged.closeChecklist=mergeArrayByKey(remote.closeChecklist||[],local.closeChecklist||[],c=>c.id,true);
     merged.dailyNotes=mergeArrayByKey(remote.dailyNotes||[],local.dailyNotes||[],n=>n.syncId||n.id,true);

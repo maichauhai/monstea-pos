@@ -266,7 +266,8 @@ function renderCashFlowSection(f){
         <td style="padding:6px;text-align:right;color:${r.cashNet>=0?'var(--accent-green)':'var(--accent-red)'};font-weight:700;">${fmtP(r.cashNet)}</td>
         <td style="padding:6px;text-align:right;color:${r.netProfit>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(r.netProfit)}</td>
     </tr>`).join('');
-    const recentPayments=activeItems(state.salaryPayments||[]).sort((a,b)=>(Number(b._lastModified)||0)-(Number(a._lastModified)||0)).slice(0,8).map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.74rem;">
+    const allRecentPayments=activeItems(state.salaryPayments||[]).sort((a,b)=>(Number(b._lastModified)||0)-(Number(a._lastModified)||0));
+    const recentPayments=allRecentPayments.slice(0,8).map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.74rem;">
         <span style="flex:1;">${esc(p.staffName||'Nhân viên')} · ${esc(p.periodStart||'')} → ${esc(p.periodEnd||'')}</span>
         <span style="color:var(--accent-green);font-weight:800;">${fmtP(p.amount||0)}</span>
         <span style="color:var(--text-muted);">${esc(p.paidDate||'')}</span>
@@ -299,20 +300,22 @@ function renderCashFlowSection(f){
                     <tbody>${salaryRows||'<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:14px;">Chưa có lương trong kỳ</td></tr>'}</tbody>
                 </table>
             </div>
-            <div>
-                <div style="font-weight:800;font-size:0.82rem;margin-bottom:6px;">Lịch sử trả lương gần đây</div>
-                ${recentPayments||'<div style="color:var(--text-muted);font-size:0.76rem;padding:8px 0;">Chưa có bản ghi trả lương.</div>'}
-            </div>
+            <details class="cashflow-collapse">
+                <summary>Lịch sử trả lương gần đây <span style="font-weight:600;color:var(--text-muted);font-size:0.72rem;">${allRecentPayments.length} bản ghi</span></summary>
+                <div class="collapse-body">${recentPayments||'<div style="color:var(--text-muted);font-size:0.76rem;padding:8px 0;">Chưa có bản ghi trả lương.</div>'}</div>
+            </details>
         </div>
-        <div style="margin-top:14px;overflow:auto;">
-            <div style="font-weight:800;font-size:0.82rem;margin-bottom:6px;">Dòng tiền theo ngày</div>
+        <details class="cashflow-collapse" style="margin-top:14px;">
+            <summary>Dòng tiền theo ngày <span style="font-weight:600;color:var(--text-muted);font-size:0.72rem;">${f.dailyRows.length} ngày</span></summary>
+            <div class="collapse-body">
             <table style="width:100%;border-collapse:collapse;font-size:0.74rem;">
                 <thead><tr style="border-bottom:2px solid var(--border-subtle);">
                     <th style="padding:6px;text-align:left;">Ngày</th><th style="text-align:right;">Tiền vào</th><th style="text-align:right;">Chi NL/khác</th><th style="text-align:right;">Lương đã trả</th><th style="text-align:right;">Dòng tiền</th><th style="text-align:right;">Lãi ròng</th>
                 </tr></thead>
                 <tbody>${dailyRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:14px;">Chưa có dữ liệu dòng tiền</td></tr>'}</tbody>
             </table>
-        </div>
+            </div>
+        </details>
     </div>`;
 }
 

@@ -72,6 +72,12 @@
     .cashflow-stat-grid .stat-card { padding:14px 10px; }
     .cashflow-stat-grid .stat-value { font-size:clamp(1rem,1.25vw,1.32rem); }
     .money-table-value { display:inline-block; max-width:104px; overflow:hidden; white-space:nowrap; vertical-align:bottom; font-size:0.72rem; font-variant-numeric:tabular-nums; letter-spacing:0; }
+    .cashflow-collapse { border-top:1px solid rgba(255,255,255,0.06); }
+    .cashflow-collapse summary { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; cursor:pointer; font-weight:800; font-size:0.82rem; list-style:none; }
+    .cashflow-collapse summary::-webkit-details-marker { display:none; }
+    .cashflow-collapse summary::after { content:'Mở'; font-size:0.68rem; font-weight:700; color:var(--accent); border:1px solid rgba(232,166,53,0.25); border-radius:999px; padding:3px 8px; }
+    .cashflow-collapse[open] summary::after { content:'Ẩn'; }
+    .cashflow-collapse .collapse-body { padding:4px 0 10px; overflow:auto; }
 
     /* POS */
     .pos-layout { display:grid; grid-template-columns:1fr 380px; gap:16px; min-height:70vh; }

@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<link rel="stylesheet" href="style.css?v=20260602-pos-ux-local">
+<link rel="stylesheet" href="style.css?v=20260530-toppings">
 </head>
 <body>
 <div class="login-overlay" id="loginOverlay">
@@ -46,9 +46,9 @@
 <!-- TAB POS -->
 <div class="tab-content active" id="tab-pos">
     <div class="pos-layout">
-        <div class="pos-menu-panel">
+        <div>
             <div class="pos-categories" id="posCatTabs"></div>
-            <input type="text" id="menuSearch" class="pos-search-input" placeholder="🔍 Tìm món hoặc nhập số..." oninput="renderPOSMenu()" style="width:100%;padding:10px 14px;margin-bottom:8px;font-size:0.88rem;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);">
+            <input type="text" id="menuSearch" placeholder="🔍 Tìm món hoặc nhập số..." oninput="renderPOSMenu()" style="width:100%;padding:10px 14px;margin-bottom:8px;font-size:0.88rem;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);background:var(--bg-card);color:var(--text-primary);">
             <div class="menu-grid" id="posMenuGrid"></div>
         </div>
         <div class="order-panel">
@@ -131,22 +131,15 @@
 <!-- TAB DASHBOARD -->
 <div class="tab-content" id="tab-dashboard">
     <div class="date-filter-bar">
-        <button class="filter-btn active" data-filter="today" onclick="setDashFilter('today')">Hôm nay</button>
-        <button class="filter-btn" data-filter="week" onclick="setDashFilter('week')">7 ngày</button>
-        <button class="filter-btn" data-filter="month" onclick="setDashFilter('month')">Tháng này</button>
-        <button class="filter-btn" data-filter="last30" onclick="setDashFilter('last30')">1 tháng</button>
-        <button class="filter-btn" data-filter="last90" onclick="setDashFilter('last90')">3 tháng</button>
-        <button class="filter-btn" data-filter="all" onclick="setDashFilter('all')">Tất cả</button>
+        <button class="filter-btn active" onclick="setDashFilter('today')">Hôm nay</button>
+        <button class="filter-btn" onclick="setDashFilter('week')">7 ngày</button>
+        <button class="filter-btn" onclick="setDashFilter('month')">Tháng này</button>
         <input type="date" id="dashDatePick" style="width:160px;" onchange="setDashFilter('custom')">
-        <input type="date" id="dashRangeStart" style="width:150px;" onchange="setDashFilter('range')">
-        <span style="font-size:0.75rem;color:var(--text-muted);align-self:center;">→</span>
-        <input type="date" id="dashRangeEnd" style="width:150px;" onchange="setDashFilter('range')">
     </div>
     <div class="stat-row" id="dashStats"></div>
-    <div id="cashFlowSection"></div>
     <div class="chart-grid">
-        <div class="chart-container"><div class="chart-title">📊 Doanh thu theo kỳ</div><div class="bar-chart" id="revenueChart"></div></div>
-        <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ</div><div class="hourly-chart" id="hourlyChart"></div></div>
+        <div class="chart-container"><div class="chart-title">📊 Doanh thu 7 ngày</div><div class="bar-chart" id="revenueChart"></div></div>
+        <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ (hôm nay)</div><div class="hourly-chart" id="hourlyChart"></div></div>
     </div>
     <div class="card"><div class="card-title">🏆 Top Món Bán Chạy</div>
         <table class="top-items-table"><thead><tr><th>#</th><th>Tên món</th><th>SL</th><th>Doanh thu</th><th>%</th></tr></thead><tbody id="topItemsBody"></tbody></table>
@@ -459,14 +452,14 @@
 </div>
 
 <script src="data.js?v=20260510c"></script>
-<script src="js/core.js?v=20260602-attendance-dedupe"></script>
-<script src="js/pos.js?v=20260602-pos-ux-local"></script>
-<script src="js/dashboard.js?v=20260601-cashflow-collapse"></script>
+<script src="js/core.js?v=20260627-attendance-fix"></script>
+<script src="js/pos.js?v=20260530-toppings"></script>
+<script src="js/dashboard.js?v=20260530-monthfix"></script>
 <script src="js/inventory.js?v=20260520-inventory-toppings"></script>
-<script src="js/expense.js?v=20260601-sync-guard"></script>
-<script src="js/operations.js?v=20260602-attendance-dedupe"></script>
-<script src="js/settings.js?v=20260602-attendance-dedupe"></script>
+<script src="js/expense.js?v=20260522-recurring-stockout"></script>
+<script src="js/operations.js?v=20260627-attendance-fix"></script>
+<script src="js/settings.js?v=20260514-riskfix"></script>
 <script src="js/grab.js?v=20260514-riskfix"></script>
-<script src="js/features.js?v=20260602-attendance-dedupe"></script>
+<script src="js/features.js?v=20260514-riskfix"></script>
 </body>
 </html>

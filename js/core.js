@@ -30,14 +30,14 @@ let state = {
     recipes:{},
     recipeTemplates:[],
     currentOrder:[], todayInvoices:[], invoiceArchive:{}, grabOrders:[], history:{}, attendance:{}, editLog:[],
-    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[], salaryPayments:[],
+    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
-    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1, nextSalaryPaymentId:1,
+    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'060997',
-    weekSchedule:{}, weekScheduleUpdatedAt:{},
+    weekSchedule:{},
     menuGuides:{},
     guideImages:{}
 };
@@ -85,6 +85,11 @@ function searchMatch(text,query){
 function cloneData(v){return JSON.parse(JSON.stringify(v||{}));}
 function isDeleted(item){return !!(item&&item._deleted);}
 function activeItems(list){return (list||[]).filter(item=>!isDeleted(item));}
+function normalizeArrayLike(value){
+    if(Array.isArray(value))return value;
+    if(value&&typeof value==='object')return Object.values(value).filter(Boolean);
+    return [];
+}
 function getDeviceId(){
     let id=localStorage.getItem('monsteaDeviceId');
     if(!id){id='dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);localStorage.setItem('monsteaDeviceId',id);}
@@ -143,6 +148,10 @@ function syncKey(prefix,item,keyField){
     if(item.syncId)return item.syncId;
     return `${prefix||keyField}:${item[keyField]!==undefined?item[keyField]:''}`;
 }
+function attendanceStaffKey(item){
+    const id=Number(item&&item.staffId);
+    return Number.isFinite(id)?id:'';
+}
 function itemRef(item){return String(item&&(item.syncId||item.id));}
 function findByRef(list,ref){const key=String(ref);return (list||[]).find(item=>item&&(itemRef(item)===key||(!item.syncId&&String(item.id)===key)));}
 function preferNewerItem(old,item,resolver){
@@ -154,81 +163,30 @@ function preferNewerItem(old,item,resolver){
     if(isDeleted(item)&&!isDeleted(old))return item;
     return old;
 }
-function mergeKeyValue(key){return key===undefined||key===null?'':String(key);}
 function mergeArrayByKey(remoteArr,localArr,keyFn,preferNewer,resolver){
     const map=new Map();
-    (remoteArr||[]).forEach(item=>{const key=item&&mergeKeyValue(keyFn(item));if(key)map.set(key,item);});
+    (remoteArr||[]).forEach(item=>{const key=item&&keyFn(item);if(key!==undefined&&key!==null&&key!=='')map.set(key,item);});
     (localArr||[]).forEach(item=>{
         if(!item)return;
-        const key=mergeKeyValue(keyFn(item)),old=map.get(key);
-        if(!key)return;
+        const key=keyFn(item),old=map.get(key);
+        if(key===undefined||key===null||key==='')return;
         if(!old)map.set(key,item);
         else if(preferNewer)map.set(key,preferNewerItem(old,item,resolver));
     });
     return [...map.values()];
-}
-function normalizeStaffId(id){
-    const raw=String(id??'').trim();
-    if(!raw)return id;
-    const n=Number(raw);
-    return Number.isInteger(n)?n:id;
-}
-function staffPersonKey(staff){
-    const name=removeDiacritics(String(staff&&staff.name||'').toLowerCase()).trim();
-    const pwd=String(staff&&staff.password||'').trim();
-    return name&&pwd?`person:${pwd}:${name}`:'';
-}
-function staffMergeKeys(staff){
-    const keys=[];
-    const id=staff&&staff.id;
-    if(id!==undefined&&id!==null&&String(id).trim()!=='')keys.push(`id:${mergeKeyValue(normalizeStaffId(id))}`);
-    const personKey=staffPersonKey(staff);
-    if(personKey)keys.push(personKey);
-    return keys;
-}
-function normalizeStaffRecords(target=state){
-    if(!target||!Array.isArray(target.staff))return;
-    const out=[],keyToIndex=new Map(),aliases=new Map();
-    function remember(staff,idx){staffMergeKeys(staff).forEach(k=>keyToIndex.set(k,idx));}
-    target.staff.forEach(raw=>{
-        if(!raw)return;
-        const item={...raw};
-        const originalId=item.id;
-        item.id=normalizeStaffId(item.id);
-        if(String(originalId)!==String(item.id))aliases.set(String(originalId),item.id);
-        const keys=staffMergeKeys(item);
-        const found=keys.map(k=>keyToIndex.get(k)).find(idx=>idx!==undefined);
-        if(found===undefined){
-            out.push(item);
-            remember(item,out.length-1);
-            return;
-        }
-        const existing=out[found],canonicalId=normalizeStaffId(existing.id);
-        if(item.id!==undefined&&item.id!==null)aliases.set(String(item.id),canonicalId);
-        const merged=preferNewerItem(existing,item);
-        merged.id=canonicalId;
-        out[found]=merged;
-        remember(merged,found);
-    });
-    target.staff=out;
-    if(aliases.size){
-        Object.keys(target.attendance||{}).forEach(d=>{
-            (target.attendance[d]||[]).forEach(r=>{
-                const alias=aliases.get(String(r&&r.staffId));
-                if(alias!==undefined)r.staffId=alias;
-            });
-        });
-        (target.salaryPayments||[]).forEach(p=>{
-            const alias=aliases.get(String(p&&p.staffId));
-            if(alias!==undefined)p.staffId=alias;
-        });
-    }
 }
 function attendanceScore(r){return (r&&r.checkIn?1:0)+(r&&r.checkOut?3:0)+(Number(r&&r.hours)>0?1:0);}
 function attendanceComplete(r){return !!(r&&r.checkIn&&r.checkOut&&Number(r.hours)>0);}
 function mergeAttendanceRecord(old,item){
     if(!old)return item;
     if(!item)return old;
+    const oldDeleted=isDeleted(old),newDeleted=isDeleted(item);
+    if(oldDeleted||newDeleted){
+        const oldStamp=itemStamp(old),newStamp=itemStamp(item);
+        if(newStamp>oldStamp)return item;
+        if(newStamp<oldStamp)return old;
+        return newDeleted?item:old;
+    }
     const oldComplete=attendanceComplete(old),newComplete=attendanceComplete(item);
     if(oldComplete&&!newComplete)return old;
     if(newComplete&&!oldComplete)return item;
@@ -238,31 +196,33 @@ function mergeAttendanceRecord(old,item){
     if(newStamp<oldStamp)return oldScore<newScore?item:old;
     return newScore>oldScore?item:old;
 }
-function normalizeAttendanceRecords(target=state){
-    if(!target.attendance||!Array.isArray(target.staff))return;
-    const staffById=new Map((target.staff||[]).map(s=>[Number(s.id),s]));
-    const staffByName=new Map(activeItems(target.staff).map(s=>[removeDiacritics(String(s.name||'').toLowerCase()).trim(),s]));
-    Object.keys(target.attendance||{}).forEach(d=>{
-        const records=Array.isArray(target.attendance[d])?target.attendance[d]:[];
+function normalizeAttendanceRecordsFor(targetState){
+    if(!targetState||!targetState.attendance||!Array.isArray(targetState.staff))return;
+    const staffById=new Map((targetState.staff||[]).map(s=>[Number(s.id),s]));
+    const staffByName=new Map(activeItems(targetState.staff).map(s=>[removeDiacritics(String(s.name||'').toLowerCase()).trim(),s]));
+    Object.keys(targetState.attendance||{}).forEach(d=>{
+        const records=Array.isArray(targetState.attendance[d])?targetState.attendance[d]:[];
         const normalized=records.map(r=>{
             if(!r)return r;
             const current=staffById.get(Number(r.staffId));
             if(current){
-                if(!r.name)r.name=current.name;
+                r.staffId=Number(current.id);
+                r.name=current.name||r.name;
                 if(!r.wageRate)r.wageRate=current.wageRate||25000;
                 return r;
             }
             const byName=staffByName.get(removeDiacritics(String(r.name||'').toLowerCase()).trim());
             if(byName){
-                r.staffId=byName.id;
+                r.staffId=Number(byName.id);
                 r.name=byName.name;
                 if(!r.wageRate)r.wageRate=byName.wageRate||25000;
             }
             return r;
         }).filter(Boolean);
-        target.attendance[d]=mergeArrayByKey([],normalized,r=>r.staffId,true,mergeAttendanceRecord);
+        targetState.attendance[d]=mergeArrayByKey([],normalized,attendanceStaffKey,true,mergeAttendanceRecord);
     });
 }
+function normalizeAttendanceRecords(){normalizeAttendanceRecordsFor(state);}
 function mergeByDateBuckets(remoteData,localData,keyFnOrField,prefix,resolver){
     const remote=cloneData(remoteData),local=cloneData(localData);
     const out=remote||{};
@@ -282,32 +242,6 @@ function mergeHistory(remoteHistory,localHistory){
     });
     return out;
 }
-function mergeStringList(remoteArr,localArr){
-    return [...new Set([...(remoteArr||[]),...(localArr||[])].filter(Boolean))];
-}
-function mergePlainObject(remoteObj,localObj,preferLocalRoot){
-    const remote=cloneData(remoteObj);
-    const local=cloneData(localObj);
-    return preferLocalRoot?{...remote,...local}:{...local,...remote};
-}
-function mergeWeekSchedule(remoteSchedule,localSchedule,remoteStamps,localStamps){
-    const out=cloneData(remoteSchedule);
-    const local=cloneData(localSchedule);
-    const stamps={...(remoteStamps||{})};
-    Object.keys(local||{}).forEach(wk=>{
-        if(!out[wk])out[wk]=local[wk];
-        Object.keys(local[wk]||{}).forEach(staffId=>{
-            const key=`${wk}:${staffId}`;
-            const remoteStamp=Number((remoteStamps||{})[key])||0;
-            const localStamp=Number((localStamps||{})[key])||0;
-            if(out[wk][staffId]===undefined||localStamp>remoteStamp){
-                out[wk][staffId]=local[wk][staffId];
-                stamps[key]=localStamp;
-            }
-        });
-    });
-    return {schedule:out,stamps};
-}
 function bumpNextFromArray(obj,field,nextField){
     const ids=(obj[field]||[]).map(x=>Number(x.id)).filter(Number.isFinite);
     if(ids.length)obj[nextField]=Math.max(obj[nextField]||1,...ids)+1;
@@ -323,29 +257,17 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.todayInvoices=mergeArrayByKey(remote.todayInvoices||[],local.todayInvoices||[],invoiceKey,true);
     merged.invoiceArchive=mergeByDateBuckets(remote.invoiceArchive,local.invoiceArchive,invoiceKey,'invoice');
     merged.grabOrders=mergeArrayByKey(remote.grabOrders||[],local.grabOrders||[],g=>g.syncId||`${g.time}_${g.date}`,true);
-    merged.attendance=mergeByDateBuckets(remote.attendance,local.attendance,item=>item.staffId,'attendance',mergeAttendanceRecord);
+    merged.attendance=mergeByDateBuckets(remote.attendance,local.attendance,attendanceStaffKey,'attendance',mergeAttendanceRecord);
     merged.purchases=mergeByDateBuckets(remote.purchases,local.purchases,'id','purchase');
     merged.expenses=mergeByDateBuckets(remote.expenses,local.expenses,'id','expense');
     merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id','stockout');
     merged.recurringStockOuts=mergeArrayByKey(remote.recurringStockOuts||[],local.recurringStockOuts||[],s=>s.syncId||s.id,true);
     merged.prepTracking=mergeByDateBuckets(remote.prepTracking,local.prepTracking,'id','prep');
-    merged.salaryPayments=mergeArrayByKey(remote.salaryPayments||[],local.salaryPayments||[],p=>p.syncId||p.id,true);
+    merged.dailyNotes=mergeArrayByKey(normalizeArrayLike(remote.dailyNotes),normalizeArrayLike(local.dailyNotes),n=>n.syncId||n.id,true);
     merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
-    normalizeStaffRecords(merged);
-    normalizeAttendanceRecords(merged);
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
-    merged.categories=mergeStringList(remote.categories,local.categories);
-    merged.recipes=mergePlainObject(remote.recipes,local.recipes,preferLocalRoot);
-    merged.menuGuides=mergePlainObject(remote.menuGuides,local.menuGuides,preferLocalRoot);
-    merged.guideImages=mergePlainObject(remote.guideImages,local.guideImages,preferLocalRoot);
-    merged.openChecklist=mergeArrayByKey(remote.openChecklist||[],local.openChecklist||[],c=>c.id,true);
-    merged.closeChecklist=mergeArrayByKey(remote.closeChecklist||[],local.closeChecklist||[],c=>c.id,true);
-    merged.dailyNotes=mergeArrayByKey(remote.dailyNotes||[],local.dailyNotes||[],n=>n.syncId||n.id,true);
-    const scheduleMerge=mergeWeekSchedule(remote.weekSchedule,local.weekSchedule,remote.weekScheduleUpdatedAt,local.weekScheduleUpdatedAt);
-    merged.weekSchedule=scheduleMerge.schedule;
-    merged.weekScheduleUpdatedAt=scheduleMerge.stamps;
     merged.history=mergeHistory(remote.history,local.history);
     merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
@@ -357,7 +279,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     bumpNextFromBuckets(merged,'manualUsage','nextStockOutId');
     bumpNextFromArray(merged,'recurringStockOuts','nextRecurringStockOutId');
     bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
-    bumpNextFromArray(merged,'salaryPayments','nextSalaryPaymentId');
+    normalizeAttendanceRecordsFor(merged);
     delete merged._syncRole;
     return merged;
 }
@@ -365,14 +287,14 @@ function stateForFirebase(){
     const s=cloneData(state);
     s.currentOrder=[];
     s._syncRole=currentRole||'unknown';
+    normalizeAttendanceRecordsFor(s);
     delete s._editingInvoiceId;
     delete s._editingInvoiceRef;
     delete s._editingOldSummary;
     if(currentRole!=='owner'){
         delete s.menu;delete s.categories;delete s.staff;delete s.recipes;delete s.recipeTemplates;
-        delete s.menuGuides;delete s.guideImages;
+        delete s.weekSchedule;delete s.menuGuides;delete s.guideImages;
         delete s.password;delete s.ownerPassword;delete s.nextMenuId;delete s.nextStaffId;delete s.nextTplId;
-        delete s.salaryPayments;delete s.nextSalaryPaymentId;
     }
     return s;
 }
@@ -386,8 +308,8 @@ function archiveRawInvoices(list,excludeDate){
 }
 function persistMergedState(localOrder){
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
-  normalizeStaffRecords();
   normalizeAttendanceRecords();
+  rebindCurrentStaffFromSession();
   const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   state.nextInvoiceId=nextTodayInvoiceId();
   if(localOrder)state.currentOrder=localOrder;
@@ -398,13 +320,10 @@ function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const 
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!state.invoiceArchive)state.invoiceArchive={};
 if(!Array.isArray(state.grabOrders))state.grabOrders=[];
-if(!Array.isArray(state.salaryPayments))state.salaryPayments=[];
 if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
-normalizeStaffRecords();
 if(!state.weekSchedule)state.weekSchedule={};
-if(!state.weekScheduleUpdatedAt)state.weekScheduleUpdatedAt={};
 if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};
@@ -414,15 +333,12 @@ if(!state.prepTracking)state.prepTracking={};
 if(!state.nextStockOutId)state.nextStockOutId=1;
 if(!state.nextRecurringStockOutId)state.nextRecurringStockOutId=1;
 if(!state.nextPrepId)state.nextPrepId=1;
-if(!state.nextSalaryPaymentId)state.nextSalaryPaymentId=1;
 // Ensure all ingredients have sln/openStock/warnLevel
 state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
 // Fix: recalculate nextIds from actual max IDs to prevent duplicates
 if(state.menu.length>0)state.nextMenuId=Math.max(state.nextMenuId||0,...state.menu.map(m=>m.id))+1;
 if(state.staff.length>0)state.nextStaffId=Math.max(state.nextStaffId||0,...state.staff.map(s=>s.id))+1;
 if(state.ingredients.length>0)state.nextIngId=Math.max(state.nextIngId||0,...state.ingredients.map(i=>i.id))+1;
-if(state.salaryPayments.length>0)state.nextSalaryPaymentId=Math.max(state.nextSalaryPaymentId||0,...state.salaryPayments.map(p=>p.id||0))+1;
-normalizeStaffRecords();
 normalizeAttendanceRecords();
 // Fix: auto-deduplicate menu items with same ID
 const seenIds={};let hadDups=false;
@@ -444,6 +360,14 @@ for(let i=state.menu.length-1;i>=0;i--){
 }
 if(hadDups){saveState();console.log('[POS] Auto-fixed duplicate menu IDs');}
 }}catch(e){}}
+
+function rebindCurrentStaffFromSession(){
+    if(currentRole!=='staff'||!Array.isArray(state.staff))return;
+    const pwd=sessionStorage.getItem('monsteaPwd');
+    if(!pwd||pwd===state.ownerPassword)return;
+    const staff=activeItems(state.staff).find(s=>String(s.password)===String(pwd));
+    if(staff){currentStaffId=Number(staff.id);currentStaffName=staff.name;}
+}
 
 // ═══════════════════════════════════════
 // LOGIN & ROLE
@@ -472,7 +396,7 @@ document.getElementById('loginOverlay').style.display='flex';document.getElement
 document.getElementById('roleBar').style.display='none';document.getElementById('helpBtn').style.display='none';
 document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
 function init(){loadState();checkNewDay();renderAll();startClock();if(typeof checkRecurringStockOuts==='function')checkRecurringStockOuts();if(typeof startRecurringStockOutTimer==='function')startRecurringStockOutTimer();if(currentRole)applyRole();setTimeout(autoBackup,5000);}
-function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();renderWeekSchedule();}
+function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();renderWeekSchedule();if(currentRole==='owner')renderAttHistory();}
 
 
 

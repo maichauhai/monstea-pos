@@ -1,4 +1,4 @@
-﻿// ATTENDANCE HISTORY (#8)
+// ATTENDANCE HISTORY (#8)
 // ═══════════════════════════════════════
 let attViewMode='month';
 function setAttView(mode,val){
@@ -24,43 +24,44 @@ function renderAttHistory(){
     const sal=document.getElementById('attSalaryCard');
     if(!el)return;
     const dates=getAttDates(attViewMode);
+    const staffList=activeItems(state.staff);
     const OT_START=22*60,OT_MULT=1.3;
     const staffTotals={};
-    state.staff.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,totalWage:0,wageRate:s.wageRate||25000});
+    staffList.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,totalWage:0,wageRate:s.wageRate||25000});
     let html=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">Ngày</th>`;
-    state.staff.forEach(s=>html+=`<th style="padding:4px;text-align:center;">${esc(s.name)}</th>`);
+    staffList.forEach(s=>html+=`<th style="padding:4px;text-align:center;">${esc(s.name)}</th>`);
     html+=`</tr></thead><tbody>`;
     dates.forEach(dt=>{
-        const recs=(state.attendance||{})[dt]||[];
         html+=`<tr style="border-bottom:1px solid rgba(255,255,255,0.03);${dt===today()?'background:rgba(232,166,53,0.06);':''}">`;
         const label=dt===today()?'Hôm nay':dt.slice(5);
         html+=`<td style="padding:4px;color:var(--text-muted);white-space:nowrap;">${label}</td>`;
-        state.staff.forEach(s=>{
-            const r=recs.find(x=>String(x.staffId)===String(s.id));
-            if(r&&r.hours){
-                const [iH,iM]=(r.checkIn||'0:0').split(':').map(Number);
-                const [oH,oM]=(r.checkOut||'0:0').split(':').map(Number);
-                const inMin=iH*60+iM,outMin=oH*60+oM;
-                let normH=r.hours,otHr=0;
+        staffList.forEach(s=>{
+            const r=findAttendanceRecord(dt,s.id);
+            if(r&&Number(r.hours)>0){
+                const inMin=timeToMinutes(r.checkIn),outMin=timeToMinutes(r.checkOut);
+                let normH=Number(r.hours),otHr=0;
                 if(outMin>OT_START){normH=Math.max(0,(Math.min(outMin,OT_START)-inMin)/60);otHr=Math.max(0,(outMin-Math.max(inMin,OT_START))/60);}
                 const dayRate=r.wageRate||staffTotals[s.id].wageRate;
-                staffTotals[s.id].totalH+=r.hours;staffTotals[s.id].normalH+=normH;staffTotals[s.id].otH+=otHr;staffTotals[s.id].days++;
+                staffTotals[s.id].totalH+=Number(r.hours);staffTotals[s.id].normalH+=normH;staffTotals[s.id].otH+=otHr;staffTotals[s.id].days++;
                 staffTotals[s.id].totalWage+=Math.round(normH*dayRate+otHr*dayRate*OT_MULT);
-                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);"><div>${r.hours}h</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn||'?'}→${r.checkOut||'?'}</div></td>`;
-            }else html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">—</td>`;
+                html+=`<td style="padding:4px;text-align:center;color:var(--accent-green);"><div>${r.hours}h</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn||'?'}→${r.checkOut||'?'}</div>${attendanceCellActions(dt,s.id,true)}</td>`;
+            }else if(r&&r.checkIn){
+                html+=`<td style="padding:4px;text-align:center;color:var(--accent-warm);"><div>Đang làm</div><div style="font-size:0.6rem;color:var(--text-muted);margin-top:1px;">${r.checkIn}→...</div>${attendanceCellActions(dt,s.id,true)}</td>`;
+            }else{
+                html+=`<td style="padding:4px;text-align:center;color:var(--text-muted);">—${attendanceCellActions(dt,s.id,false)}</td>`;
+            }
         });
         html+=`</tr>`;
     });
     html+=`</tbody></table>`;
     el.innerHTML=html;
-    // Salary summary
     sal.innerHTML=`<div style="font-weight:700;font-size:0.82rem;margin-bottom:8px;">💰 Tính lương</div>
     <table style="width:100%;border-collapse:collapse;font-size:0.75rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">NV</th><th>Ngày</th><th>Tổng giờ</th><th>Thường</th><th>OT</th><th style="text-align:right;">Lương</th></tr></thead><tbody>
-    ${state.staff.map(s=>{const t=staffTotals[s.id];const salary=t.totalWage;
+    ${staffList.map(s=>{const t=staffTotals[s.id];const salary=t.totalWage;
     return `<tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
     <td style="padding:4px;font-weight:600;">${esc(t.name)}</td>
     <td style="padding:4px;text-align:center;">${t.days}</td>
@@ -69,7 +70,7 @@ function renderAttHistory(){
     <td style="padding:4px;text-align:center;color:${t.otH?'var(--accent-warm)':'var(--text-muted)'};">${Math.round(t.otH*10)/10}h</td>
     <td style="padding:4px;text-align:right;font-weight:700;color:var(--accent);">${fmtP(salary)}</td></tr>`;}).join('')}
     <tr style="border-top:2px solid var(--border-subtle);"><td colspan="5" style="padding:4px;font-weight:700;">TỔNG</td>
-    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(state.staff.reduce((s,st)=>{const t=staffTotals[st.id];return s+t.totalWage;},0))}</td></tr>
+    <td style="padding:4px;text-align:right;font-weight:800;color:var(--accent);font-size:0.88rem;">${fmtP(staffList.reduce((sum,st)=>sum+staffTotals[st.id].totalWage,0))}</td></tr>
     </tbody></table>`;
 }
 
@@ -378,53 +379,82 @@ function exportIngredientsUsed(){
 // ATTENDANCE
 // ═══════════════════════════════════════
 function startClock(){function u(){const n=new Date(),e=document.getElementById('liveClock'),d=document.getElementById('liveDate');if(e)e.textContent=n.toLocaleTimeString('vi-VN');if(d)d.textContent=n.toLocaleDateString('vi-VN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});}u();setInterval(u,1000);}
-function getStaffStatus(id){const td=today();if(!state.attendance[td])return 'out';const r=state.attendance[td].find(x=>String(x.staffId)===String(id));if(!r)return 'out';return r.checkOut?'done':'in';}
-function getStaffRecord(id){const td=today();return state.attendance[td]?.find(x=>String(x.staffId)===String(id))||null;}
-function toggleAttendance(id){if(currentRole==='staff'&&String(currentStaffId)!==String(id)){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
-const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=activeItems(state.staff).find(x=>String(x.id)===String(id));
+function sameStaffId(a,b){return Number(a)===Number(b);}
+function timeToMinutes(t){const [h,m]=String(t||'0:0').split(':').map(Number);return (Number(h)||0)*60+(Number(m)||0);}
+function calcAttendanceHours(checkIn,checkOut){if(!checkIn||!checkOut)return null;const mins=timeToMinutes(checkOut)-timeToMinutes(checkIn);return mins>0?Math.round(mins/60*10)/10:null;}
+function attendanceRecordsForDate(dateKey,includeDeleted){return ((state.attendance||{})[dateKey]||[]).filter(r=>includeDeleted||!isDeleted(r));}
+function findAttendanceRecord(dateKey,staffId,includeDeleted){return attendanceRecordsForDate(dateKey,includeDeleted).find(r=>sameStaffId(r.staffId,staffId))||null;}
+function findAttendanceRecordIndex(dateKey,staffId){const recs=(state.attendance||{})[dateKey]||[];return recs.findIndex(r=>!isDeleted(r)&&sameStaffId(r.staffId,staffId));}
+function attendanceCellActions(dateKey,staffId,hasRecord){
+    if(currentRole!=='owner')return '';
+    const action=hasRecord?'Sửa':'Thêm';
+    return `<div style="display:flex;gap:4px;justify-content:center;margin-top:4px;"><button onclick="openAttendanceEditor('${jsString(dateKey)}',${Number(staffId)})" style="background:none;border:1px solid var(--border-subtle);border-radius:6px;color:var(--accent);cursor:pointer;font-size:0.62rem;padding:2px 6px;">${action}</button></div>`;
+}
+function getStaffStatus(id){const td=today();const r=findAttendanceRecord(td,id);if(!r)return 'out';return r.checkOut?'done':'in';}
+function getStaffRecord(id){return findAttendanceRecord(today(),id);}
+function toggleAttendance(id){if(currentRole==='staff'&&!sameStaffId(currentStaffId,id)){toast('⚠️ Chỉ có thể chấm công cho mình');return;}
+const td=today();if(!state.attendance[td])state.attendance[td]=[];const st=getStaffStatus(id),s=activeItems(state.staff).find(x=>sameStaffId(x.id,id));
 if(!s){toast('⚠️ Không tìm thấy nhân viên');return;}
-if(st==='out'){state.attendance[td].push({staffId:id,name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000,_lastModified:Date.now()});toast(`✅ ${s.name} — Vào ca`);}
-else if(st==='in'){const r=state.attendance[td].find(x=>String(x.staffId)===String(id));r.checkOut=nowTime();const[iH,iM]=r.checkIn.split(':').map(Number),[oH,oM]=r.checkOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;r._lastModified=Date.now();toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
-else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();}
-function renderAttendance(){document.getElementById('staffGrid').innerHTML=activeItems(state.staff).map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
-const isLocked=currentRole==='staff'&&String(currentStaffId)!==String(s.id);
-return `<div class="staff-card status-${st}${isLocked?' locked':''}" onclick="toggleAttendance(${s.id})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
-const td=today(),recs=state.attendance[td]||[];
-const isOwner=currentRole==='owner';
-document.getElementById('attBody').innerHTML=recs.length?recs.map((r,idx)=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'—'}</td>${isOwner?`<td style="text-align:center"><button onclick="editAttendance(${idx})" style="background:none;border:none;cursor:pointer;font-size:0.72rem;" title="Sửa giờ">✏️</button></td>`:''}</tr>`).join(''):'<tr><td colspan="'+(isOwner?5:4)+'" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';
-// Update table header for owner
+if(st==='out'){state.attendance[td].push({staffId:Number(id),name:s.name,checkIn:nowTime(),checkOut:null,hours:null,wageRate:s.wageRate||25000,_lastModified:Date.now()});toast(`✅ ${s.name} — Vào ca`);}
+else if(st==='in'){const r=findAttendanceRecord(td,id);r.checkOut=nowTime();r.hours=calcAttendanceHours(r.checkIn,r.checkOut);r._lastModified=Date.now();toast(`✅ ${s.name} — Ra ca (${r.hours}h)`);}
+else{toast(`ℹ️ ${s.name} đã ra ca`);return;}saveState();renderAttendance();if(currentRole==='owner')renderAttHistory();}
+function renderAttendance(){const staffList=activeItems(state.staff);document.getElementById('staffGrid').innerHTML=staffList.map(s=>{const st=getStaffStatus(s.id),r=getStaffRecord(s.id),txt={out:'Chưa vào ca',in:'🟢 Đang làm',done:'✅ Đã ra ca'}[st],t=r?`${r.checkIn}${r.checkOut?' → '+r.checkOut+` (${r.hours}h)`:' → ...'}` :'';
+const isLocked=currentRole==='staff'&&!sameStaffId(currentStaffId,s.id);
+return `<div class="staff-card status-${st}${isLocked?' locked':''}" onclick="toggleAttendance(${Number(s.id)})"><div class="sc-name">${esc(s.name)}</div><div class="sc-status">${txt}</div>${t?`<div class="sc-time">${t}</div>`:''}</div>`;}).join('');
+const td=today(),isOwner=currentRole==='owner';
 const thead=document.querySelector('#tab-attendance .att-table thead tr');
-if(thead&&isOwner&&!thead.querySelector('.att-edit-th')){const th=document.createElement('th');th.className='att-edit-th';th.textContent='';thead.appendChild(th);}
+if(thead)thead.innerHTML=`<th>Tên</th><th>Vào ca</th><th>Ra ca</th><th>Số giờ</th>${isOwner?'<th></th>':''}`;
+const body=document.getElementById('attBody');
+if(isOwner){
+    body.innerHTML=staffList.map(s=>{const r=findAttendanceRecord(td,s.id);const has=!!r;
+    return `<tr><td style="font-weight:600">${esc(s.name)}</td><td>${r?.checkIn||'—'}</td><td>${r?.checkOut||'—'}</td><td style="color:${r?.hours?'var(--accent-green)':'var(--text-muted)'}">${r?.hours?r.hours+'h':(r?.checkIn?'Đang làm':'—')}</td><td style="text-align:center"><button onclick="openAttendanceEditor('${jsString(td)}',${Number(s.id)})" style="background:none;border:none;cursor:pointer;font-size:0.72rem;color:var(--accent);" title="${has?'Sửa giờ':'Thêm giờ'}">${has?'✏️':'＋'}</button></td></tr>`;}).join('');
+}else{
+    const recs=attendanceRecordsForDate(td,false);
+    body.innerHTML=recs.length?recs.map(r=>`<tr><td style="font-weight:600">${esc(r.name)}</td><td>${r.checkIn}</td><td>${r.checkOut||'—'}</td><td style="color:${r.hours?'var(--accent-green)':'var(--text-muted)'}">${r.hours?r.hours+'h':'Đang làm'}</td></tr>`).join(''):'<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:16px">Chưa có</td></tr>';
 }
-function editAttendance(idx){
-    const td=today(),recs=state.attendance[td];if(!recs||!recs[idx])return;
-    const r=recs[idx];
+}
+function openAttendanceEditor(dateKey,staffId){
+    if(currentRole!=='owner'){toast('⚠️ Chỉ chủ quán được chỉnh chấm công');return;}
+    const s=activeItems(state.staff).find(x=>sameStaffId(x.id,staffId));if(!s){toast('⚠️ Không tìm thấy nhân viên');return;}
+    const r=findAttendanceRecord(dateKey,staffId);
+    const title=r?'✏️ Sửa giờ chấm công':'＋ Thêm giờ chấm công';
+    const deleteBtn=r?`<button class="btn btn-secondary" onclick="deleteAttendanceRecord('${jsString(dateKey)}',${Number(staffId)})" style="color:#ff8a8a;border-color:rgba(255,138,138,0.35);">🗑️ Xóa ca</button>`:'';
     const body=`<div style="display:flex;flex-direction:column;gap:12px;">
-    <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">👤 ${esc(r.name)}</label></div>
+    <div style="font-size:0.78rem;color:var(--text-muted);">${esc(s.name)} · ${dateKey}</div>
     <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">Vào ca</label>
-    <input type="time" id="editAttIn" value="${r.checkIn||''}" style="width:100%;padding:8px;"></div>
+    <input type="time" id="editAttIn" value="${r?.checkIn||''}" style="width:100%;padding:8px;"></div>
     <div><label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:4px;">Ra ca</label>
-    <input type="time" id="editAttOut" value="${r.checkOut||''}" style="width:100%;padding:8px;"></div>
-    <button class="btn btn-primary" onclick="saveEditAttendance(${idx})">💾 Lưu</button></div>`;
-    openModal('✏️ Sửa giờ chấm công',body);
+    <input type="time" id="editAttOut" value="${r?.checkOut||''}" style="width:100%;padding:8px;"></div>
+    <div style="display:flex;gap:8px;"><button class="btn btn-primary" onclick="saveAttendanceEdit('${jsString(dateKey)}',${Number(staffId)})">💾 Lưu</button>${deleteBtn}</div></div>`;
+    openModal(title,body);
 }
-function saveEditAttendance(idx){
-    const td=today(),r=state.attendance[td][idx];if(!r)return;
+function saveAttendanceEdit(dateKey,staffId){
+    if(currentRole!=='owner'){toast('⚠️ Chỉ chủ quán được chỉnh chấm công');return;}
+    const s=activeItems(state.staff).find(x=>sameStaffId(x.id,staffId));if(!s)return;
     const newIn=document.getElementById('editAttIn').value;
     const newOut=document.getElementById('editAttOut').value;
     if(!newIn){toast('⚠️ Phải có giờ vào ca');return;}
-    r.checkIn=newIn;
-    if(newOut){r.checkOut=newOut;const[iH,iM]=newIn.split(':').map(Number),[oH,oM]=newOut.split(':').map(Number);r.hours=Math.round(((oH*60+oM)-(iH*60+iM))/60*10)/10;}
-    else{r.checkOut=null;r.hours=null;}
-    r._lastModified=Date.now();
-    saveState();renderAttendance();closeModal();toast(`✅ Đã cập nhật giờ ${r.name}`);
+    const hours=calcAttendanceHours(newIn,newOut);
+    if(newOut&&hours===null){toast('⚠️ Giờ ra phải sau giờ vào');return;}
+    if(!state.attendance[dateKey])state.attendance[dateKey]=[];
+    let idx=findAttendanceRecordIndex(dateKey,staffId);
+    if(idx<0){state.attendance[dateKey].push({staffId:Number(staffId),name:s.name,wageRate:s.wageRate||25000,checkIn:newIn,checkOut:newOut||null,hours,_lastModified:Date.now()});}
+    else{const r=state.attendance[dateKey][idx];r.staffId=Number(staffId);r.name=s.name;r.wageRate=r.wageRate||s.wageRate||25000;r.checkIn=newIn;r.checkOut=newOut||null;r.hours=hours;r._deleted=false;r._lastModified=Date.now();}
+    saveState();renderAttendance();renderAttHistory();closeModal();toast(`✅ Đã cập nhật giờ ${s.name}`);
+}
+function deleteAttendanceRecord(dateKey,staffId){
+    if(currentRole!=='owner'){toast('⚠️ Chỉ chủ quán được xóa chấm công');return;}
+    if(!confirm('Xóa ca chấm công này?'))return;
+    const idx=findAttendanceRecordIndex(dateKey,staffId);if(idx<0)return;
+    const r=state.attendance[dateKey][idx];r._deleted=true;r.checkIn=null;r.checkOut=null;r.hours=null;r._lastModified=Date.now();
+    saveState();renderAttendance();renderAttHistory();closeModal();toast('🗑️ Đã xóa ca chấm công');
 }
 
 // ═══════════════════════════════════════
 // CHECKLIST
 // ═══════════════════════════════════════
-function toggleChecklist(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const i=l.find(c=>c.id===id);if(i){i.checked=!i.checked;i._lastModified=Date.now();}saveState();renderChecklist();}
-function renderChecklist(){['open','close'].forEach(t=>{const l=activeItems(t==='open'?state.openChecklist:state.closeChecklist),c=document.getElementById(t+'Checklist'),p=document.getElementById(t+'Progress');
+function toggleChecklist(t,id){const l=t==='open'?state.openChecklist:state.closeChecklist;const i=l.find(c=>c.id===id);if(i)i.checked=!i.checked;saveState();renderChecklist();}
+function renderChecklist(){['open','close'].forEach(t=>{const l=t==='open'?state.openChecklist:state.closeChecklist,c=document.getElementById(t+'Checklist'),p=document.getElementById(t+'Progress');
 const tot=l.length,done=l.filter(c=>c.checked).length;p.style.width=tot?(done/tot*100)+'%':'0%';
 c.innerHTML=l.map(c=>`<div class="cl-item ${c.checked?'checked':''}" onclick="toggleChecklist('${t}',${c.id})"><input type="checkbox" ${c.checked?'checked':''} onclick="event.stopPropagation();toggleChecklist('${t}',${c.id})"><span class="cl-text">${esc(c.text)}</span></div>`).join('')||'<div style="text-align:center;padding:20px;color:var(--text-muted)">Chưa có</div>';});}
 

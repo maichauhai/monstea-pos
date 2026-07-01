@@ -330,6 +330,9 @@ function markSalaryPaid(staffKey){
     if(amount<=0){toast('Số tiền không hợp lệ');return;}
     if(amount>row.remaining&&!confirm('Số tiền lớn hơn phần còn lại. Vẫn ghi nhận?'))return;
     state.salaryPayments=state.salaryPayments||[];
+    if(!Number.isFinite(Number(state.nextSalaryPaymentId))||Number(state.nextSalaryPaymentId)<1){
+        state.nextSalaryPaymentId=((state.salaryPayments||[]).reduce((m,p)=>Math.max(m,Number(p?.id)||0),0))+1;
+    }
     state.salaryPayments.push({
         id:state.nextSalaryPaymentId++,
         syncId:makeSyncId('salary'),

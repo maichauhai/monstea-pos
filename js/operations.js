@@ -1,6 +1,7 @@
-// ATTENDANCE HISTORY (#8)
+﻿// ATTENDANCE HISTORY (#8)
 // ═══════════════════════════════════════
 let attViewMode='month';
+const ATTENDANCE_ALERT_MINUTES=23*60+30;
 function setAttView(mode,val){
     attViewMode=mode;
     if(mode==='custom'&&val)document.getElementById('attMonthPick').value=val;
@@ -19,6 +20,27 @@ function getAttDates(mode){
     }
     return [today()];
 }
+function getLateSingleAttendanceAlerts(dates,staffList){
+    const currentMinutes=timeToMinutes(nowTime());
+    return dates.reduce((alerts,dt)=>{
+        const records=attendanceRecordsForDate(dt,false).filter(r=>r&&r.checkIn);
+        if(records.length!==1)return alerts;
+        const record=records[0];
+        const latestMinutes=Math.max(timeToMinutes(record.checkIn),timeToMinutes(record.checkOut));
+        const isLateToday=dt===today()&&currentMinutes>=ATTENDANCE_ALERT_MINUTES&&!record.checkOut;
+        if(latestMinutes<ATTENDANCE_ALERT_MINUTES&&!isLateToday)return alerts;
+        const staff=staffList.find(s=>sameStaffId(s.id,record.staffId));
+        const name=staff?.name||record.name||`ID ${record.staffId}`;
+        const timeLabel=record.checkOut?`${record.checkIn||'?'}→${record.checkOut}`:`${record.checkIn||'?'}→...`;
+        alerts.push({
+            dateKey:dt,
+            label:dt===today()?`Hôm nay (${dt})`:dt,
+            name,
+            timeLabel
+        });
+        return alerts;
+    },[]);
+}
 function renderAttHistory(){
     const el=document.getElementById('attHistoryBody');
     const sal=document.getElementById('attSalaryCard');
@@ -27,8 +49,17 @@ function renderAttHistory(){
     const staffList=activeItems(state.staff);
     const OT_START=22*60,OT_MULT=1.3;
     const staffTotals={};
+    const alerts=getLateSingleAttendanceAlerts(dates,staffList);
     staffList.forEach(s=>staffTotals[s.id]={name:s.name,totalH:0,normalH:0,otH:0,days:0,totalWage:0,wageRate:s.wageRate||25000});
-    let html=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
+    let html='';
+    if(alerts.length){
+        html+=`<div style="margin-bottom:12px;padding:12px 14px;border:1px solid rgba(255,167,38,0.28);border-radius:12px;background:rgba(255,167,38,0.08);">
+        <div style="font-weight:700;font-size:0.78rem;color:var(--accent-warm);margin-bottom:6px;">⚠️ Cảnh báo thiếu người sau 23:30</div>
+        <div style="display:flex;flex-direction:column;gap:4px;font-size:0.72rem;color:var(--text-secondary);">
+        ${alerts.map(a=>`<div><strong style="color:var(--text-primary);">${esc(a.label)}</strong>: chỉ có <strong style="color:var(--accent-green);">${esc(a.name)}</strong> chấm công (${esc(a.timeLabel)})</div>`).join('')}
+        </div></div>`;
+    }
+    html+=`<table style="width:100%;border-collapse:collapse;font-size:0.72rem;">
     <thead><tr style="border-bottom:2px solid var(--border-subtle);">
     <th style="padding:4px;text-align:left;">Ngày</th>`;
     staffList.forEach(s=>html+=`<th style="padding:4px;text-align:center;">${esc(s.name)}</th>`);

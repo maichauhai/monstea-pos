@@ -85,6 +85,41 @@ function searchMatch(text,query){
 function cloneData(v){return JSON.parse(JSON.stringify(v||{}));}
 function isDeleted(item){return !!(item&&item._deleted);}
 function activeItems(list){return (list||[]).filter(item=>!isDeleted(item));}
+function normalizeWeekScheduleRow(row){
+    if(Array.isArray(row))return Array.from({length:7},(_,i)=>!!row[i]);
+    return [false,false,false,false,false,false,false];
+}
+function normalizeWeekScheduleMap(source){
+    const out={};
+    Object.entries(source||{}).forEach(([weekKey,staffMap])=>{
+        if(!staffMap||typeof staffMap!=='object')return;
+        const weekOut={};
+        Object.entries(staffMap).forEach(([staffId,row])=>{
+            weekOut[String(staffId)]=normalizeWeekScheduleRow(row);
+        });
+        out[weekKey]=weekOut;
+    });
+    return out;
+}
+function mergeWeekSchedules(remoteSchedule,localSchedule){
+    const remote=normalizeWeekScheduleMap(remoteSchedule);
+    const local=normalizeWeekScheduleMap(localSchedule);
+    const merged={...remote};
+    Object.entries(local).forEach(([weekKey,staffMap])=>{
+        merged[weekKey]={...(merged[weekKey]||{}),...staffMap};
+    });
+    return merged;
+}
+function buildWeekScheduleSyncPayload(sourceState,staffId){
+    const normalized=normalizeWeekScheduleMap(sourceState&&sourceState.weekSchedule);
+    if(staffId===null||staffId===undefined)return normalized;
+    const targetId=String(staffId);
+    const out={};
+    Object.entries(normalized).forEach(([weekKey,staffMap])=>{
+        if(staffMap[targetId])out[weekKey]={[targetId]:staffMap[targetId]};
+    });
+    return out;
+}
 function normalizeArrayLike(value){
     if(Array.isArray(value))return value;
     if(value&&typeof value==='object')return Object.values(value).filter(Boolean);
@@ -328,6 +363,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.ingredients=mergeArrayByKey(remote.ingredients||[],local.ingredients||[],i=>i.id,true);
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
     merged.history=mergeHistory(remote.history,local.history);
+    merged.weekSchedule=mergeWeekSchedules(remote.weekSchedule,local.weekSchedule);
     merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
     bumpNextFromArray(merged,'staff','nextStaffId');
@@ -348,12 +384,13 @@ function stateForFirebase(){
     s._syncRole=currentRole||'unknown';
     normalizeStaffRecords(s);
     normalizeAttendanceRecordsFor(s);
+    s.weekSchedule=buildWeekScheduleSyncPayload(s,currentRole==='owner'?null:currentStaffId);
     delete s._editingInvoiceId;
     delete s._editingInvoiceRef;
     delete s._editingOldSummary;
     if(currentRole!=='owner'){
         delete s.menu;delete s.categories;delete s.staff;delete s.recipes;delete s.recipeTemplates;
-        delete s.weekSchedule;delete s.menuGuides;delete s.guideImages;
+        delete s.menuGuides;delete s.guideImages;
         delete s.password;delete s.ownerPassword;delete s.nextMenuId;delete s.nextStaffId;delete s.nextTplId;
     }
     return s;
@@ -370,6 +407,7 @@ function persistMergedState(localOrder){
   if(state.ingredients)state.ingredients.forEach(i=>{if(i.sln===undefined)i.sln=1;if(i.openStock===undefined)i.openStock=0;if(i.warnLevel===undefined)i.warnLevel=0;if(i.hidden===undefined)i.hidden=false;});
   normalizeStaffRecords();
   normalizeAttendanceRecords();
+  state.weekSchedule=normalizeWeekScheduleMap(state.weekSchedule);
   rebindCurrentStaffFromSession();
   const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   state.nextInvoiceId=nextTodayInvoiceId();
@@ -386,6 +424,7 @@ if(!Array.isArray(state.currentOrder))state.currentOrder=[];
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
 normalizeStaffRecords();
 if(!state.weekSchedule)state.weekSchedule={};
+state.weekSchedule=normalizeWeekScheduleMap(state.weekSchedule);
 if(!state.ownerPassword)state.ownerPassword='060997';
 if(!state.menuGuides)state.menuGuides={};
 if(!state.guideImages)state.guideImages={};

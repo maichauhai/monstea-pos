@@ -19,6 +19,9 @@ let syncTimeout = null;
 let isRemoteUpdate = false;
 let firebaseReady = false;
 let lastHelpTs = 0;
+let localPersistTimeout = null;
+let pendingLocalSyncToken = '';
+let pendingLocalSyncTs = 0;
 
 // ═══════════════════════════════════════
 // DEFAULT DATA — moved to data.js
@@ -129,6 +132,39 @@ function getDeviceId(){
     let id=localStorage.getItem('monsteaDeviceId');
     if(!id){id='dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);localStorage.setItem('monsteaDeviceId',id);}
     return id;
+}
+function persistStateToLocalStorage(){
+    localPersistTimeout=null;
+    localStorage.setItem('monsteaPOS',JSON.stringify(state));
+}
+function scheduleStatePersist(delay){
+    clearTimeout(localPersistTimeout);
+    localPersistTimeout=setTimeout(persistStateToLocalStorage,delay||180);
+}
+function flushStatePersist(){
+    if(localPersistTimeout){
+        clearTimeout(localPersistTimeout);
+        persistStateToLocalStorage();
+    }
+}
+function currentActiveTab(){
+    const active=document.querySelector('.tab-content.active');
+    return active&&active.id?active.id.replace('tab-',''):'pos';
+}
+function renderActiveTab(){
+    const tab=currentActiveTab();
+    if(tab==='pos'){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();return;}
+    if(tab==='dashboard'){renderDashboard();return;}
+    if(tab==='attendance'){renderAttendance();if(currentRole==='owner')renderAttHistory();return;}
+    if(tab==='checklist'){renderChecklist();return;}
+    if(tab==='settings'){renderSettings();return;}
+    if(tab==='inventory'){renderInventory();return;}
+    if(tab==='chitieu'){renderExpenseTab();return;}
+    if(tab==='recipes'){renderRecipes();return;}
+    if(tab==='guide'){renderGuide();return;}
+}
+function isOwnSyncEcho(remoteState){
+    return !!(remoteState&&pendingLocalSyncToken&&remoteState._syncToken===pendingLocalSyncToken&&remoteState._syncDeviceId===getDeviceId());
 }
 function makeSyncId(prefix){return `${today()}-${Date.now().toString(36)}-${getDeviceId()}-${Math.random().toString(36).slice(2,7)}-${prefix||'inv'}`;}
 function invoiceKey(inv){return `${inv.syncId||inv.id}_${inv.date||''}`;}
@@ -376,12 +412,18 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
     normalizeAttendanceRecordsFor(merged);
     delete merged._syncRole;
+    delete merged._syncToken;
+    delete merged._syncDeviceId;
+    delete merged._syncTs;
     return merged;
 }
 function stateForFirebase(){
     const s=cloneData(state);
     s.currentOrder=[];
     s._syncRole=currentRole||'unknown';
+    s._syncToken=makeSyncId('sync');
+    s._syncDeviceId=getDeviceId();
+    s._syncTs=Date.now();
     normalizeStaffRecords(s);
     normalizeAttendanceRecordsFor(s);
     s.weekSchedule=buildWeekScheduleSyncPayload(s,currentRole==='owner'?null:currentStaffId);
@@ -412,9 +454,10 @@ function persistMergedState(localOrder){
   const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
   state.nextInvoiceId=nextTodayInvoiceId();
   if(localOrder)state.currentOrder=localOrder;
+  flushStatePersist();
   localStorage.setItem('monsteaPOS',JSON.stringify(state));
 }
-function saveState(){try{localStorage.setItem('monsteaPOS',JSON.stringify(state));if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
+function saveState(){try{scheduleStatePersist(180);if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;if(!state.purchases)state.purchases={};if(!state.expenses)state.expenses={};if(!state.dailyNotes)state.dailyNotes=[];
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!state.invoiceArchive)state.invoiceArchive={};
@@ -537,17 +580,22 @@ if(firstLoad){
   if(r){isRemoteUpdate=true;mergeFirebaseState(r);}
   firebaseReady=true;listenHelpAlert();init();isRemoteUpdate=false;updateSyncStatus('connected');return;}
 if(!r)return;
+if(isOwnSyncEcho(r)){pendingLocalSyncToken='';pendingLocalSyncTs=0;updateSyncStatus('connected');return;}
 isRemoteUpdate=true;mergeFirebaseState(r);
-renderAll();isRemoteUpdate=false;});}
+renderActiveTab();isRemoteUpdate=false;});}
 
 function saveStateToFirebase(){if(!firebaseDb)return;clearTimeout(syncTimeout);
 syncTimeout=setTimeout(()=>{updateSyncStatus('syncing');
 const localSnapshot=stateForFirebase();
+pendingLocalSyncToken=localSnapshot._syncToken||'';
+pendingLocalSyncTs=localSnapshot._syncTs||Date.now();
 firebaseDb.ref('state').transaction(remote=>mergeStateData(remote||{},localSnapshot,true),(err,committed,snap)=>{
-    if(err){updateSyncStatus('offline');return;}
-    if(committed&&snap&&snap.val()){isRemoteUpdate=true;mergeFirebaseState(snap.val());isRemoteUpdate=false;renderAll();}
+    if(err){pendingLocalSyncToken='';pendingLocalSyncTs=0;updateSyncStatus('offline');return;}
+    if(!committed){pendingLocalSyncToken='';pendingLocalSyncTs=0;}
     updateSyncStatus('connected');
 });},500);}
+
+window.addEventListener('beforeunload',flushStatePersist);
 
 function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;
 const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};

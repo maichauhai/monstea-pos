@@ -403,6 +403,7 @@ function calcTotalPrepWaste(ingId){
 // ═══════════════════════════════════════
 function cleanOldNotes(){
     if(!state.dailyNotes)state.dailyNotes=[];
+    normalizeDailyNotesFor(state);
     const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);
     const cutStr=cutoff.toISOString().slice(0,10);
     state.dailyNotes=state.dailyNotes.filter(n=>!n.done||n.doneDate>cutStr);
@@ -416,9 +417,9 @@ function addNote(){
     document.getElementById('noteText').value='';
     saveState();renderNotes();
 }
-function toggleNote(id){
+function toggleNote(ref){
     if(!state.dailyNotes)return;
-    const n=state.dailyNotes.find(x=>x.id===id);if(!n)return;
+    const n=findByRef(state.dailyNotes,ref);if(!n)return;
     if(!n.done){n.done=true;n.doneDate=today();}
     else{n.done=false;n.doneDate=null;}
     n._lastModified=Date.now();
@@ -437,7 +438,7 @@ function renderNotes(){
         html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;${n.done?'opacity:0.45;':''}">
         <span style="flex:1;font-size:0.82rem;${n.done?'text-decoration:line-through;color:var(--text-muted);':''}">${esc(n.text)}</span>
         <span style="font-size:0.68rem;color:var(--text-muted);white-space:nowrap;">${n.time}</span>
-        <button onclick="toggleNote(${n.id})" style="font-size:0.7rem;background:none;border:none;cursor:pointer;" title="${n.done?'Hoàn tác':'Xong'}">${n.done?'↩️':'✔️'}</button>
+        <button onclick="toggleNote('${jsString(itemRef(n))}')" style="font-size:0.7rem;background:none;border:none;cursor:pointer;" title="${n.done?'Hoàn tác':'Xong'}">${n.done?'↩️':'✔️'}</button>
         </div>`;
     });
     el.innerHTML=html;

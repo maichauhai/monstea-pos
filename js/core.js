@@ -128,6 +128,31 @@ function normalizeArrayLike(value){
     if(value&&typeof value==='object')return Object.values(value).filter(Boolean);
     return [];
 }
+function legacyNoteSyncId(note){
+    const raw=[note&&note.id,note&&note.date,note&&note.time,note&&note.text].map(v=>String(v??'')).join('|');
+    let hash=2166136261;
+    for(let i=0;i<raw.length;i++)hash=Math.imul(hash^raw.charCodeAt(i),16777619);
+    return `legacy-note-${(hash>>>0).toString(36)}`;
+}
+function normalizeDailyNotesFor(targetState){
+    if(!targetState)return false;
+    const notes=normalizeArrayLike(targetState.dailyNotes),seen=new Set();
+    let changed=!Array.isArray(targetState.dailyNotes),maxId=0;
+    targetState.dailyNotes=notes.filter(Boolean).map((raw,index)=>{
+        const note={...raw},originalId=note.id;
+        const numericId=Number(note.id);
+        if(Number.isFinite(numericId)){note.id=numericId;maxId=Math.max(maxId,numericId);}
+        if(!note.syncId){note.syncId=legacyNoteSyncId(note);changed=true;}
+        if(seen.has(note.syncId)){note.syncId=`${note.syncId}-${index}`;changed=true;}
+        seen.add(note.syncId);
+        if(String(originalId)!==String(note.id))changed=true;
+        return note;
+    });
+    const currentNext=Number(targetState.nextNoteId);
+    const next=Math.max(Number.isFinite(currentNext)&&currentNext>0?currentNext:1,maxId+1);
+    if(Number(targetState.nextNoteId)!==next){targetState.nextNoteId=next;changed=true;}
+    return changed;
+}
 function getDeviceId(){
     let id=localStorage.getItem('monsteaDeviceId');
     if(!id){id='dev-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);localStorage.setItem('monsteaDeviceId',id);}
@@ -382,6 +407,8 @@ function bumpNextFromBuckets(obj,field,nextField){
 }
 function mergeStateData(remoteState,localState,preferLocalRoot){
     const remote=cloneData(remoteState),local=cloneData(localState);
+    normalizeDailyNotesFor(remote);
+    normalizeDailyNotesFor(local);
     const merged=preferLocalRoot?{...remote,...local}:{...local,...remote};
     merged.todayInvoices=mergeArrayByKey(remote.todayInvoices||[],local.todayInvoices||[],invoiceKey,true);
     merged.invoiceArchive=mergeByDateBuckets(remote.invoiceArchive,local.invoiceArchive,invoiceKey,'invoice');
@@ -392,7 +419,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.manualUsage=mergeByDateBuckets(remote.manualUsage,local.manualUsage,'id','stockout');
     merged.recurringStockOuts=mergeArrayByKey(remote.recurringStockOuts||[],local.recurringStockOuts||[],s=>s.syncId||s.id,true);
     merged.prepTracking=mergeByDateBuckets(remote.prepTracking,local.prepTracking,'id','prep');
-    merged.dailyNotes=mergeArrayByKey(normalizeArrayLike(remote.dailyNotes),normalizeArrayLike(local.dailyNotes),n=>n.syncId||n.id,true);
+    merged.dailyNotes=mergeArrayByKey(remote.dailyNotes,local.dailyNotes,n=>n.syncId||n.id,true);
     merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
     normalizeStaffRecords(merged);
@@ -400,6 +427,11 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.recipeTemplates=mergeArrayByKey(remote.recipeTemplates||[],local.recipeTemplates||[],t=>t.id,true);
     merged.history=mergeHistory(remote.history,local.history);
     merged.weekSchedule=mergeWeekSchedules(remote.weekSchedule,local.weekSchedule);
+    merged.salaryPayments=mergeArrayByKey(remote.salaryPayments||[],local.salaryPayments||[],p=>p.syncId||`salary:${p.id}`,true);
+    merged.editLog=mergeArrayByKey(normalizeArrayLike(remote.editLog),normalizeArrayLike(local.editLog),l=>l.syncId||`${l.invoiceRef||l.invoiceId||''}:${l.time||''}:${l.action||''}:${l.before||''}`,true);
+    merged.openChecklist=mergeArrayByKey(remote.openChecklist||[],local.openChecklist||[],c=>c.id,true);
+    merged.closeChecklist=mergeArrayByKey(remote.closeChecklist||[],local.closeChecklist||[],c=>c.id,true);
+    normalizeDailyNotesFor(merged);
     merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
     bumpNextFromArray(merged,'staff','nextStaffId');
@@ -410,6 +442,9 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     bumpNextFromBuckets(merged,'manualUsage','nextStockOutId');
     bumpNextFromArray(merged,'recurringStockOuts','nextRecurringStockOutId');
     bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
+    bumpNextFromArray(merged,'salaryPayments','nextSalaryPaymentId');
+    bumpNextFromArray(merged,'openChecklist','nextClId');
+    bumpNextFromArray(merged,'closeChecklist','nextClId');
     normalizeAttendanceRecordsFor(merged);
     delete merged._syncRole;
     delete merged._syncToken;
@@ -459,6 +494,9 @@ function persistMergedState(localOrder){
 }
 function saveState(){try{scheduleStatePersist(180);if(!isRemoteUpdate&&firebaseReady)saveStateToFirebase();}catch(e){}}
 function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const p=JSON.parse(s);state={...state,...p};if(!state.ingredients)state.ingredients=[...DEFAULT_INGREDIENTS];if(!state.recipes)state.recipes={};if(!state.recipeTemplates)state.recipeTemplates=[];if(!state.editLog)state.editLog=[];if(!state.password)state.password='1234';if(!state.nextIngId)state.nextIngId=125;if(!state.nextTplId)state.nextTplId=1;if(!state.purchases)state.purchases={};if(!state.expenses)state.expenses={};if(!state.dailyNotes)state.dailyNotes=[];
+if(!Array.isArray(state.salaryPayments))state.salaryPayments=normalizeArrayLike(state.salaryPayments);
+if(!Array.isArray(state.editLog))state.editLog=normalizeArrayLike(state.editLog);
+normalizeDailyNotesFor(state);
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!state.invoiceArchive)state.invoiceArchive={};
 if(!Array.isArray(state.grabOrders))state.grabOrders=[];

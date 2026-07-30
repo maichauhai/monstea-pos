@@ -272,7 +272,6 @@ function renderDashboard(){
         statCard('Chi nhập NL', fmtP(f.purchasesCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
         statCard('CP khác đã chi', fmtP(f.cashOtherExpenses), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
         statCard('Lương đã trả', fmtP(f.salaryPaidCashOut), 'var(--accent-blue)', ' style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"'),
-        statCard('Lãi ước tính', fmtP(f.accountingProfit), f.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)'),
     ].join('');
     renderCashFlowSection(f);
     renderRevenueChart(f.range);
@@ -317,13 +316,12 @@ function renderCashFlowSection(f){
             <td style="padding:6px;text-align:right;white-space:nowrap;">${actions}</td>
         </tr>`;
     }).join('');
-    const dailyRows=f.dailyRows.filter(r=>r.grossRevenue||r.cashOut||r.salaryPaid||r.cashProfit||r.accountingProfit).slice(-35).reverse().map(r=>`<tr>
+    const dailyRows=f.dailyRows.filter(r=>r.grossRevenue||r.cashOut||r.salaryPaid||r.cashProfit).slice(-35).reverse().map(r=>`<tr>
         <td style="padding:6px;color:var(--text-muted);">${r.date}</td>
         <td style="padding:6px;text-align:right;">${fmtP(r.revenue)}</td>
         <td style="padding:6px;text-align:right;">${fmtP(r.purchases+r.cashOtherExpenses)}</td>
         <td style="padding:6px;text-align:right;color:var(--accent-blue);">${fmtP(r.salaryPaid)}</td>
         <td style="padding:6px;text-align:right;color:${r.cashProfit>=0?'var(--accent-green)':'var(--accent-red)'};font-weight:700;">${fmtP(r.cashProfit)}</td>
-        <td style="padding:6px;text-align:right;color:${r.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(r.accountingProfit)}</td>
     </tr>`).join('');
     const allRecentPayments=activeItems(state.salaryPayments||[]).sort((a,b)=>(Number(b._lastModified)||0)-(Number(a._lastModified)||0));
     const recentPayments=allRecentPayments.slice(0,8).map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.74rem;">
@@ -336,13 +334,12 @@ function renderCashFlowSection(f){
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
             <div>
                 <div class="card-title" style="margin-bottom:2px;">💵 Tiền thu - tiền chi</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Lãi chính = tiền thu thực nhận - tiền đã chi. Lãi ước tính = trừ thêm giá vốn công thức và lương phát sinh.</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Lãi chính = tiền thu thực nhận - tiền đã chi.</div>
             </div>
         </div>
         <div class="cashflow-stat-grid">
             ${statCard('Tiền thu',fmtP(f.sales.realRevenue),'var(--accent-green)')}
             ${statCard('Tiền chi',fmtP(f.cashOutPaid),'var(--accent-red)')}
-            ${statCard('Lãi ước tính',fmtP(f.accountingProfit),f.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)')}
             ${statCard('Chi nhập NL',fmtP(f.purchasesCost),'var(--accent-red)')}
             ${statCard('Chi khác đã chi',fmtP(f.cashOtherExpenses),'#fbbf24')}
             ${statCard('Lương đã trả',fmtP(f.salaryPaidCashOut),'var(--accent-blue)')}
@@ -369,9 +366,9 @@ function renderCashFlowSection(f){
             <div class="collapse-body">
             <table style="width:100%;border-collapse:collapse;font-size:0.74rem;">
                 <thead><tr style="border-bottom:2px solid var(--border-subtle);">
-                    <th style="padding:6px;text-align:left;">Ngày</th><th style="text-align:right;">Tiền thu</th><th style="text-align:right;">Chi NL/khác</th><th style="text-align:right;">Lương đã trả</th><th style="text-align:right;">Lãi thu-chi</th><th style="text-align:right;">Lãi ước tính</th>
+                    <th style="padding:6px;text-align:left;">Ngày</th><th style="text-align:right;">Tiền thu</th><th style="text-align:right;">Chi NL/khác</th><th style="text-align:right;">Lương đã trả</th><th style="text-align:right;">Lãi thu-chi</th>
                 </tr></thead>
-                <tbody>${dailyRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:14px;">Chưa có dữ liệu dòng tiền</td></tr>'}</tbody>
+                <tbody>${dailyRows||'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:14px;">Chưa có dữ liệu dòng tiền</td></tr>'}</tbody>
             </table>
             </div>
         </details>

@@ -213,7 +213,7 @@ function getFinancialRangeData(rangeOverride){
     const cashOutPaid=purchasesCost+cashOtherExpenses+salaryPaidCashOut;
     const cashNet=sales.realRevenue-cashOutPaid;
     const cashProfit=cashNet;
-    const netAfterPayables=cashNet-salaryRemaining;
+    const netAfterPayables=cashProfit;
     const dailyRows=dates.map(dt=>{
         const ds=collectSalesForDates([dt]),dcogs=calcIngredientCostForDates([dt]),dlabor=calcLaborBreakdown([dt]);
         const dp=sumBucket([dt],state.purchases,'totalCost'),doe=sumBucket([dt],state.expenses,'amount'),dcashOther=sumCashExpenseBucket([dt]);
@@ -304,7 +304,7 @@ function renderCashFlowSection(f){
             ${statCard('Chi khác đã chi',fmtP(f.cashOtherExpenses),'#fbbf24')}
             ${statCard('Lương đã trả',fmtP(f.salaryPaidCashOut),'var(--accent-blue)')}
             ${statCard('Còn nợ lương',fmtP(f.salaryRemaining),f.salaryRemaining?'var(--accent-red)':'var(--accent-green)')}
-            ${statCard('Sau trả hết lương',fmtP(f.netAfterPayables),f.netAfterPayables>=0?'var(--accent-green)':'var(--accent-red)')}
+            ${statCard('Sau lương đã trả',fmtP(f.netAfterPayables),f.netAfterPayables>=0?'var(--accent-green)':'var(--accent-red)')}
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;align-items:start;">
             <div style="overflow:auto;">

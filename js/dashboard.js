@@ -13,6 +13,25 @@ function setDashFilter(f){
     renderDashboard();
 }
 
+let dashTopItemsMode='qty';
+let dashRevenueChartMode='last30';
+let dashRevenueChartMonth='';
+
+function setTopItemsMode(mode){
+    dashTopItemsMode=mode==='revenue'?'revenue':'qty';
+    renderDashboard();
+}
+function setRevenueChartMode(mode){
+    dashRevenueChartMode=mode==='range'?'range':'last30';
+    renderRevenueChart(getDashRange());
+}
+function setRevenueChartMonth(monthKey){
+    if(!/^\d{4}-\d{2}$/.test(String(monthKey||'')))return;
+    dashRevenueChartMode='month';
+    dashRevenueChartMonth=monthKey;
+    renderRevenueChart(getDashRange());
+}
+
 function dateKeyLocal(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function monthDateKey(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
 function parseDateKeyLocal(key){
@@ -34,6 +53,13 @@ function recentDates(days){
 function monthDatesToToday(){
     const now=parseDateKeyLocal(today()),out=[];
     for(let d=1;d<=now.getDate();d++)out.push(monthDateKey(now.getFullYear(),now.getMonth(),d));
+    return out;
+}
+function monthDatesForKey(monthKey){
+    const m=String(monthKey||'').match(/^(\d{4})-(\d{2})$/);
+    const now=parseDateKeyLocal(today()),y=m?Number(m[1]):now.getFullYear(),mo=m?Number(m[2])-1:now.getMonth();
+    const last=new Date(y,mo+1,0).getDate(),out=[];
+    for(let d=1;d<=last;d++)out.push(monthDateKey(y,mo,d));
     return out;
 }
 function getAllFinancialDateKeys(){
@@ -241,7 +267,7 @@ function renderDashboard(){
         statCard('Lãi thu-chi', fmtP(f.cashProfit), f.cashProfit>=0?'var(--accent-green)':'var(--accent-red)', ' style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"'),
         statCard('Hóa đơn', d.totalInvoices, 'var(--accent-blue)'),
         statCard('TB/đơn', fmtP(avg), 'var(--accent-warm)'),
-        statCard('Tiền mặt', fmtP(d.cashTotal), 'var(--accent-green)'),
+        statCard('Tiền mặt bán hàng', fmtP(d.cashTotal), 'var(--accent-green)'),
         statCard('CK/Grab gross', fmtP(d.transferTotal), 'var(--accent-purple)'),
         statCard('Chi nhập NL', fmtP(f.purchasesCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
         statCard('CP khác đã chi', fmtP(f.cashOtherExpenses), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
@@ -252,8 +278,26 @@ function renderDashboard(){
     renderRevenueChart(f.range);
     renderHourlyChart(d.hourlyRevenue);
     renderMonthlyReport();
-    const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>b.qty-a.qty),tq=ti.reduce((s,i)=>s+i.qty,0);
-    document.getElementById('topItemsBody').innerHTML=ti.length?ti.map((i,x)=>`<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${tq?Math.round(i.qty/tq*100):0}%</td></tr>`).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';
+    renderTopItems(d);
+}
+
+function renderTopItems(d){
+    const body=document.getElementById('topItemsBody');
+    if(!body)return;
+    const mode=dashTopItemsMode==='revenue'?'revenue':'qty';
+    document.getElementById('topItemsQtyBtn')?.classList.toggle('active',mode==='qty');
+    document.getElementById('topItemsRevenueBtn')?.classList.toggle('active',mode==='revenue');
+    const title=document.getElementById('topItemsTitle');
+    if(title)title.textContent=mode==='revenue'?'🏆 Top Món Theo Doanh Thu':'🏆 Top Món Theo Số Lượng';
+    const ti=Object.entries(d.itemsSold).map(([n,x])=>({name:n,...x})).sort((a,b)=>{
+        const diff=mode==='revenue'?(b.revenue-a.revenue):(b.qty-a.qty);
+        return diff||b.revenue-a.revenue||b.qty-a.qty||a.name.localeCompare(b.name);
+    });
+    const total=ti.reduce((s,i)=>s+(mode==='revenue'?i.revenue:i.qty),0);
+    body.innerHTML=ti.length?ti.map((i,x)=>{
+        const pct=total?Math.round((mode==='revenue'?i.revenue:i.qty)/total*100):0;
+        return `<tr><td style="color:${x<3?'var(--accent)':'var(--text-muted)'};font-weight:${x<3?700:400}">${x+1}</td><td>${x===0?'🏆 ':''}${esc(i.name)}</td><td style="font-weight:600">${i.qty}</td><td style="color:var(--accent-warm)">${fmtP(i.revenue)}</td><td style="color:var(--text-muted)">${pct}%</td></tr>`;
+    }).join(''):'<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:20px">Chưa có dữ liệu</td></tr>';
 }
 
 function renderCashFlowSection(f){
@@ -292,13 +336,12 @@ function renderCashFlowSection(f){
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
             <div>
                 <div class="card-title" style="margin-bottom:2px;">💵 Tiền thu - tiền chi</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Lãi chính = tiền thu thực nhận - tiền đã chi.</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Lãi chính = tiền thu thực nhận - tiền đã chi. Lãi ước tính = trừ thêm giá vốn công thức và lương phát sinh.</div>
             </div>
         </div>
         <div class="cashflow-stat-grid">
             ${statCard('Tiền thu',fmtP(f.sales.realRevenue),'var(--accent-green)')}
             ${statCard('Tiền chi',fmtP(f.cashOutPaid),'var(--accent-red)')}
-            ${statCard('Lãi = thu - chi',fmtP(f.cashProfit),f.cashProfit>=0?'var(--accent-green)':'var(--accent-red)')}
             ${statCard('Lãi ước tính',fmtP(f.accountingProfit),f.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)')}
             ${statCard('Chi nhập NL',fmtP(f.purchasesCost),'var(--accent-red)')}
             ${statCard('Chi khác đã chi',fmtP(f.cashOtherExpenses),'#fbbf24')}
@@ -384,11 +427,21 @@ function deleteSalaryPayment(ref){
 function renderRevenueChart(range){
     const c=document.getElementById('revenueChart');
     if(!c)return;
-    const source=(range&&range.dates)?(range.dates.length<=14?range.dates:range.dates.slice(-14)):recentDates(7);
+    if(!dashRevenueChartMonth)dashRevenueChartMonth=today().slice(0,7);
+    const monthInput=document.getElementById('revChartMonth');
+    if(monthInput&&!monthInput.value)monthInput.value=dashRevenueChartMonth;
+    const mode=dashRevenueChartMode==='month'?'month':(dashRevenueChartMode==='range'?'range':'last30');
+    document.getElementById('revChartLast30Btn')?.classList.toggle('active',mode==='last30');
+    document.getElementById('revChartRangeBtn')?.classList.toggle('active',mode==='range');
+    monthInput?.classList.toggle('active',mode==='month');
+    let source=recentDates(30);
+    if(mode==='month')source=monthDatesForKey(dashRevenueChartMonth);
+    if(mode==='range'&&range&&range.dates)source=range.dates.length<=45?range.dates:range.dates.slice(-45);
     const dn=['CN','T2','T3','T4','T5','T6','T7'];
     const days=source.map(k=>{
         const d=parseDateKeyLocal(k);
-        return{k,label:k===today()?'Nay':dn[d.getDay()],rev:state.history[k]?.totalRevenue||0};
+        const label=source.length>16?`${d.getDate()}/${d.getMonth()+1}`:(k===today()?'Nay':dn[d.getDay()]);
+        return{k,label,rev:state.history[k]?.totalRevenue||0};
     });
     const mx=Math.max(...days.map(d=>d.rev),1);
     c.innerHTML=days.map(d=>`<div class="bar-col"><div class="bar-value">${d.rev?fmtS(d.rev):''}</div><div class="bar-fill" style="height:${Math.max(4,d.rev/mx*160)}px;${d.k===today()?'background:var(--accent)':''}"></div><div class="bar-label">${d.label}</div></div>`).join('');

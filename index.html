@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<link rel="stylesheet" href="style.css?v=20260730-prepared-toppings">
+<link rel="stylesheet" href="style.css?v=20260731-dashboard-controls">
 </head>
 <body>
 <div class="login-overlay" id="loginOverlay">
@@ -144,10 +144,27 @@
     <div class="stat-row" id="dashStats"></div>
     <div id="cashFlowSection"></div>
     <div class="chart-grid">
-        <div class="chart-container"><div class="chart-title">📊 Doanh thu theo kỳ</div><div class="bar-chart" id="revenueChart"></div></div>
+        <div class="chart-container">
+            <div class="chart-head">
+                <div class="chart-title" style="margin-bottom:0;">📊 Doanh thu theo kỳ</div>
+                <div class="chart-controls">
+                    <button class="mini-filter-btn active" id="revChartLast30Btn" onclick="setRevenueChartMode('last30')">30 ngày</button>
+                    <button class="mini-filter-btn" id="revChartRangeBtn" onclick="setRevenueChartMode('range')">Theo lọc</button>
+                    <input type="month" id="revChartMonth" onchange="setRevenueChartMonth(this.value)">
+                </div>
+            </div>
+            <div class="bar-chart" id="revenueChart"></div>
+        </div>
         <div class="chart-container"><div class="chart-title">⏰ Doanh thu theo giờ</div><div class="hourly-chart" id="hourlyChart"></div></div>
     </div>
-    <div class="card"><div class="card-title">🏆 Top Món Bán Chạy</div>
+    <div class="card">
+        <div class="card-head">
+            <div class="card-title" id="topItemsTitle" style="margin-bottom:0;">🏆 Top Món Bán Chạy</div>
+            <div class="chart-controls">
+                <button class="mini-filter-btn active" id="topItemsQtyBtn" onclick="setTopItemsMode('qty')">Theo SL</button>
+                <button class="mini-filter-btn" id="topItemsRevenueBtn" onclick="setTopItemsMode('revenue')">Theo doanh thu</button>
+            </div>
+        </div>
         <table class="top-items-table"><thead><tr><th>#</th><th>Tên món</th><th>SL</th><th>Doanh thu</th><th>%</th></tr></thead><tbody id="topItemsBody"></tbody></table>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;">
@@ -485,7 +502,7 @@
 <script src="data.js?v=20260510c"></script>
 <script src="js/core.js?v=20260730-prepared-toppings"></script>
 <script src="js/pos.js?v=20260728-data-integrity-fix"></script>
-<script src="js/dashboard.js?v=20260731-cash-profit-salaryfix"></script>
+<script src="js/dashboard.js?v=20260731-dashboard-controls"></script>
 <script src="js/inventory.js?v=20260520-inventory-toppings"></script>
 <script src="js/expense.js?v=20260728-data-integrity-fix"></script>
 <script src="js/operations.js?v=20260730-prepared-toppings"></script>

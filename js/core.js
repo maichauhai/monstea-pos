@@ -33,11 +33,11 @@ let state = {
     recipes:{},
     recipeTemplates:[],
     currentOrder:[], todayInvoices:[], invoiceArchive:{}, grabOrders:[], history:{}, attendance:{}, editLog:[],
-    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[],
+    purchases:{}, expenses:{}, manualUsage:{}, recurringStockOuts:[], prepTracking:{}, dailyNotes:[], preparedToppings:[],
     openChecklist:DEFAULT_OPEN_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     closeChecklist:DEFAULT_CLOSE_CL.map((t,i)=>({id:i+1,text:t,checked:false})),
     checklistDate:'', nextMenuId:13, nextStaffId:5, nextInvoiceId:1, nextClId:20, nextIngId:125, nextTplId:1,
-    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1,
+    nextPurchaseId:1, nextExpenseId:1, nextStockOutId:1, nextRecurringStockOutId:1, nextPrepId:1, nextPreparedToppingId:1,
     shopName:'Monstea', password:'1234',
     ownerPassword:'060997',
     weekSchedule:{},
@@ -151,6 +151,38 @@ function normalizeDailyNotesFor(targetState){
     const currentNext=Number(targetState.nextNoteId);
     const next=Math.max(Number.isFinite(currentNext)&&currentNext>0?currentNext:1,maxId+1);
     if(Number(targetState.nextNoteId)!==next){targetState.nextNoteId=next;changed=true;}
+    return changed;
+}
+function legacyPreparedToppingSyncId(item){
+    const raw=[item&&item.id,item&&item.madeAt,item&&item.name,item&&item.staffName].map(v=>String(v??'')).join('|');
+    let hash=2166136261;
+    for(let i=0;i<raw.length;i++)hash=Math.imul(hash^raw.charCodeAt(i),16777619);
+    return `legacy-prep-topping-${(hash>>>0).toString(36)}`;
+}
+function normalizePreparedToppingsFor(targetState){
+    if(!targetState)return false;
+    const list=normalizeArrayLike(targetState.preparedToppings),seen=new Set();
+    let changed=!Array.isArray(targetState.preparedToppings),maxId=0;
+    targetState.preparedToppings=list.filter(Boolean).map((raw,index)=>{
+        const item={...raw},originalId=item.id;
+        const numericId=Number(item.id);
+        if(Number.isFinite(numericId)){item.id=numericId;maxId=Math.max(maxId,numericId);}
+        if(!item.syncId){item.syncId=legacyPreparedToppingSyncId(item);changed=true;}
+        if(seen.has(item.syncId)){item.syncId=`${item.syncId}-${index}`;changed=true;}
+        seen.add(item.syncId);
+        const madeAt=Number(item.madeAt||item.createdAt||0)||Date.now();
+        const shelfLifeDays=Number(item.shelfLifeDays)||7;
+        item.madeAt=madeAt;
+        item.shelfLifeDays=shelfLifeDays;
+        if(!item.expireAt)item.expireAt=madeAt+shelfLifeDays*24*60*60*1000;
+        if(!item.status)item.status='active';
+        if(!Array.isArray(item.history))item.history=normalizeArrayLike(item.history);
+        if(String(originalId)!==String(item.id))changed=true;
+        return item;
+    });
+    const currentNext=Number(targetState.nextPreparedToppingId);
+    const next=Math.max(Number.isFinite(currentNext)&&currentNext>0?currentNext:1,maxId+1);
+    if(Number(targetState.nextPreparedToppingId)!==next){targetState.nextPreparedToppingId=next;changed=true;}
     return changed;
 }
 function getDeviceId(){
@@ -409,6 +441,8 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     const remote=cloneData(remoteState),local=cloneData(localState);
     normalizeDailyNotesFor(remote);
     normalizeDailyNotesFor(local);
+    normalizePreparedToppingsFor(remote);
+    normalizePreparedToppingsFor(local);
     const merged=preferLocalRoot?{...remote,...local}:{...local,...remote};
     merged.todayInvoices=mergeArrayByKey(remote.todayInvoices||[],local.todayInvoices||[],invoiceKey,true);
     merged.invoiceArchive=mergeByDateBuckets(remote.invoiceArchive,local.invoiceArchive,invoiceKey,'invoice');
@@ -420,6 +454,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.recurringStockOuts=mergeArrayByKey(remote.recurringStockOuts||[],local.recurringStockOuts||[],s=>s.syncId||s.id,true);
     merged.prepTracking=mergeByDateBuckets(remote.prepTracking,local.prepTracking,'id','prep');
     merged.dailyNotes=mergeArrayByKey(remote.dailyNotes,local.dailyNotes,n=>n.syncId||n.id,true);
+    merged.preparedToppings=mergeArrayByKey(remote.preparedToppings,local.preparedToppings,t=>t.syncId||t.id,true);
     merged.menu=mergeArrayByKey(remote.menu||[],local.menu||[],m=>m.id,true);
     merged.staff=mergeArrayByKey(remote.staff||[],local.staff||[],s=>s.id,true);
     normalizeStaffRecords(merged);
@@ -432,6 +467,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.openChecklist=mergeArrayByKey(remote.openChecklist||[],local.openChecklist||[],c=>c.id,true);
     merged.closeChecklist=mergeArrayByKey(remote.closeChecklist||[],local.closeChecklist||[],c=>c.id,true);
     normalizeDailyNotesFor(merged);
+    normalizePreparedToppingsFor(merged);
     merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
     bumpNextFromArray(merged,'staff','nextStaffId');
@@ -443,6 +479,7 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     bumpNextFromArray(merged,'recurringStockOuts','nextRecurringStockOutId');
     bumpNextFromBuckets(merged,'prepTracking','nextPrepId');
     bumpNextFromArray(merged,'salaryPayments','nextSalaryPaymentId');
+    bumpNextFromArray(merged,'preparedToppings','nextPreparedToppingId');
     bumpNextFromArray(merged,'openChecklist','nextClId');
     bumpNextFromArray(merged,'closeChecklist','nextClId');
     normalizeAttendanceRecordsFor(merged);
@@ -497,6 +534,7 @@ function loadState(){try{const s=localStorage.getItem('monsteaPOS');if(s){const 
 if(!Array.isArray(state.salaryPayments))state.salaryPayments=normalizeArrayLike(state.salaryPayments);
 if(!Array.isArray(state.editLog))state.editLog=normalizeArrayLike(state.editLog);
 normalizeDailyNotesFor(state);
+normalizePreparedToppingsFor(state);
 if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!state.invoiceArchive)state.invoiceArchive={};
 if(!Array.isArray(state.grabOrders))state.grabOrders=[];

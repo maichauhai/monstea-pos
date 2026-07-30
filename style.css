@@ -301,6 +301,23 @@
     .mob-cash-row { display:flex; align-items:center; gap:6px; width:100%; margin-top:6px; border-top:1px solid var(--border-subtle); padding-top:6px; }
     .mob-cash-row input { flex:1; padding:6px 10px; font-size:0.85rem; max-width:120px; }
     .mob-cash-row .mob-change { font-family:var(--font-display); font-weight:700; font-size:0.85rem; min-width:80px; text-align:right; }
+    .prepared-topping-card { border-left:3px solid var(--accent-warm); }
+    .prepared-topping-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .prepared-topping-sub { color:var(--text-muted); font-size:0.78rem; }
+    .prepared-topping-form { display:grid; grid-template-columns:1.5fr 100px 150px 1.4fr auto; gap:8px; align-items:center; margin-bottom:12px; }
+    .prepared-topping-list { max-height:720px; overflow-y:auto; padding-right:4px; border-top:1px solid rgba(255,255,255,0.04); }
+    .prepared-topping-row { display:grid; grid-template-columns:1.2fr 1fr 0.9fr auto; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .prepared-topping-main { min-width:0; }
+    .prepared-topping-name { font-weight:800; font-size:0.9rem; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .prepared-topping-meta { color:var(--text-muted); font-size:0.72rem; margin-top:2px; }
+    .prepared-topping-note { color:var(--text-secondary); font-size:0.74rem; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .prepared-topping-age { color:var(--text-secondary); font-size:0.78rem; }
+    .prepared-topping-badge { display:inline-flex; align-items:center; justify-content:center; min-width:82px; padding:5px 9px; border-radius:999px; font-size:0.72rem; font-weight:800; }
+    .prepared-topping-badge.ok { background:rgba(74,222,128,0.12); color:var(--accent-green); }
+    .prepared-topping-badge.warn { background:rgba(232,166,53,0.15); color:var(--accent); }
+    .prepared-topping-badge.expired { background:rgba(255,107,107,0.15); color:var(--accent-red); }
+    .prepared-topping-actions { display:flex; gap:6px; justify-content:flex-end; }
+    .prepared-topping-empty { text-align:center; padding:18px 8px; color:var(--text-muted); font-size:0.84rem; }
     .checklist-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
     .chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 
@@ -328,6 +345,11 @@
         .cashflow-stat-grid .stat-card { padding:12px 8px; }
         .cashflow-stat-grid .stat-value { font-size:0.95rem; }
         .money-table-value { max-width:82px; font-size:0.68rem; }
+        .prepared-topping-head { flex-direction:column; }
+        .prepared-topping-form { grid-template-columns:1fr 90px; }
+        .prepared-topping-form select,.prepared-topping-form input:nth-child(4),.prepared-topping-form button { grid-column:1 / -1; }
+        .prepared-topping-row { grid-template-columns:1fr; gap:6px; }
+        .prepared-topping-actions { justify-content:flex-start; }
         .checklist-grid { grid-template-columns:1fr; }
         .chart-grid { grid-template-columns:1fr; }
         .staff-grid { grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }

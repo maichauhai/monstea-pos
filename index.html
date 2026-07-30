@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<link rel="stylesheet" href="style.css?v=20260530-toppings">
+<link rel="stylesheet" href="style.css?v=20260730-prepared-toppings">
 </head>
 <body>
 <div class="login-overlay" id="loginOverlay">
@@ -203,6 +203,31 @@
 
 <!-- TAB CHECKLIST -->
 <div class="tab-content" id="tab-checklist">
+    <div class="card prepared-topping-card">
+        <div class="prepared-topping-head">
+            <div>
+                <div class="card-title" style="margin-bottom:4px;">🍯 Theo dõi topping đã nấu</div>
+                <div class="prepared-topping-sub" id="preparedToppingSummary">Mặc định hạn dùng 7 ngày</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="showPreparedToppingLog()">Lịch sử sửa</button>
+        </div>
+        <div class="prepared-topping-form">
+            <input type="text" id="preparedToppingName" list="preparedToppingSuggestions" placeholder="Topping đã nấu...">
+            <input type="number" id="preparedToppingDays" min="0.25" step="0.25" value="7" title="Hạn dùng (ngày)">
+            <select id="preparedToppingStaff"></select>
+            <input type="text" id="preparedToppingNote" placeholder="Ghi chú nhanh">
+            <button class="btn btn-primary btn-sm" onclick="addPreparedTopping()">Ghi</button>
+        </div>
+        <datalist id="preparedToppingSuggestions">
+            <option value="Trân châu đen"></option>
+            <option value="Trân châu trắng"></option>
+            <option value="Rau câu"></option>
+            <option value="Pudding"></option>
+            <option value="Sương sáo"></option>
+            <option value="Thạch củ năng"></option>
+        </datalist>
+        <div class="prepared-topping-list" id="preparedToppingList"></div>
+    </div>
     <div class="checklist-grid">
         <div class="checklist-section"><div class="card-title">🌅 MỞ QUÁN</div><div class="checklist-progress"><div class="fill" id="openProgress" style="width:0%"></div></div><div id="openChecklist"></div></div>
         <div class="checklist-section"><div class="card-title">🌙 ĐÓNG QUÁN</div><div class="checklist-progress"><div class="fill" id="closeProgress" style="width:0%"></div></div><div id="closeChecklist"></div></div>
@@ -458,12 +483,12 @@
 </div>
 
 <script src="data.js?v=20260510c"></script>
-<script src="js/core.js?v=20260728-data-integrity-fix"></script>
+<script src="js/core.js?v=20260730-prepared-toppings"></script>
 <script src="js/pos.js?v=20260728-data-integrity-fix"></script>
 <script src="js/dashboard.js?v=20260530-monthfix"></script>
 <script src="js/inventory.js?v=20260520-inventory-toppings"></script>
 <script src="js/expense.js?v=20260728-data-integrity-fix"></script>
-<script src="js/operations.js?v=20260728-data-integrity-fix"></script>
+<script src="js/operations.js?v=20260730-prepared-toppings"></script>
 <script src="js/settings.js?v=20260728-data-integrity-fix"></script>
 <script src="js/grab.js?v=20260514-riskfix"></script>
 <script src="js/features.js?v=20260705-weekschedule-fix"></script>

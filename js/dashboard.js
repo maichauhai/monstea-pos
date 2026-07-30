@@ -174,6 +174,14 @@ function sumBucket(dates,buckets,field){
     dates.forEach(dt=>activeItems((buckets||{})[dt]||[]).forEach(x=>total+=Number(x[field])||0));
     return Math.round(total);
 }
+function sumCashExpenseBucket(dates){
+    let total=0;
+    dates.forEach(dt=>activeItems((state.expenses||{})[dt]||[]).forEach(x=>{
+        if(x.isAutoWaste)return;
+        total+=Number(x.amount)||0;
+    }));
+    return Math.round(total);
+}
 function paymentInPeriod(p,range){
     if(range.allTime)return true;
     const ps=p.periodStart||p.paidDate,pe=p.periodEnd||ps;
@@ -189,6 +197,7 @@ function getFinancialRangeData(rangeOverride){
     const labor=calcLaborBreakdown(dates);
     const purchasesCost=sumBucket(dates,state.purchases,'totalCost');
     const otherExpenses=sumBucket(dates,state.expenses,'amount');
+    const cashOtherExpenses=sumCashExpenseBucket(dates);
     const payments=activeItems(state.salaryPayments||[]);
     const salaryPaidForPeriod=payments.filter(p=>paymentInPeriod(p,range)).reduce((s,p)=>s+(Number(p.amount)||0),0);
     const salaryPaidCashOut=payments.filter(p=>paymentPaidInDates(p,dateSet)).reduce((s,p)=>s+(Number(p.amount)||0),0);
@@ -200,17 +209,21 @@ function getFinancialRangeData(rangeOverride){
     });
     const salaryRemaining=Math.max(0,labor.total-salaryPaidForPeriod);
     const grossProfit=sales.totalRevenue-ingredientCost-labor.total;
-    const netProfit=sales.realRevenue-ingredientCost-labor.total-otherExpenses;
-    const cashOutPaid=purchasesCost+otherExpenses+salaryPaidCashOut;
+    const accountingProfit=sales.realRevenue-ingredientCost-labor.total-otherExpenses;
+    const cashOutPaid=purchasesCost+cashOtherExpenses+salaryPaidCashOut;
     const cashNet=sales.realRevenue-cashOutPaid;
+    const cashProfit=cashNet;
     const netAfterPayables=cashNet-salaryRemaining;
     const dailyRows=dates.map(dt=>{
         const ds=collectSalesForDates([dt]),dcogs=calcIngredientCostForDates([dt]),dlabor=calcLaborBreakdown([dt]);
-        const dp=sumBucket([dt],state.purchases,'totalCost'),doe=sumBucket([dt],state.expenses,'amount');
+        const dp=sumBucket([dt],state.purchases,'totalCost'),doe=sumBucket([dt],state.expenses,'amount'),dcashOther=sumCashExpenseBucket([dt]);
         const dsp=payments.filter(p=>p.paidDate===dt).reduce((s,p)=>s+(Number(p.amount)||0),0);
-        return{date:dt,revenue:ds.realRevenue,grossRevenue:ds.totalRevenue,ingredientCost:dcogs,laborCost:dlabor.total,purchases:dp,otherExpenses:doe,salaryPaid:dsp,cashOut:dp+doe+dsp,cashNet:ds.realRevenue-dp-doe-dsp,netProfit:ds.realRevenue-dcogs-dlabor.total-doe};
+        const dayCashOut=dp+dcashOther+dsp;
+        const dayCashProfit=ds.realRevenue-dayCashOut;
+        const dayAccountingProfit=ds.realRevenue-dcogs-dlabor.total-doe;
+        return{date:dt,revenue:ds.realRevenue,grossRevenue:ds.totalRevenue,ingredientCost:dcogs,laborCost:dlabor.total,purchases:dp,otherExpenses:doe,cashOtherExpenses:dcashOther,salaryPaid:dsp,cashOut:dayCashOut,cashNet:dayCashProfit,cashProfit:dayCashProfit,accountingProfit:dayAccountingProfit,netProfit:dayAccountingProfit};
     });
-    return{range,sales,ingredientCost,labor,laborCost:labor.total,purchasesCost,otherExpenses,salaryPaidForPeriod,salaryPaidCashOut,salaryRemaining,grossProfit,netProfit,cashOutPaid,cashNet,netAfterPayables,dailyRows};
+    return{range,sales,ingredientCost,labor,laborCost:labor.total,purchasesCost,otherExpenses,cashOtherExpenses,salaryPaidForPeriod,salaryPaidCashOut,salaryRemaining,grossProfit,accountingProfit,netProfit:accountingProfit,cashOutPaid,cashNet,cashProfit,netAfterPayables,dailyRows};
 }
 
 function statCard(label, value, color, extra='') {
@@ -223,15 +236,17 @@ function renderDashboard(){
     const f=getFinancialRangeData(),d=f.sales,avg=d.totalInvoices?Math.round(d.totalRevenue/d.totalInvoices):0;
     document.getElementById('dashStats').innerHTML = [
         statCard('Doanh thu', fmtP(d.totalRevenue), 'var(--accent)'),
-        statCard('Thực nhận', fmtP(d.realRevenue), 'var(--accent-green)'),
+        statCard('Tiền thu', fmtP(d.realRevenue), 'var(--accent-green)'),
+        statCard('Tiền chi', fmtP(f.cashOutPaid), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
+        statCard('Lãi thu-chi', fmtP(f.cashProfit), f.cashProfit>=0?'var(--accent-green)':'var(--accent-red)', ' style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"'),
         statCard('Hóa đơn', d.totalInvoices, 'var(--accent-blue)'),
         statCard('TB/đơn', fmtP(avg), 'var(--accent-warm)'),
         statCard('Tiền mặt', fmtP(d.cashTotal), 'var(--accent-green)'),
         statCard('CK/Grab gross', fmtP(d.transferTotal), 'var(--accent-purple)'),
-        statCard('Chi phí NL', fmtP(f.ingredientCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
-        statCard('Lương phải trả', fmtP(f.laborCost), 'var(--accent-blue)', ' style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"'),
-        statCard('CP khác', fmtP(f.otherExpenses), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
-        statCard('Lãi ròng', fmtP(f.netProfit), f.netProfit>=0?'var(--accent-green)':'var(--accent-red)', ' style="border-color:rgba(74,222,128,0.25);background:rgba(74,222,128,0.06)"'),
+        statCard('Chi nhập NL', fmtP(f.purchasesCost), 'var(--accent-red)', ' style="border-color:rgba(255,107,107,0.2);background:rgba(255,107,107,0.04)"'),
+        statCard('CP khác đã chi', fmtP(f.cashOtherExpenses), '#fbbf24', ' style="border-color:rgba(251,191,36,0.2);background:rgba(251,191,36,0.04)"'),
+        statCard('Lương đã trả', fmtP(f.salaryPaidCashOut), 'var(--accent-blue)', ' style="border-color:rgba(96,165,250,0.2);background:rgba(96,165,250,0.04)"'),
+        statCard('Lãi ước tính', fmtP(f.accountingProfit), f.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)'),
     ].join('');
     renderCashFlowSection(f);
     renderRevenueChart(f.range);
@@ -258,13 +273,13 @@ function renderCashFlowSection(f){
             <td style="padding:6px;text-align:right;white-space:nowrap;">${actions}</td>
         </tr>`;
     }).join('');
-    const dailyRows=f.dailyRows.filter(r=>r.grossRevenue||r.cashOut||r.salaryPaid||r.netProfit).slice(-35).reverse().map(r=>`<tr>
+    const dailyRows=f.dailyRows.filter(r=>r.grossRevenue||r.cashOut||r.salaryPaid||r.cashProfit||r.accountingProfit).slice(-35).reverse().map(r=>`<tr>
         <td style="padding:6px;color:var(--text-muted);">${r.date}</td>
         <td style="padding:6px;text-align:right;">${fmtP(r.revenue)}</td>
-        <td style="padding:6px;text-align:right;">${fmtP(r.purchases+r.otherExpenses)}</td>
+        <td style="padding:6px;text-align:right;">${fmtP(r.purchases+r.cashOtherExpenses)}</td>
         <td style="padding:6px;text-align:right;color:var(--accent-blue);">${fmtP(r.salaryPaid)}</td>
-        <td style="padding:6px;text-align:right;color:${r.cashNet>=0?'var(--accent-green)':'var(--accent-red)'};font-weight:700;">${fmtP(r.cashNet)}</td>
-        <td style="padding:6px;text-align:right;color:${r.netProfit>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(r.netProfit)}</td>
+        <td style="padding:6px;text-align:right;color:${r.cashProfit>=0?'var(--accent-green)':'var(--accent-red)'};font-weight:700;">${fmtP(r.cashProfit)}</td>
+        <td style="padding:6px;text-align:right;color:${r.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)'};">${fmtP(r.accountingProfit)}</td>
     </tr>`).join('');
     const allRecentPayments=activeItems(state.salaryPayments||[]).sort((a,b)=>(Number(b._lastModified)||0)-(Number(a._lastModified)||0));
     const recentPayments=allRecentPayments.slice(0,8).map(p=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.74rem;">
@@ -276,19 +291,20 @@ function renderCashFlowSection(f){
     el.innerHTML=`<div class="card" style="margin-top:14px;">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
             <div>
-                <div class="card-title" style="margin-bottom:2px;">💵 Dòng tiền & lương</div>
-                <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Grab tính theo tiền thực nhận.</div>
+                <div class="card-title" style="margin-bottom:2px;">💵 Tiền thu - tiền chi</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Kỳ: ${esc(f.range.label)} · Lãi chính = tiền thu thực nhận - tiền đã chi.</div>
             </div>
         </div>
         <div class="cashflow-stat-grid">
-            ${statCard('Tiền vào thực nhận',fmtP(f.sales.realRevenue),'var(--accent-green)')}
-            ${statCard('Đã chi NL+khác+lương',fmtP(f.cashOutPaid),'var(--accent-red)')}
-            ${statCard('Dòng tiền',fmtP(f.cashNet),f.cashNet>=0?'var(--accent-green)':'var(--accent-red)')}
-            ${statCard('Lãi ròng',fmtP(f.netProfit),f.netProfit>=0?'var(--accent-green)':'var(--accent-red)')}
-            ${statCard('Phải trả lương',fmtP(f.laborCost),'var(--accent-blue)')}
-            ${statCard('Đã trả cho kỳ',fmtP(f.salaryPaidForPeriod),'var(--accent-green)')}
-            ${statCard('Còn phải trả',fmtP(f.salaryRemaining),f.salaryRemaining?'var(--accent-red)':'var(--accent-green)')}
-            ${statCard('Sau khi trả lương',fmtP(f.netAfterPayables),f.netAfterPayables>=0?'var(--accent-green)':'var(--accent-red)')}
+            ${statCard('Tiền thu',fmtP(f.sales.realRevenue),'var(--accent-green)')}
+            ${statCard('Tiền chi',fmtP(f.cashOutPaid),'var(--accent-red)')}
+            ${statCard('Lãi = thu - chi',fmtP(f.cashProfit),f.cashProfit>=0?'var(--accent-green)':'var(--accent-red)')}
+            ${statCard('Lãi ước tính',fmtP(f.accountingProfit),f.accountingProfit>=0?'var(--accent-green)':'var(--accent-red)')}
+            ${statCard('Chi nhập NL',fmtP(f.purchasesCost),'var(--accent-red)')}
+            ${statCard('Chi khác đã chi',fmtP(f.cashOtherExpenses),'#fbbf24')}
+            ${statCard('Lương đã trả',fmtP(f.salaryPaidCashOut),'var(--accent-blue)')}
+            ${statCard('Còn nợ lương',fmtP(f.salaryRemaining),f.salaryRemaining?'var(--accent-red)':'var(--accent-green)')}
+            ${statCard('Sau trả hết lương',fmtP(f.netAfterPayables),f.netAfterPayables>=0?'var(--accent-green)':'var(--accent-red)')}
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;align-items:start;">
             <div style="overflow:auto;">
@@ -310,7 +326,7 @@ function renderCashFlowSection(f){
             <div class="collapse-body">
             <table style="width:100%;border-collapse:collapse;font-size:0.74rem;">
                 <thead><tr style="border-bottom:2px solid var(--border-subtle);">
-                    <th style="padding:6px;text-align:left;">Ngày</th><th style="text-align:right;">Tiền vào</th><th style="text-align:right;">Chi NL/khác</th><th style="text-align:right;">Lương đã trả</th><th style="text-align:right;">Dòng tiền</th><th style="text-align:right;">Lãi ròng</th>
+                    <th style="padding:6px;text-align:left;">Ngày</th><th style="text-align:right;">Tiền thu</th><th style="text-align:right;">Chi NL/khác</th><th style="text-align:right;">Lương đã trả</th><th style="text-align:right;">Lãi thu-chi</th><th style="text-align:right;">Lãi ước tính</th>
                 </tr></thead>
                 <tbody>${dailyRows||'<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:14px;">Chưa có dữ liệu dòng tiền</td></tr>'}</tbody>
             </table>

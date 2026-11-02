@@ -87,7 +87,7 @@ function searchMatch(text,query){
 }
 function cloneData(v){return JSON.parse(JSON.stringify(v||{}));}
 function isDeleted(item){return !!(item&&item._deleted);}
-function activeItems(list){return (list||[]).filter(item=>!isDeleted(item));}
+function activeItems(list){return normalizeArrayLike(list).filter(item=>!isDeleted(item));}
 function normalizeWeekScheduleRow(row){
     if(Array.isArray(row))return Array.from({length:7},(_,i)=>!!row[i]);
     return [false,false,false,false,false,false,false];
@@ -127,6 +127,40 @@ function normalizeArrayLike(value){
     if(Array.isArray(value))return value;
     if(value&&typeof value==='object')return Object.values(value).filter(Boolean);
     return [];
+}
+function normalizeRecipeTemplatesFor(targetState){
+    if(!targetState)return false;
+    const templates=normalizeArrayLike(targetState.recipeTemplates);
+    let changed=!Array.isArray(targetState.recipeTemplates);
+    targetState.recipeTemplates=templates.filter(Boolean).map(raw=>{
+        const template={...raw};
+        if(!Array.isArray(template.items))changed=true;
+        template.items=normalizeArrayLike(template.items).filter(Boolean);
+        return template;
+    });
+    return changed;
+}
+function normalizeInvoiceStorageFor(targetState){
+    if(!targetState)return false;
+    const td=today();
+    const incoming=normalizeArrayLike(targetState.todayInvoices).filter(Boolean);
+    const archive=targetState.invoiceArchive&&typeof targetState.invoiceArchive==='object'&&!Array.isArray(targetState.invoiceArchive)?targetState.invoiceArchive:{};
+    let changed=!Array.isArray(targetState.todayInvoices)||archive!==targetState.invoiceArchive;
+    Object.keys(archive).forEach(dateKey=>{
+        const normalized=normalizeArrayLike(archive[dateKey]).filter(Boolean);
+        if(!Array.isArray(archive[dateKey]))changed=true;
+        archive[dateKey]=mergeArrayByKey([],normalized,invoiceKey,true);
+    });
+    const current=[];
+    incoming.forEach(inv=>{
+        if(inv.date&&inv.date!==td){
+            archive[inv.date]=mergeArrayByKey(archive[inv.date]||[],[inv],invoiceKey,true);
+            changed=true;
+        }else current.push(inv);
+    });
+    targetState.todayInvoices=current;
+    targetState.invoiceArchive=archive;
+    return changed;
 }
 function legacyNoteSyncId(note){
     const raw=[note&&note.id,note&&note.date,note&&note.time,note&&note.text].map(v=>String(v??'')).join('|');
@@ -294,8 +328,8 @@ function preferNewerItem(old,item,resolver){
 function mergeKeyValue(key){return key===undefined||key===null?'':String(key);}
 function mergeArrayByKey(remoteArr,localArr,keyFn,preferNewer,resolver){
     const map=new Map();
-    (remoteArr||[]).forEach(item=>{const key=item&&mergeKeyValue(keyFn(item));if(key)map.set(key,item);});
-    (localArr||[]).forEach(item=>{
+    normalizeArrayLike(remoteArr).forEach(item=>{const key=item&&mergeKeyValue(keyFn(item));if(key)map.set(key,item);});
+    normalizeArrayLike(localArr).forEach(item=>{
         if(!item)return;
         const key=mergeKeyValue(keyFn(item)),old=map.get(key);
         if(!key)return;
@@ -324,7 +358,8 @@ function staffMergeKeys(staff){
     return keys;
 }
 function normalizeStaffRecords(targetState){
-    if(!targetState||!Array.isArray(targetState.staff))return;
+    if(!targetState)return;
+    targetState.staff=normalizeArrayLike(targetState.staff);
     const out=[],keyToIndex=new Map(),aliases=new Map();
     function remember(staff,idx){staffMergeKeys(staff).forEach(k=>keyToIndex.set(k,idx));}
     targetState.staff.forEach(raw=>{
@@ -350,12 +385,12 @@ function normalizeStaffRecords(targetState){
     targetState.staff=out;
     if(aliases.size){
         Object.keys(targetState.attendance||{}).forEach(d=>{
-            (targetState.attendance[d]||[]).forEach(r=>{
+            normalizeArrayLike(targetState.attendance[d]).forEach(r=>{
                 const alias=aliases.get(String(r&&r.staffId));
                 if(alias!==undefined)r.staffId=alias;
             });
         });
-        (targetState.salaryPayments||[]).forEach(p=>{
+        normalizeArrayLike(targetState.salaryPayments).forEach(p=>{
             const alias=aliases.get(String(p&&p.staffId));
             if(alias!==undefined)p.staffId=alias;
         });
@@ -387,7 +422,7 @@ function normalizeAttendanceRecordsFor(targetState){
     const staffById=new Map((targetState.staff||[]).map(s=>[Number(s.id),s]));
     const staffByName=new Map(activeItems(targetState.staff).map(s=>[removeDiacritics(String(s.name||'').toLowerCase()).trim(),s]));
     Object.keys(targetState.attendance||{}).forEach(d=>{
-        const records=Array.isArray(targetState.attendance[d])?targetState.attendance[d]:[];
+        const records=normalizeArrayLike(targetState.attendance[d]);
         const normalized=records.map(r=>{
             if(!r)return r;
             const current=staffById.get(Number(r.staffId));
@@ -429,12 +464,12 @@ function mergeHistory(remoteHistory,localHistory){
     return out;
 }
 function bumpNextFromArray(obj,field,nextField){
-    const ids=(obj[field]||[]).map(x=>Number(x.id)).filter(Number.isFinite);
+    const ids=normalizeArrayLike(obj[field]).map(x=>Number(x.id)).filter(Number.isFinite);
     if(ids.length)obj[nextField]=Math.max(obj[nextField]||1,...ids)+1;
 }
 function bumpNextFromBuckets(obj,field,nextField){
     const ids=[];
-    Object.values(obj[field]||{}).forEach(list=>(list||[]).forEach(x=>{const id=Number(x.id);if(Number.isFinite(id))ids.push(id);}));
+    Object.values(obj[field]||{}).forEach(list=>normalizeArrayLike(list).forEach(x=>{const id=Number(x.id);if(Number.isFinite(id))ids.push(id);}));
     if(ids.length)obj[nextField]=Math.max(obj[nextField]||1,...ids)+1;
 }
 function mergeStateData(remoteState,localState,preferLocalRoot){
@@ -443,6 +478,10 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     normalizeDailyNotesFor(local);
     normalizePreparedToppingsFor(remote);
     normalizePreparedToppingsFor(local);
+    normalizeRecipeTemplatesFor(remote);
+    normalizeRecipeTemplatesFor(local);
+    normalizeInvoiceStorageFor(remote);
+    normalizeInvoiceStorageFor(local);
     const merged=preferLocalRoot?{...remote,...local}:{...local,...remote};
     merged.todayInvoices=mergeArrayByKey(remote.todayInvoices||[],local.todayInvoices||[],invoiceKey,true);
     merged.invoiceArchive=mergeByDateBuckets(remote.invoiceArchive,local.invoiceArchive,invoiceKey,'invoice');
@@ -468,6 +507,9 @@ function mergeStateData(remoteState,localState,preferLocalRoot){
     merged.closeChecklist=mergeArrayByKey(remote.closeChecklist||[],local.closeChecklist||[],c=>c.id,true);
     normalizeDailyNotesFor(merged);
     normalizePreparedToppingsFor(merged);
+    normalizeRecipeTemplatesFor(merged);
+    normalizeInvoiceStorageFor(merged);
+    refreshHistoryForDate(merged,today());
     merged.nextInvoiceId=(merged.todayInvoices||[]).filter(i=>i&&i.date===today()&&!isDeleted(i)).length+1;
     bumpNextFromArray(merged,'menu','nextMenuId');
     bumpNextFromArray(merged,'staff','nextStaffId');
@@ -498,6 +540,8 @@ function stateForFirebase(){
     s._syncTs=Date.now();
     normalizeStaffRecords(s);
     normalizeAttendanceRecordsFor(s);
+    normalizeRecipeTemplatesFor(s);
+    normalizeInvoiceStorageFor(s);
     s.weekSchedule=buildWeekScheduleSyncPayload(s,currentRole==='owner'?null:currentStaffId);
     delete s._editingInvoiceId;
     delete s._editingInvoiceRef;
@@ -523,7 +567,8 @@ function persistMergedState(localOrder){
   normalizeAttendanceRecords();
   state.weekSchedule=normalizeWeekScheduleMap(state.weekSchedule);
   rebindCurrentStaffFromSession();
-  const td=today();archiveRawInvoices(state.todayInvoices,td);state.todayInvoices=(state.todayInvoices||[]).filter(i=>i.date===td);
+  normalizeRecipeTemplatesFor(state);
+  normalizeInvoiceStorageFor(state);
   state.nextInvoiceId=nextTodayInvoiceId();
   if(localOrder)state.currentOrder=localOrder;
   flushStatePersist();
@@ -535,10 +580,17 @@ if(!Array.isArray(state.salaryPayments))state.salaryPayments=normalizeArrayLike(
 if(!Array.isArray(state.editLog))state.editLog=normalizeArrayLike(state.editLog);
 normalizeDailyNotesFor(state);
 normalizePreparedToppingsFor(state);
-if(!Array.isArray(state.todayInvoices))state.todayInvoices=[];
 if(!state.invoiceArchive)state.invoiceArchive={};
-if(!Array.isArray(state.grabOrders))state.grabOrders=[];
-if(!Array.isArray(state.currentOrder))state.currentOrder=[];
+state.todayInvoices=normalizeArrayLike(state.todayInvoices);
+normalizeRecipeTemplatesFor(state);
+normalizeInvoiceStorageFor(state);
+state.grabOrders=normalizeArrayLike(state.grabOrders);
+state.currentOrder=normalizeArrayLike(state.currentOrder);
+state.menu=normalizeArrayLike(state.menu);
+state.staff=normalizeArrayLike(state.staff);
+state.ingredients=normalizeArrayLike(state.ingredients);
+state.openChecklist=normalizeArrayLike(state.openChecklist);
+state.closeChecklist=normalizeArrayLike(state.closeChecklist);
 // Migrate staff: add password+wageRate if missing
 state.staff.forEach((s,i)=>{if(!s.password)s.password=String((i+1)*1000);if(!s.wageRate)s.wageRate=25000;});
 normalizeStaffRecords();
@@ -616,8 +668,14 @@ function logout(){currentRole=null;currentStaffId=null;currentStaffName='';fireb
 document.getElementById('loginOverlay').style.display='flex';document.getElementById('loginPwd').value='';
 document.getElementById('roleBar').style.display='none';document.getElementById('helpBtn').style.display='none';
 document.querySelectorAll('.tab-btn').forEach(b=>b.style.display='');switchTab('pos');}
-function init(){loadState();checkNewDay();renderAll();startClock();if(typeof checkRecurringStockOuts==='function')checkRecurringStockOuts();if(typeof startRecurringStockOutTimer==='function')startRecurringStockOutTimer();if(currentRole)applyRole();setTimeout(autoBackup,5000);}
-function renderAll(){renderPOSMenu();renderOrder();renderTodayInvoices();renderGrabSection();renderDashboard();renderAttendance();renderChecklist();renderSettings();renderInventory();renderRecipes();renderWeekSchedule();if(currentRole==='owner')renderAttHistory();}
+function init(){loadState();checkNewDay();startClock();setTimeout(autoBackup,5000);renderAll();if(typeof checkRecurringStockOuts==='function')checkRecurringStockOuts();if(typeof startRecurringStockOutTimer==='function')startRecurringStockOutTimer();if(currentRole)applyRole();}
+function safeRender(name,fn){try{fn();}catch(e){console.error('[POS] '+name+' render failed:',e);}}
+function renderAll(){
+safeRender('POS menu',renderPOSMenu);safeRender('order',renderOrder);safeRender('invoices',renderTodayInvoices);safeRender('Grab',renderGrabSection);
+safeRender('dashboard',renderDashboard);safeRender('attendance',renderAttendance);safeRender('checklist',renderChecklist);safeRender('settings',renderSettings);
+safeRender('inventory',renderInventory);safeRender('recipes',renderRecipes);safeRender('week schedule',renderWeekSchedule);
+if(currentRole==='owner')safeRender('attendance history',renderAttHistory);
+}
 
 
 
@@ -653,12 +711,18 @@ firebaseDb.ref('state').on('value',snap=>{
 const r=snap.val();
 if(firstLoad){
   firstLoad=false;
-  if(r){isRemoteUpdate=true;mergeFirebaseState(r);}
-  firebaseReady=true;listenHelpAlert();init();isRemoteUpdate=false;updateSyncStatus('connected');return;}
+  isRemoteUpdate=true;
+  try{if(r)mergeFirebaseState(r);firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');}
+  catch(e){console.error('[POS] Initial Firebase load failed:',e);updateSyncStatus('offline');}
+  finally{isRemoteUpdate=false;}
+  return;}
 if(!r)return;
 if(isOwnSyncEcho(r)){pendingLocalSyncToken='';pendingLocalSyncTs=0;updateSyncStatus('connected');return;}
-isRemoteUpdate=true;mergeFirebaseState(r);
-renderActiveTab();isRemoteUpdate=false;});}
+isRemoteUpdate=true;
+try{mergeFirebaseState(r);renderActiveTab();updateSyncStatus('connected');}
+catch(e){console.error('[POS] Firebase update failed:',e);updateSyncStatus('offline');}
+finally{isRemoteUpdate=false;}
+});}
 
 function saveStateToFirebase(){if(!firebaseDb)return;clearTimeout(syncTimeout);
 syncTimeout=setTimeout(()=>{updateSyncStatus('syncing');
@@ -675,7 +739,7 @@ window.addEventListener('beforeunload',flushStatePersist);
 
 function updateSyncStatus(s){const el=document.getElementById('syncStatus');if(!el)return;
 const t={connected:'Đã kết nối',offline:'Mất kết nối',syncing:'Đang đồng bộ...'};
-const backupInfo=state._lastBackup?` | 💾 ${state._lastBackup}`:'';
+const backupInfo=state._lastBackupDate?' | 💾 '+state._lastBackupDate+' '+(state._lastBackup||''):state._lastBackup?' | 💾 '+state._lastBackup:'';
 el.innerHTML=`<span class="sync-dot ${s}"></span>${t[s]||s}${backupInfo}`;}
 
 // Auto-backup once per day
@@ -719,14 +783,26 @@ state.nextInvoiceId=nextTodayInvoiceId();
 if(didResetChecklist)saveState();
 }
 
-function archiveDay(dk,invoices){invoices=activeItems(invoices).filter(i=>i.date===dk);if(!invoices.length)return;const is={},isById={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
+function buildHistoryForDate(targetState,dk,invoices){
+invoices=activeItems(invoices).filter(i=>i.date===dk);if(!invoices.length)return null;
+const is={},isById={};let tr=0,ct=0,tt=0,staffCount=0,staffOrigTotal=0;const hr={};let ac=0;
 invoices.forEach(inv=>{if(inv.cancelled)return;
-if(inv.method==='staff'){staffCount++;staffOrigTotal+=(inv.staffOriginalTotal||0);}
-else{ac++;tr+=inv.total;if(inv.method==='cash')ct+=inv.total;else tt+=inv.total;
-const h=parseInt(inv.time?.split(':')[0]||'0');hr[h]=(hr[h]||0)+inv.total;}
-inv.items.forEach(i=>{if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=i.qty;if(inv.method!=='staff'){is[i.name].revenue+=i.price*i.qty;}
-if(i.menuId){const key=String(i.menuId);if(!isById[key])isById[key]={name:i.name,qty:0,revenue:0};isById[key].qty+=i.qty;if(inv.method!=='staff'){isById[key].revenue+=i.price*i.qty;}}
-(i.toppings||[]).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=i.qty;if(inv.method!=='staff'){is[t.name].revenue+=t.price*i.qty;}});});});
-const grabs=activeItems(state.grabOrders||[]).filter(g=>g.date===dk);
-state.history[dk]={invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,itemsSoldById:isById,hourlyRevenue:hr,grabTotal:grabs.reduce((s,g)=>s+g.grabPrice,0),grabNet:grabs.reduce((s,g)=>s+g.netAmount,0),_lastModified:Date.now()};}
+const total=Number(inv.total)||0;
+if(inv.method==='staff'){staffCount++;staffOrigTotal+=Number(inv.staffOriginalTotal)||0;}
+else{ac++;tr+=total;if(inv.method==='cash')ct+=total;else tt+=total;const h=parseInt(String(inv.time||'0').split(':')[0]||'0');hr[h]=(hr[h]||0)+total;}
+normalizeArrayLike(inv.items).forEach(i=>{const qty=Number(i.qty)||0,price=Number(i.price)||0;if(!is[i.name])is[i.name]={qty:0,revenue:0};is[i.name].qty+=qty;if(inv.method!=='staff')is[i.name].revenue+=price*qty;
+if(i.menuId){const key=String(i.menuId);if(!isById[key])isById[key]={name:i.name,qty:0,revenue:0};isById[key].qty+=qty;if(inv.method!=='staff')isById[key].revenue+=price*qty;}
+normalizeArrayLike(i.toppings).forEach(t=>{if(!is[t.name])is[t.name]={qty:0,revenue:0};is[t.name].qty+=qty;if(inv.method!=='staff')is[t.name].revenue+=(Number(t.price)||0)*qty;});});});
+const grabs=activeItems(targetState.grabOrders||[]).filter(g=>g.date===dk);
+return{invoices:ac,totalRevenue:tr,cashTotal:ct,transferTotal:tt,staffOrders:staffCount,staffOriginalTotal:staffOrigTotal,itemsSold:is,itemsSoldById:isById,hourlyRevenue:hr,grabTotal:grabs.reduce((sum,g)=>sum+(Number(g.grabPrice)||0),0),grabNet:grabs.reduce((sum,g)=>sum+(Number(g.netAmount)||0),0),_lastModified:Date.now()};
+}
+function refreshHistoryForDate(targetState,dk){
+if(!targetState)return false;
+const invoices=normalizeArrayLike(targetState.todayInvoices).filter(i=>i&&i.date===dk);
+if(!invoices.length)return false;
+const entry=buildHistoryForDate(targetState,dk,invoices);if(!entry)return false;
+if(!targetState.history||typeof targetState.history!=='object')targetState.history={};
+targetState.history[dk]=entry;return true;
+}
+function archiveDay(dk,invoices){const entry=buildHistoryForDate(state,dk,invoices);if(!entry)return;if(!state.history)state.history={};state.history[dk]=entry;}
 

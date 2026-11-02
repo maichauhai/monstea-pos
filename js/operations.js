@@ -277,8 +277,9 @@ function renderTemplates(){
     const tpls=activeItems(state.recipeTemplates||[]);
     if(!tpls.length){c.innerHTML='<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:0.82rem;">Chưa có mẫu — Bấm "Tạo mẫu mới" để bắt đầu</div>';return;}
     c.innerHTML=tpls.map(t=>{
-        const ings=t.items.map(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
-        const cost=t.items.reduce((s,r)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
+        const items=normalizeArrayLike(t.items);
+        const ings=items.map(r=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return ing?`${r.qty}${ing.unit} ${ing.name}`:'?';});
+        const cost=items.reduce((s,r)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);return s+(ing?ing.unitPrice*r.qty:0);},0);
         return `<div class="recipe-item" style="border-left:3px solid var(--accent);"><div class="recipe-header"><span class="rh-name" style="color:var(--accent)">📋 ${esc(t.name)}</span><span style="font-size:0.8rem;color:var(--accent-warm)">Chi phí: ${fmtP(cost)}</span></div>
         ${ings.length?`<div class="recipe-ing">${ings.map(x=>`<span>${x}</span>`).join('')}</div>`:''}
         <div style="margin-top:8px;display:flex;gap:6px;"><button class="btn btn-secondary btn-sm" onclick="editTemplate(${t.id})" style="font-size:0.72rem;">✏️ Sửa</button><button class="btn btn-danger btn-sm" onclick="deleteTemplate(${t.id})" style="font-size:0.72rem;">🗑️ Xóa</button></div></div>`;
@@ -293,8 +294,9 @@ function createTemplate(){
 
 function editTemplate(tplId){
     const t=activeItems(state.recipeTemplates||[]).find(x=>x.id===tplId);if(!t)return;
+    const items=normalizeArrayLike(t.items);
     let body=`<p style="font-size:0.82rem;color:var(--text-secondary);margin-bottom:12px;">Mẫu: <strong>${esc(t.name)}</strong></p>`;
-    body+=`<div id="tplEditList">${t.items.map((r,idx)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
+    body+=`<div id="tplEditList">${items.map((r,idx)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);
     return `<div class="setting-item" id="te-${idx}"><span class="si-name">${ing?ing.name:'?'}</span><input type="number" value="${r.qty}" style="width:80px;" id="teQty-${idx}" data-ing="${r.ingId}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing?ing.unit:''}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('te-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;}).join('')}</div>`;
     body+=`<div class="add-form" style="margin-top:12px;"><select id="tplIngSelect" style="flex:2;">${activeItems(state.ingredients).map(i=>`<option value="${i.id}">${i.name} (${i.unit} — ${fmtP(i.unitPrice)})</option>`).join('')}</select><input type="number" id="tplIngQty" placeholder="SL" style="flex:1;"><button class="btn btn-primary btn-sm" onclick="addTplRow()">➕</button></div>`;
     body+=`<div style="margin-top:16px;text-align:right;"><button class="btn btn-primary" onclick="saveTemplate(${tplId})">💾 Lưu mẫu</button></div>`;
@@ -320,7 +322,7 @@ function applyTemplate(menuId){
     const sel=document.getElementById('tplApplySelect');if(!sel)return;
     const tpl=activeItems(state.recipeTemplates||[]).find(t=>t.id===parseInt(sel.value));if(!tpl){toast('⚠️ Chọn mẫu');return;}
     const list=document.getElementById('recipeEditList');
-    tpl.items.forEach(r=>{
+    normalizeArrayLike(tpl.items).forEach(r=>{
         const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);if(!ing)return;
         const idx=list.children.length;
         list.innerHTML+=`<div class="setting-item" id="re-${idx}"><span class="si-name">${ing.name}</span><input type="number" value="${r.qty}" style="width:80px;" id="reQty-${idx}" data-ing="${ing.id}"><span style="font-size:0.75rem;color:var(--text-muted)">${ing.unit}</span><button class="btn btn-danger btn-sm" onclick="document.getElementById('re-${idx}').remove()" style="padding:4px 8px">✕</button></div>`;
@@ -336,7 +338,7 @@ function editRecipe(menuId){
 
     // Template apply section
     if(tpls.length>0){
-        body+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(232,166,53,0.06);border:1px solid rgba(232,166,53,0.15);border-radius:var(--radius-sm);"><span style="font-size:0.78rem;color:var(--accent);white-space:nowrap;">📋 Áp dụng mẫu:</span><select id="tplApplySelect" style="flex:1;">${tpls.map(t=>`<option value="${t.id}">${t.name} (${t.items.length} NL)</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="applyTemplate(${menuId})" style="white-space:nowrap;">Áp dụng</button></div>`;
+        body+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;padding:10px 14px;background:rgba(232,166,53,0.06);border:1px solid rgba(232,166,53,0.15);border-radius:var(--radius-sm);"><span style="font-size:0.78rem;color:var(--accent);white-space:nowrap;">📋 Áp dụng mẫu:</span><select id="tplApplySelect" style="flex:1;">${tpls.map(t=>`<option value="${t.id}">${t.name} (${normalizeArrayLike(t.items).length} NL)</option>`).join('')}</select><button class="btn btn-primary btn-sm" onclick="applyTemplate(${menuId})" style="white-space:nowrap;">Áp dụng</button></div>`;
     }
 
     body+=`<div id="recipeEditList">${recipe.map((r,idx)=>{const ing=activeItems(state.ingredients).find(i=>i.id===r.ingId);

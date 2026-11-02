@@ -712,9 +712,12 @@ const r=snap.val();
 if(firstLoad){
   firstLoad=false;
   isRemoteUpdate=true;
-  try{if(r)mergeFirebaseState(r);firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');}
+  let initialLoadOk=false;
+  try{if(r)mergeFirebaseState(r);firebaseReady=true;listenHelpAlert();init();updateSyncStatus('connected');initialLoadOk=true;}
   catch(e){console.error('[POS] Initial Firebase load failed:',e);updateSyncStatus('offline');}
   finally{isRemoteUpdate=false;}
+  // Push any local-only records recovered by the first merge back to Firebase.
+  if(initialLoadOk&&r)saveStateToFirebase();
   return;}
 if(!r)return;
 if(isOwnSyncEcho(r)){pendingLocalSyncToken='';pendingLocalSyncTs=0;updateSyncStatus('connected');return;}

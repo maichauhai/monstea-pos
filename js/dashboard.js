@@ -77,6 +77,12 @@ function getAllFinancialDateKeys(){
 function getDashRange(){
     const td=today();
     if(dashFilter==='today')return{dates:[td],start:td,end:td,label:'Hôm nay'};
+    if(dashFilter==='yesterday'){
+        const d=parseDateKeyLocal(td);
+        d.setDate(d.getDate()-1);
+        const yd=dateKeyLocal(d);
+        return{dates:[yd],start:yd,end:yd,label:'Hôm qua'};
+    }
     if(dashFilter==='week'){
         const dates=recentDates(7);
         return{dates,start:dates[0],end:dates[dates.length-1],label:'7 ngày gần nhất'};

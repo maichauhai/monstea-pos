@@ -245,7 +245,7 @@ function getFinancialRangeData(rangeOverride){
     const cashOutPaid=purchasesCost+cashOtherExpenses+salaryPaidCashOut;
     const cashNet=sales.realRevenue-cashOutPaid;
     const cashProfit=cashNet;
-    const netAfterPayables=cashProfit;
+    const netAfterPayables=cashProfit-salaryRemaining;
     const dailyRows=dates.map(dt=>{
         const ds=collectSalesForDates([dt]),dcogs=calcIngredientCostForDates([dt]),dlabor=calcLaborBreakdown([dt]);
         const dp=sumBucket([dt],state.purchases,'totalCost'),doe=sumBucket([dt],state.expenses,'amount'),dcashOther=sumCashExpenseBucket([dt]);
